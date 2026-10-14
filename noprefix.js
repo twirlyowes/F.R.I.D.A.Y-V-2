@@ -4,9 +4,10 @@
  * A user on the list can run commands without typing the prefix
  * (e.g. "help" instead of ".help"). Everyone else still needs the prefix.
  *
- *   <prefix>noprefix add <@user | id>      turn it on for a user
- *   <prefix>noprefix remove <@user | id>   turn it off
- *   <prefix>noprefix list                  show who has it
+ *   <prefix>np add <@user | id>      turn it on for a user
+ *   <prefix>np remove <@user | id>   turn it off
+ *   <prefix>np list                  show who has it
+ *   (<prefix>noprefix works the same as <prefix>np)
  *
  * Stored in Firestore (noprefix_users/{userId}) and works in every server.
  */
@@ -53,7 +54,7 @@ module.exports = client => {
     if (message.author.bot || !message.guild) return;
 
     const parsed = await parseCommand(message);
-    if (!parsed || parsed.command !== "noprefix") return;
+    if (!parsed || !["noprefix", "np"].includes(parsed.command)) return;
 
     const p = parsed.prefix;
 
@@ -74,7 +75,7 @@ module.exports = client => {
             (ids.length
               ? ids.slice(0, 30).map(id => `• <@${id}> (\`${id}\`)`).join("\n")
               : "*Nobody yet.*") +
-            `\n\nAdd someone with \`${p}noprefix add <@user | id>\`.\n\n-# F.R.I.D.A.Y • No-Prefix`
+            `\n\nAdd someone with \`${p}np add <@user | id>\`.\n\n-# F.R.I.D.A.Y • No-Prefix`
         );
       }
 
@@ -85,7 +86,7 @@ module.exports = client => {
         return reply(
           message,
           COLORS.RED,
-          `**Usage:**\n\`${p}noprefix add <@user | id>\`\n\`${p}noprefix remove <@user | id>\`\n\`${p}noprefix list\``
+          `**Usage:**\n\`${p}np add <@user | id>\`\n\`${p}np remove <@user | id>\`\n\`${p}np list\``
         );
       }
 
@@ -96,7 +97,7 @@ module.exports = client => {
         return reply(
           message,
           COLORS.RED,
-          `Tell me which user: \`${p}noprefix ${sub} <@user | id>\``
+          `Tell me which user: \`${p}np ${sub} <@user | id>\``
         );
       }
 
