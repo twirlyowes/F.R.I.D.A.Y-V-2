@@ -638,7 +638,7 @@ module.exports = (client) => {
           return message.reply(
             cardReply(
               COLORS.RED,
-              "❌ You need Administrator permissions to use this command.",
+              "<:error_g:1561271715164721245> You need Administrator permissions to use this command.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -658,7 +658,7 @@ module.exports = (client) => {
           return message.reply(
             cardReply(
               WARNING_YELLOW,
-              `⚠️ Usage: \`${PREFIX}dm @user [message]\``,
+              `<:warning_g:1561271566233501797> Usage: \`${PREFIX}dm @user [message]\``,
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -684,7 +684,7 @@ module.exports = (client) => {
           await message.reply(
             cardReply(
               COLORS.GREEN,
-              `✅ Successfully sent a DM to **${targetUser.tag}**.`,
+              `<:success_g:1561271843346714777> Successfully sent a DM to **${targetUser.tag}**.`,
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -696,7 +696,7 @@ module.exports = (client) => {
           await message.reply(
             cardReply(
               COLORS.RED,
-              "❌ Could not send a DM to that user. They might have DMs disabled.",
+              "<:error_g:1561271715164721245> Could not send a DM to that user. They might have DMs disabled.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -750,7 +750,7 @@ module.exports = (client) => {
           return message.reply(
             cardReply(
               WARNING_YELLOW,
-              "⚠️ Please provide a search term for Wikipedia. Example: `wiki Albert Einstein`",
+              "<:warning_g:1561271566233501797> Please provide a search term for Wikipedia. Example: `wiki Albert Einstein`",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -785,7 +785,7 @@ module.exports = (client) => {
             return message.reply(
               cardReply(
                 COLORS.RED,
-                "❌ Could not find a Wikipedia page matching that query.",
+                "<:error_g:1561271715164721245> Could not find a Wikipedia page matching that query.",
                 message.author.displayAvatarURL({
                   extension: "png",
                   size: 128
@@ -858,7 +858,7 @@ module.exports = (client) => {
           return message.reply(
             cardReply(
               COLORS.RED,
-              "❌ An error occurred while searching Wikipedia.",
+              "<:error_g:1561271715164721245> An error occurred while searching Wikipedia.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
