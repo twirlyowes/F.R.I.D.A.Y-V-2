@@ -1,7 +1,16 @@
 const {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelSelectMenuBuilder,
   ChannelType,
   MessageFlags,
-  PermissionsBitField
+  ModalBuilder,
+  PermissionsBitField,
+  RoleSelectMenuBuilder,
+  StringSelectMenuBuilder,
+  TextInputBuilder,
+  TextInputStyle
 } = require("discord.js");
 
 const guildConfig = require("./lib/guildConfig");
@@ -100,7 +109,8 @@ async function showAll(message, PREFIX) {
     message,
     COLORS.SKY_BLUE,
     `# Server Configuration\n\n${lines.join("\n\n")}\n\n` +
-      `**Set:** \`${PREFIX}config set <key> <#channel | @role | id>\`\n` +
+      `**Easiest:** \`${PREFIX}config\` opens a menu where you just pick channels and roles.\n` +
+      `**Or type it:** \`${PREFIX}config set <key> <#channel | @role>\`\n` +
       `**Clear:** \`${PREFIX}config clear <key>\`\n` +
       `**Details:** \`${PREFIX}config keys\`\n\n` +
       `-# F.R.I.D.A.Y • Configuration`
@@ -116,6 +126,266 @@ function showKeys(message) {
     COLORS.SKY_BLUE,
     `# Configuration Keys\n\n${lines.join("\n")}\n\n-# F.R.I.D.A.Y • Configuration`
   );
+}
+
+// ---------------------------------------------------------------------------
+// Interactive setup panel: pick settings from dropdowns, no IDs needed.
+// Stateless: everything it needs is inside the component customIds
+// ("cfg:<action>:...:<userId>"), so it keeps working after a restart.
+// ---------------------------------------------------------------------------
+const CHANNEL_TYPES = {
+  text: [ChannelType.GuildText, ChannelType.GuildAnnouncement],
+  voice: [ChannelType.GuildVoice],
+  category: [ChannelType.GuildCategory]
+};
+
+const STRING_INPUTS = {
+  prefix: { max: MAX_PREFIX_LENGTH, style: TextInputStyle.Short },
+  ipMessage: { max: 500, style: TextInputStyle.Paragraph },
+  youtubeUrl: { max: 200, style: TextInputStyle.Short }
+};
+
+const YOUTUBE_URL = /^https?:\/\/(www\.)?youtube\.com\//i;
+const YOUTUBE_PROBLEM =
+  "That doesn't look like a YouTube channel URL (e.g. `https://www.youtube.com/@name`).";
+
+/** Short, safe text for showing a stored value inside the panel card. */
+function display(type, value) {
+  if (type !== "string") return mention(type, value);
+
+  const clean = String(value).replace(/`/g, "'").replace(/\s+/g, " ");
+  return `\`${clean.length > 60 ? clean.slice(0, 57) + "…" : clean}\``;
+}
+
+async function buildPanel(guild, userId, selectedKey = null, note = null) {
+  const cfg = await guildConfig.get(guild.id);
+
+  const lines = Object.entries(SETTINGS).map(([key, def]) => {
+    const value = cfg[key] ? display(def.type, cfg[key]) : "*not set*";
+    return `${cfg[key] ? "✅" : "⚪"} **${def.label}** — ${value}`;
+  });
+
+  const intro = selectedKey
+    ? `**Editing: ${SETTINGS[selectedKey].label}**\n${SETTINGS[selectedKey].description}`
+    : "Pick a setting from the menu below to change it.";
+
+  const card = createCard({
+    color: COLORS.SKY_BLUE,
+    content:
+      `# Server Setup\n\n${note ? `${note}\n\n` : ""}${lines.join("\n")}\n\n${intro}\n\n` +
+      `-# F.R.I.D.A.Y • Setup`,
+    avatarURL: guild.client.user.displayAvatarURL({ extension: "png", size: 128 }),
+    avatarDescription: "F.R.I.D.A.Y"
+  });
+
+  const keyMenu = new StringSelectMenuBuilder()
+    .setCustomId(`cfg:key:${userId}`)
+    .setPlaceholder("Choose a setting to change")
+    .addOptions(
+      Object.entries(SETTINGS).map(([key, def]) => ({
+        label: `${cfg[key] ? "✅" : "⚪"} ${def.label}`.slice(0, 100),
+        description: def.description.slice(0, 100),
+        value: key,
+        default: key === selectedKey
+      }))
+    );
+
+  const rows = [new ActionRowBuilder().addComponents(keyMenu)];
+
+  if (selectedKey) {
+    const def = SETTINGS[selectedKey];
+
+    if (def.type === "role") {
+      rows.push(
+        new ActionRowBuilder().addComponents(
+          new RoleSelectMenuBuilder()
+            .setCustomId(`cfg:val:${selectedKey}:${userId}`)
+            .setPlaceholder(`Pick the ${def.label.toLowerCase()}`)
+        )
+      );
+    } else if (def.type !== "string") {
+      rows.push(
+        new ActionRowBuilder().addComponents(
+          new ChannelSelectMenuBuilder()
+            .setCustomId(`cfg:val:${selectedKey}:${userId}`)
+            .setChannelTypes(CHANNEL_TYPES[def.type])
+            .setPlaceholder(`Pick the ${def.label.toLowerCase()}`)
+        )
+      );
+    }
+
+    const buttons = [];
+
+    if (def.type === "string") {
+      buttons.push(
+        new ButtonBuilder()
+          .setCustomId(`cfg:edit:${selectedKey}:${userId}`)
+          .setLabel("Edit text")
+          .setStyle(ButtonStyle.Primary)
+      );
+    }
+
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(`cfg:clear:${selectedKey}:${userId}`)
+        .setLabel("Clear")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(!cfg[selectedKey]),
+      new ButtonBuilder()
+        .setCustomId(`cfg:done:${userId}`)
+        .setLabel("Done")
+        .setStyle(ButtonStyle.Success)
+    );
+
+    rows.push(new ActionRowBuilder().addComponents(buttons));
+  } else {
+    rows.push(
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`cfg:done:${userId}`)
+          .setLabel("Done")
+          .setStyle(ButtonStyle.Success)
+      )
+    );
+  }
+
+  return {
+    components: [card, ...rows],
+    flags: MessageFlags.IsComponentsV2,
+    allowedMentions: { parse: [] }
+  };
+}
+
+async function handlePanelInteraction(interaction) {
+  const parts = interaction.customId.split(":"); // cfg:<action>:...:<userId>
+  const action = parts[1];
+  const userId = parts[parts.length - 1];
+
+  if (interaction.user.id !== userId) {
+    return interaction.reply({
+      content: "This setup panel belongs to someone else. Run the config command yourself to open your own.",
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  if (!interaction.guild || !interaction.member || !canManage(interaction.member)) {
+    return interaction.reply({
+      content: "You need the **Manage Server** permission to change the configuration.",
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  const guild = interaction.guild;
+
+  // 1) a setting was chosen from the main menu
+  if (action === "key" && interaction.isStringSelectMenu()) {
+    const key = interaction.values[0];
+    if (!SETTINGS[key]) return interaction.deferUpdate();
+
+    return interaction.update(await buildPanel(guild, userId, key));
+  }
+
+  // 2) a channel / role was picked
+  if (action === "val" && (interaction.isChannelSelectMenu() || interaction.isRoleSelectMenu())) {
+    const key = parts[2];
+    const def = SETTINGS[key];
+    if (!def) return interaction.deferUpdate();
+
+    const result = resolveTarget(guild, def.type, interaction.values[0]);
+
+    if (result.error) {
+      return interaction.update(await buildPanel(guild, userId, key, `❌ ${result.error}`));
+    }
+
+    await guildConfig.set(guild.id, key, result.value);
+
+    return interaction.update(
+      await buildPanel(guild, userId, key, `✅ **${def.label}** is now ${mention(def.type, result.value)}.`)
+    );
+  }
+
+  // 3) "Edit text" button -> pop-up form (prefix / ip message / YouTube URL)
+  if (action === "edit" && interaction.isButton()) {
+    const key = parts[2];
+    const def = SETTINGS[key];
+    const limits = STRING_INPUTS[key];
+    if (!def || !limits) return interaction.deferUpdate();
+
+    const cfg = await guildConfig.get(guild.id);
+
+    const input = new TextInputBuilder()
+      .setCustomId("value")
+      .setLabel(def.label.slice(0, 45))
+      .setStyle(limits.style)
+      .setRequired(true)
+      .setMinLength(1)
+      .setMaxLength(limits.max);
+
+    if (cfg[key]) input.setValue(String(cfg[key]).slice(0, limits.max));
+
+    return interaction.showModal(
+      new ModalBuilder()
+        .setCustomId(`cfg:modal:${key}:${userId}`)
+        .setTitle(def.label.slice(0, 45))
+        .addComponents(new ActionRowBuilder().addComponents(input))
+    );
+  }
+
+  // 4) pop-up form submitted
+  if (action === "modal" && interaction.isModalSubmit()) {
+    const key = parts[2];
+    const def = SETTINGS[key];
+    if (!def || def.type !== "string") return;
+
+    const value = interaction.fields.getTextInputValue("value").trim();
+
+    let problem = null;
+    if (key === "prefix") problem = validatePrefix(value);
+    if (key === "youtubeUrl" && !YOUTUBE_URL.test(value)) problem = YOUTUBE_PROBLEM;
+
+    if (!problem) await guildConfig.set(guild.id, key, value);
+
+    const panel = await buildPanel(
+      guild,
+      userId,
+      key,
+      problem ? `❌ ${problem}` : `✅ **${def.label}** is now ${display("string", value)}.`
+    );
+
+    return interaction.isFromMessage()
+      ? interaction.update(panel)
+      : interaction.reply({ ...panel, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+  }
+
+  // 5) clear the selected setting
+  if (action === "clear" && interaction.isButton()) {
+    const key = parts[2];
+    const def = SETTINGS[key];
+    if (!def) return interaction.deferUpdate();
+
+    await guildConfig.unset(guild.id, key);
+
+    return interaction.update(
+      await buildPanel(guild, userId, key, `🧹 **${def.label}** has been cleared.`)
+    );
+  }
+
+  // 6) done: remove the menus
+  if (action === "done" && interaction.isButton()) {
+    return interaction.update({
+      components: [
+        createCard({
+          color: COLORS.GREEN,
+          content:
+            "# Setup saved\n\nYour settings are saved. Run the config command again any time to change them.\n\n-# F.R.I.D.A.Y • Setup",
+          avatarURL: guild.client.user.displayAvatarURL({ extension: "png", size: 128 }),
+          avatarDescription: "F.R.I.D.A.Y"
+        })
+      ],
+      flags: MessageFlags.IsComponentsV2,
+      allowedMentions: { parse: [] }
+    });
+  }
 }
 
 module.exports = client => {
@@ -190,7 +460,7 @@ module.exports = client => {
       }
     }
 
-    if (!["config", "settings"].includes(command)) return;
+    if (!["config", "settings", "setup"].includes(command)) return;
 
     try {
       if (!canManage(message.member)) {
@@ -201,7 +471,11 @@ module.exports = client => {
         );
       }
 
-      const sub = (args.shift() || "view").toLowerCase();
+      const sub = (args.shift() || "panel").toLowerCase();
+
+      if (sub === "panel" || sub === "open" || sub === "menu") {
+        return message.reply(await buildPanel(message.guild, message.author.id));
+      }
 
       if (sub === "view" || sub === "list" || sub === "show") {
         return showAll(message, PREFIX);
@@ -222,7 +496,7 @@ module.exports = client => {
           return reply(
             message,
             COLORS.RED,
-            `**Usage:** \`${PREFIX}config set <key> <#channel | @role | id>\`\n\nSee \`${PREFIX}config keys\` for every key.`
+            `**Usage:** \`${PREFIX}config set <key> <#channel | @role>\`\n\nOr just run \`${PREFIX}config\` and pick from the menus. See \`${PREFIX}config keys\` for every key.`
           );
         }
 
@@ -282,11 +556,27 @@ module.exports = client => {
       return reply(
         message,
         COLORS.RED,
-        `Unknown option. Try \`${PREFIX}config\`, \`${PREFIX}config set\`, \`${PREFIX}config clear\` or \`${PREFIX}config keys\`.`
+        `Unknown option. Try \`${PREFIX}config\` (menu), \`${PREFIX}config view\`, \`${PREFIX}config set\`, \`${PREFIX}config clear\` or \`${PREFIX}config keys\`.`
       );
     } catch (error) {
       console.error("[Settings] Command error:", error);
       reply(message, COLORS.RED, "Something went wrong while updating the configuration.").catch(() => {});
+    }
+  });
+
+  client.on("interactionCreate", async interaction => {
+    if (!interaction.customId?.startsWith("cfg:")) return;
+
+    try {
+      await handlePanelInteraction(interaction);
+    } catch (error) {
+      console.error("[Settings] Panel error:", error);
+
+      if (!interaction.replied && !interaction.deferred) {
+        interaction
+          .reply({ content: "Something went wrong. Please run the config command again.", flags: MessageFlags.Ephemeral })
+          .catch(() => {});
+      }
     }
   });
 };
