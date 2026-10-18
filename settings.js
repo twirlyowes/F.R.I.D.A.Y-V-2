@@ -162,7 +162,7 @@ async function buildPanel(guild, userId, selectedKey = null, note = null) {
 
   const lines = Object.entries(SETTINGS).map(([key, def]) => {
     const value = cfg[key] ? display(def.type, cfg[key]) : "*not set*";
-    return `${cfg[key] ? "✅" : "⚪"} **${def.label}** — ${value}`;
+    return `${cfg[key] ? "<:success_g:1561271843346714777>" : "⚪"} **${def.label}** — ${value}`;
   });
 
   const intro = selectedKey
@@ -183,7 +183,7 @@ async function buildPanel(guild, userId, selectedKey = null, note = null) {
     .setPlaceholder("Choose a setting to change")
     .addOptions(
       Object.entries(SETTINGS).map(([key, def]) => ({
-        label: `${cfg[key] ? "✅" : "⚪"} ${def.label}`.slice(0, 100),
+        label: `${cfg[key] ? "<:success_g:1561271843346714777>" : "⚪"} ${def.label}`.slice(0, 100),
         description: def.description.slice(0, 100),
         value: key,
         default: key === selectedKey
@@ -294,13 +294,13 @@ async function handlePanelInteraction(interaction) {
     const result = resolveTarget(guild, def.type, interaction.values[0]);
 
     if (result.error) {
-      return interaction.update(await buildPanel(guild, userId, key, `❌ ${result.error}`));
+      return interaction.update(await buildPanel(guild, userId, key, `<:error_g:1561271715164721245> ${result.error}`));
     }
 
     await guildConfig.set(guild.id, key, result.value);
 
     return interaction.update(
-      await buildPanel(guild, userId, key, `✅ **${def.label}** is now ${mention(def.type, result.value)}.`)
+      await buildPanel(guild, userId, key, `<:success_g:1561271843346714777> **${def.label}** is now ${mention(def.type, result.value)}.`)
     );
   }
 
@@ -349,7 +349,7 @@ async function handlePanelInteraction(interaction) {
       guild,
       userId,
       key,
-      problem ? `❌ ${problem}` : `✅ **${def.label}** is now ${display("string", value)}.`
+      problem ? `<:error_g:1561271715164721245> ${problem}` : `<:success_g:1561271843346714777> **${def.label}** is now ${display("string", value)}.`
     );
 
     return interaction.isFromMessage()
