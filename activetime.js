@@ -82,10 +82,10 @@ async function loadSavedTimes() {
             );
         });
 
-        console.log("✅ Active times loaded from Firebase");
+        console.log("<:success_g:1561271843346714777> Active times loaded from Firebase");
     } catch (error) {
         console.error(
-            "❌ Firebase load error:",
+            "<:error_g:1561271715164721245> Firebase load error:",
             error
         );
     }
@@ -107,11 +107,11 @@ async function loadLastResetDate() {
         }
 
         console.log(
-            `✅ Last reset date loaded: ${lastResetDate || "(none recorded yet)"} | Last report date: ${lastReportDate || "(none recorded yet)"}`
+            `<:success_g:1561271843346714777> Last reset date loaded: ${lastResetDate || "(none recorded yet)"} | Last report date: ${lastReportDate || "(none recorded yet)"}`
         );
     } catch (error) {
         console.error(
-            "❌ Firebase loadLastResetDate error:",
+            "<:error_g:1561271715164721245> Firebase loadLastResetDate error:",
             error
         );
     }
@@ -134,7 +134,7 @@ async function saveLastResetDate(dateStr) {
         lastResetDate = dateStr;
     } catch (error) {
         console.error(
-            "❌ Firebase saveLastResetDate error:",
+            "<:error_g:1561271715164721245> Firebase saveLastResetDate error:",
             error
         );
     }
@@ -157,7 +157,7 @@ async function saveLastReportDate(dateStr) {
         lastReportDate = dateStr;
     } catch (error) {
         console.error(
-            "❌ Firebase saveLastReportDate error:",
+            "<:error_g:1561271715164721245> Firebase saveLastReportDate error:",
             error
         );
     }
@@ -207,7 +207,7 @@ async function executeSaveWithRetry() {
         return true;
     } catch (error) {
         console.error(
-            "❌ Firebase save error:",
+            "<:error_g:1561271715164721245> Firebase save error:",
             error
         );
 
@@ -300,11 +300,11 @@ async function performDailyReset(guildId = null) {
         }
 
         console.log(
-            `✅ Daily reset complete: zeroed stats for ${allKnownIds.size} tracked member(s). Nothing was deleted.`
+            `<:success_g:1561271843346714777> Daily reset complete: zeroed stats for ${allKnownIds.size} tracked member(s). Nothing was deleted.`
         );
     } catch (error) {
         console.error(
-            "❌ [DailyReset] Error:",
+            "<:error_g:1561271715164721245> [DailyReset] Error:",
             error && error.stack
                 ? error.stack
                 : error
@@ -321,7 +321,7 @@ async function removeUserRecord(guildId, rawUserId) {
             .delete();
     } catch (error) {
         console.error(
-            `❌ [RemoveUser] Firebase delete error for ${rawUserId}:`,
+            `<:error_g:1561271715164721245> [RemoveUser] Firebase delete error for ${rawUserId}:`,
             error
         );
 
@@ -546,7 +546,7 @@ module.exports = (client) => {
 
                             if (!reportSent) {
                                 console.error(
-                                    `⚠️ [Auto-Sender] Daily report FAILED for ${guild.name} (${guild.id}).`
+                                    `<:warning_g:1561271566233501797> [Auto-Sender] Daily report FAILED for ${guild.name} (${guild.id}).`
                                 );
                             }
                         }
@@ -570,7 +570,7 @@ module.exports = (client) => {
                         );
 
                         console.log(
-                            `✅ Daily tracking data has been safely reset and saved for ${istDateString} IST.`
+                            `<:success_g:1561271843346714777> Daily tracking data has been safely reset and saved for ${istDateString} IST.`
                         );
                     }
                 } finally {
@@ -588,7 +588,7 @@ module.exports = (client) => {
 
             if (!channel) {
                 console.error(
-                    `❌ [DailyReport] No log channel configured for ${guild.name} (${guild.id}). Use the config command: config set logs #channel`
+                    `<:error_g:1561271715164721245> [DailyReport] No log channel configured for ${guild.name} (${guild.id}). Use the config command: config set logs #channel`
                 );
                 return false;
             }
@@ -801,7 +801,7 @@ module.exports = (client) => {
             }
 
             console.log(
-                `✅ [DailyReport] Sent successfully to #${channel.name || channel.id} (${chunks.length} card(s), ${sortedStaff.length} staff member(s)).`
+                `<:success_g:1561271843346714777> [DailyReport] Sent successfully to #${channel.name || channel.id} (${chunks.length} card(s), ${sortedStaff.length} staff member(s)).`
             );
 
             await saveTimesToFileWithQueue();
@@ -809,7 +809,7 @@ module.exports = (client) => {
             return true;
         } catch (err) {
             console.error(
-                "❌ [DailyReport] Error sending daily report:",
+                "<:error_g:1561271715164721245> [DailyReport] Error sending daily report:",
                 err && err.stack
                     ? err.stack
                     : err
@@ -1066,7 +1066,7 @@ module.exports = (client) => {
                                 COLORS.RED,
 
                             content:
-                                "❌ **Permission Denied**\nYou do not have permission to use this command."
+                                "<:error_g:1561271715164721245> **Permission Denied**\nYou do not have permission to use this command."
                         });
 
                     return message.reply(
@@ -1128,7 +1128,7 @@ module.exports = (client) => {
                                 COLORS.RED,
 
                             content:
-                                "❌ **Permission Denied**\nYou do not have permission to use this command."
+                                "<:error_g:1561271715164721245> **Permission Denied**\nYou do not have permission to use this command."
                         });
 
                     return message.reply(
@@ -1190,7 +1190,7 @@ module.exports = (client) => {
                 );
 
                 console.log(
-                    `✅ [ManualReset] Activity data force-reset by ${message.author.tag} at ${new Date().toISOString()} (marked as reset for ${istDateString} IST).`
+                    `<:success_g:1561271843346714777> [ManualReset] Activity data force-reset by ${message.author.tag} at ${new Date().toISOString()} (marked as reset for ${istDateString} IST).`
                 );
 
                 const successCard =
@@ -1199,7 +1199,7 @@ module.exports = (client) => {
                             COLORS.GREEN,
 
                         content:
-                            "✅ **Activity Tracking Reset**\nActivity tracking has been reset. Fresh tracking starts now."
+                            "<:success_g:1561271843346714777> **Activity Tracking Reset**\nActivity tracking has been reset. Fresh tracking starts now."
                     });
 
                 await message.channel.send(
@@ -1237,7 +1237,7 @@ module.exports = (client) => {
                                 COLORS.RED,
 
                             content:
-                                "❌ **Permission Denied**\nYou do not have permission to use this command."
+                                "<:error_g:1561271715164721245> **Permission Denied**\nYou do not have permission to use this command."
                         });
 
                     return message.reply(
@@ -1269,7 +1269,7 @@ module.exports = (client) => {
                             color:
                                 COLORS.RED,
                             content:
-                                "❌ **Invalid User ID**\nUsage: `" + parsed.prefix + "removeuser <userID>` — provide a valid Discord user ID or mention."
+                                "<:error_g:1561271715164721245> **Invalid User ID**\nUsage: `" + parsed.prefix + "removeuser <userID>` — provide a valid Discord user ID or mention."
                         });
 
                     return message.reply(
@@ -1287,7 +1287,7 @@ module.exports = (client) => {
                     await removeUserRecord(message.guild.id, targetId);
 
                     console.log(
-                        `✅ [RemoveUser] ${message.author.tag} removed activetime record for ${targetId}.`
+                        `<:success_g:1561271843346714777> [RemoveUser] ${message.author.tag} removed activetime record for ${targetId}.`
                     );
 
                     const card =
@@ -1295,7 +1295,7 @@ module.exports = (client) => {
                             color:
                                 COLORS.GREEN,
                             content:
-                                `✅ **Activity Record Removed**\nRemoved activetime record for \`${targetId}\`.`
+                                `<:success_g:1561271843346714777> **Activity Record Removed**\nRemoved activetime record for \`${targetId}\`.`
                         });
 
                     return message.reply(
@@ -1313,7 +1313,7 @@ module.exports = (client) => {
                             color:
                                 COLORS.RED,
                             content:
-                                `❌ **Removal Failed**\nFailed to remove the record for \`${targetId}\`. Check the logs.`
+                                `<:error_g:1561271715164721245> **Removal Failed**\nFailed to remove the record for \`${targetId}\`. Check the logs.`
                         });
 
                     return message.reply(
@@ -1378,7 +1378,7 @@ module.exports = (client) => {
                             color:
                                 COLORS.RED,
                             content:
-                                "❌ **Not a Staff Member**\nThat user is not a staff member or does not have the specified staff role."
+                                "<:error_g:1561271715164721245> **Not a Staff Member**\nThat user is not a staff member or does not have the specified staff role."
                         });
 
                     return message.reply(
@@ -1526,7 +1526,7 @@ process.on("SIGINT", async () => {
     try {
         await saveTimesToFileWithQueue();
     } catch (error) {
-        console.error("❌ Error saving active times:", error);
+        console.error("<:error_g:1561271715164721245> Error saving active times:", error);
     }
     process.exit(0);
 });
@@ -1535,7 +1535,7 @@ process.on("SIGTERM", async () => {
     try {
         await saveTimesToFileWithQueue();
     } catch (error) {
-        console.error("❌ Error saving active times:", error);
+        console.error("<:error_g:1561271715164721245> Error saving active times:", error);
     }
     process.exit(0);
 });
