@@ -451,14 +451,14 @@ async function trigger(guild, user, kind, total, cfg) {
   const summary =
     `**Who:** ${who(user)}\n` +
     `**What:** ${total}× ${FEATURES[kind].label.toLowerCase()} within ${cfg.windowSeconds}s\n` +
-    `**Response:** ${punishment.ok ? "✅" : "⚠️"} ${punishment.text}\n` +
+    `**Response:** ${punishment.ok ? "<:success_g:1561271843346714777>" : "<:warning_g:1561271566233501797>"} ${punishment.text}\n` +
     `**Recovery:** ${recoveryText}`;
 
   await sendLog(
     guild,
     COLORS.RED,
     `# 🚨 Anti-Nuke triggered\n\n${summary}\n\n` +
-      `${punishment.ok ? "" : "⚠️ The punishment did not fully work. Move my role to the top of the role list and check the audit log.\n\n"}` +
+      `${punishment.ok ? "" : "<:warning_g:1561271566233501797> The punishment did not fully work. Move my role to the top of the role list and check the audit log.\n\n"}` +
       `-# F.R.I.D.A.Y • Anti-Nuke`
   );
 
@@ -466,14 +466,14 @@ async function trigger(guild, user, kind, total, cfg) {
     guild,
     `🚨 Anti-Nuke triggered in **${guild.name}**\n` +
       `${user.tag || user.username || user.id} (${user.id}) did ${total}× ${FEATURES[kind].label.toLowerCase()} within ${cfg.windowSeconds}s.\n` +
-      `${punishment.ok ? "✅" : "⚠️"} ${punishment.text}\n${recoveryText}`
+      `${punishment.ok ? "<:success_g:1561271843346714777>" : "<:warning_g:1561271566233501797>"} ${punishment.text}\n${recoveryText}`
   );
 }
 
 // ---------------------------------------------------------------------------
 // Control panel (buttons), owner only
 // ---------------------------------------------------------------------------
-const flag = on => (on ? "✅" : "⬜");
+const flag = on => (on ? "<:success_g:1561271843346714777>" : "⬜");
 
 function toggleButton(id, label, on) {
   return new ButtonBuilder()
@@ -487,7 +487,7 @@ async function buildPanel(guild, userId, note = null) {
   const me = guild.members.me;
 
   const permissionLine = BOT_PERMISSIONS.map(
-    ([key, label]) => `${me?.permissions.has(PermissionFlagsBits[key]) ? "✅" : "❌"} ${label}`
+    ([key, label]) => `${me?.permissions.has(PermissionFlagsBits[key]) ? "<:success_g:1561271843346714777>" : "<:error_g:1561271715164721245>"} ${label}`
   ).join(" • ");
 
   const auditMissing = !me?.permissions.has(PermissionFlagsBits.ViewAuditLog);
@@ -512,7 +512,7 @@ async function buildPanel(guild, userId, note = null) {
       `**Trusted (never punished):** ${trusted}\n` +
       `-# The server owner and this bot are always trusted. Add your other bots here (ticket bots, security bots).\n\n` +
       `**My permissions:** ${permissionLine}\n` +
-      `${auditMissing ? "❌ I need **View Audit Log**, or Anti-Nuke cannot see who did something.\n" : ""}\n` +
+      `${auditMissing ? "<:error_g:1561271715164721245> I need **View Audit Log**, or Anti-Nuke cannot see who did something.\n" : ""}\n` +
       `-# F.R.I.D.A.Y • Anti-Nuke`,
     avatarURL: avatarOf(guild.client),
     avatarDescription: "F.R.I.D.A.Y"
@@ -615,7 +615,7 @@ async function handlePanel(interaction) {
 
     return refresh(
       `Anti-Nuke is now **${cfg.enabled ? "ON" : "OFF"}**.` +
-        (cfg.enabled && auditMissing ? "\n❌ It can't work until I have **View Audit Log**." : "")
+        (cfg.enabled && auditMissing ? "\n<:error_g:1561271715164721245> It can't work until I have **View Audit Log**." : "")
     );
   }
 
@@ -849,7 +849,7 @@ module.exports = client => {
         `# 🛡️ Anti-Nuke: role permissions\n\n` +
           `**Who:** ${who(entry.executor)}\n` +
           `**Role:** ${newRole.name}\n` +
-          `**Result:** ${reverted ? "✅ Dangerous permissions were removed again" : "⚠️ Could not revert (my role is too low)"}\n\n` +
+          `**Result:** ${reverted ? "<:success_g:1561271843346714777> Dangerous permissions were removed again" : "<:warning_g:1561271566233501797> Could not revert (my role is too low)"}\n\n` +
           `-# F.R.I.D.A.Y • Anti-Nuke`
       );
 
@@ -949,7 +949,7 @@ module.exports = client => {
         `# 🛡️ Anti-Nuke: bot added\n\n` +
           `**Bot:** ${who(member.user)}\n` +
           `**Added by:** ${who(entry.executor)}\n` +
-          `**Result:** ${removed ? "✅ The bot was removed" : "⚠️ Could not remove it (my role is too low)"}\n\n` +
+          `**Result:** ${removed ? "<:success_g:1561271843346714777> The bot was removed" : "<:warning_g:1561271566233501797> Could not remove it (my role is too low)"}\n\n` +
           `Bots must be added by the server owner or a trusted user (or be on the trusted list themselves).\n\n` +
           `-# F.R.I.D.A.Y • Anti-Nuke`
       );
