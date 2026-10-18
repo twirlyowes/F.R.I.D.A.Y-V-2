@@ -288,7 +288,7 @@ async function handleViolation(message, cfg, result) {
 
       message.channel
         .send({
-          content: `⚠️ <@${message.author.id}>, your message was removed by AutoMod (${label}).`,
+          content: `<:warning_g:1561271566233501797> <@${message.author.id}>, your message was removed by AutoMod (${label}).`,
           allowedMentions: { parse: [] }
         })
         .then(notice => setTimeout(() => notice.delete().catch(() => {}), 6000).unref?.())
@@ -334,7 +334,7 @@ async function handleViolation(message, cfg, result) {
 // Control panel (buttons), stateless: state lives in the customIds + Firestore
 // ---------------------------------------------------------------------------
 function flag(on) {
-  return on ? "✅" : "⬜";
+  return on ? "<:success_g:1561271843346714777>" : "⬜";
 }
 
 function toggleButton(id, label, on) {
@@ -355,7 +355,7 @@ async function buildPanel(guild, userId, note = null) {
 
   const logWarning = (await guildConfig.getLogChannel(guild))
     ? ""
-    : "\n⚠️ No log channel is set, so hits won't be reported. Set one with the config command (`logs`).\n";
+    : "\n<:warning_g:1561271566233501797> No log channel is set, so hits won't be reported. Set one with the config command (`logs`).\n";
 
   const card = createCard({
     color: cfg.enabled ? COLORS.GREEN : COLORS.SKY_BLUE,
@@ -485,7 +485,7 @@ async function handlePanel(interaction) {
       c.rules[rule] = !c.rules[rule];
     });
 
-    return refresh(`${cfg.rules[rule] ? "✅" : "⬜"} **${RULES[rule].label}** is now ${cfg.rules[rule] ? "on" : "off"}.`);
+    return refresh(`${cfg.rules[rule] ? "<:success_g:1561271843346714777>" : "⬜"} **${RULES[rule].label}** is now ${cfg.rules[rule] ? "on" : "off"}.`);
   }
 
   if (action === "master" && interaction.isButton()) {
