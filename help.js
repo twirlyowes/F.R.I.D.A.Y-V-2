@@ -438,7 +438,7 @@ Please select the category that best matches your query.
                     await pendingRef.delete().catch(() => {});
 
                     await message.reply(
-                        "❌ I can't open a support ticket for you: none of the servers we share have support tickets set up."
+                        "<:error_g:1561271715164721245> I can't open a support ticket for you: none of the servers we share have support tickets set up."
                     ).catch(() => {});
 
                     return;
@@ -530,7 +530,7 @@ ${message.content || "*[No Text Content]*"}
                     message.attachments
                 ).catch(async () => {
                     await message.reply(
-                        "⚠️ Could not send DM to the user. They might have DMs disabled."
+                        "<:warning_g:1561271566233501797> Could not send DM to the user. They might have DMs disabled."
                     ).catch(() => {});
                 });
             }
@@ -556,7 +556,7 @@ ${message.content || "*[No Text Content]*"}
 
                 if (!eligibleGuilds.some(g => g.id === chosenGuildId)) {
                     await interaction.reply({
-                        content: "❌ That server isn't available for tickets right now.",
+                        content: "<:error_g:1561271715164721245> That server isn't available for tickets right now.",
                         ephemeral: true
                     }).catch(() => {});
 
@@ -613,7 +613,7 @@ Please select the category that best matches your query.
 
                 if (!targetGuildId) {
                     await interaction.user.send(
-                        "⚠️ Please send me a new message to start your support ticket."
+                        "<:warning_g:1561271566233501797> Please send me a new message to start your support ticket."
                     ).catch(() => {});
 
                     return;
@@ -630,7 +630,7 @@ Please select the category that best matches your query.
 
                 if (!existingTicketSnapshot.empty) {
                     await interaction.user.send(
-                        "⚠️ You already have an active support ticket."
+                        "<:warning_g:1561271566233501797> You already have an active support ticket."
                     ).catch(() => {});
 
                     return;
@@ -643,7 +643,7 @@ Please select the category that best matches your query.
 
                 if (!guild) {
                     await interaction.user.send(
-                        "❌ I could not access the support server. Please try again later."
+                        "<:error_g:1561271715164721245> I could not access the support server. Please try again later."
                     ).catch(() => {});
 
                     return;
@@ -653,7 +653,7 @@ Please select the category that best matches your query.
 
                 if (!cfg.ticketCategory) {
                     await interaction.user.send(
-                        "❌ Support tickets aren't set up in that server yet."
+                        "<:error_g:1561271715164721245> Support tickets aren't set up in that server yet."
                     ).catch(() => {});
 
                     return;
@@ -671,7 +671,7 @@ Please select the category that best matches your query.
                     );
 
                     await interaction.user.send(
-                        "❌ Something went wrong while creating your ticket. Please try again later."
+                        "<:error_g:1561271715164721245> Something went wrong while creating your ticket. Please try again later."
                     ).catch(() => {});
 
                     return;
@@ -762,7 +762,7 @@ Please select the category that best matches your query.
                     );
 
                     await interaction.user.send(
-                        "❌ Failed to create your support ticket. Please try again later."
+                        "<:error_g:1561271715164721245> Failed to create your support ticket. Please try again later."
                     ).catch(() => {});
 
                     return;
@@ -901,7 +901,7 @@ ${categoryName}
                     createCard({
                         color: COLORS.GREEN,
                         content:
-`# ✅ Support Ticket Created
+`# <:success_g:1561271843346714777> Support Ticket Created
 
 Your support ticket has been successfully created.
 
@@ -997,7 +997,7 @@ Our support team will assist you shortly.`,
                 if (!isAdmin && !hasSupportRole) {
                     await interaction.followUp({
                         content:
-                            "❌ You do not have the required support role to claim this ticket.",
+                            "<:error_g:1561271715164721245> You do not have the required support role to claim this ticket.",
                         ephemeral: true
                     }).catch(() => {});
 
@@ -1007,7 +1007,7 @@ Our support team will assist you shortly.`,
                 if (ticketData.claimedBy) {
                     await interaction.followUp({
                         content:
-                            "⚠️ This ticket has already been claimed.",
+                            "<:warning_g:1561271566233501797> This ticket has already been claimed.",
                         ephemeral: true
                     }).catch(() => {});
 
@@ -1109,7 +1109,7 @@ This ticket has been claimed by ${interaction.user}.`,
                 if (!isAdmin && !hasSupportRole) {
                     await interaction.reply({
                         content:
-                            "❌ You do not have the required support role to change this setting.",
+                            "<:error_g:1561271715164721245> You do not have the required support role to change this setting.",
                         ephemeral: true
                     }).catch(() => {});
 
@@ -1174,7 +1174,7 @@ Staff names will now be shown to the user.`,
 
                 if (!isAdmin && !hasSupportRole) {
                     await interaction.reply({
-                        content: "❌ You do not have the required support role to close this ticket.",
+                        content: "<:error_g:1561271715164721245> You do not have the required support role to close this ticket.",
                         ephemeral: true
                     }).catch(() => {});
                     return;
@@ -1290,7 +1290,7 @@ Staff names will now be shown to the user.`,
 
                 if (!isAdmin && !hasSupportRole) {
                     await interaction.followUp({
-                        content: "❌ You do not have the required support role to close this ticket.",
+                        content: "<:error_g:1561271715164721245> You do not have the required support role to close this ticket.",
                         ephemeral: true
                     }).catch(() => {});
                     return;
@@ -1426,7 +1426,7 @@ Staff names will now be shown to the user.`,
                     }).catch(async error => {
                         console.error("ModMail transcript log send failed:", error);
                         await logsChannel.send({
-                            content: "⚠️ Transcript upload failed for ticket #" + formattedId + ".",
+                            content: "<:warning_g:1561271566233501797> Transcript upload failed for ticket #" + formattedId + ".",
                             files: [transcriptFile]
                         }).catch(() => {});
                     });
