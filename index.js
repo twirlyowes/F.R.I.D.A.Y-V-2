@@ -35,6 +35,7 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildWebhooks,
     GatewayIntentBits.DirectMessages
   ],
 
@@ -772,6 +773,12 @@ require("./warn")(client, {
 console.log("Loading activetime...");
 console.log("Loading settings...");
 require("./settings")(client);
+
+console.log("Loading automod...");
+require("./automod")(client);
+
+console.log("Loading anti-nuke...");
+require("./antinuke")(client);
 
 console.log("Loading access control...");
 require("./access")(client);

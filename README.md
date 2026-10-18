@@ -10,6 +10,8 @@ Built with Node 22, discord.js v14 and Firebase (Firestore).
 
 - **Support tickets (ModMail):** members DM the bot, pick a category, and a private ticket channel is opened in the server. Members who share several servers with the bot choose which one.
 - **Moderation:** warnings, strikes, mute/kick/ban, purge, lock/hide, snipe, bad-word filter (per-server word lists).
+- **AutoMod:** spam, repeats, mass mentions, emoji spam, invites, links and caps, switched on and tuned with buttons.
+- **Anti-Nuke:** stops a rogue or compromised admin from mass-deleting channels/roles, mass-banning, adding bots and more, then repairs the damage.
 - **Verification:** captcha button panel that gives a verified role.
 - **Join-to-create voice rooms:** personal temporary rooms with owner controls.
 - **Active Time:** tracks staff online/voice/message activity and posts a daily report.
@@ -27,9 +29,10 @@ Built with Node 22, discord.js v14 and Firebase (Firestore).
 2. An admin (needs **Manage Server**) configures it:
 
 ```
-.config                      show every setting
+.config                      open the setup menu: pick channels and roles from dropdowns (no IDs)
+.config view                 list every setting
 .config keys                 describe every setting
-.config set <key> <value>    value = #channel, @role or an ID
+.config set <key> <value>    or type it: value = #channel or @role
 .config clear <key>          remove a setting
 .prefix <new prefix>         change the prefix (max 5 characters)
 ```
@@ -69,6 +72,43 @@ Settings are stored in Firestore (`guild_configs/{serverId}`).
 
 ---
 
+## AutoMod
+
+Run `<prefix>automod` (needs **Manage Server**) to open the control panel. Everything is a button:
+
+- **Rule buttons:** Spam, Repeats, Mentions, Emojis, Invites, Links, Caps and Bad words (your word list).
+- **AutoMod: ON/OFF:** master switch for all rules except Bad words, which has its own button.
+- **Action:** *Log only* (just report), *Delete*, or *Delete + timeout*. **Timeout** picks 2, 5, 10, 30 or 60 minutes.
+- **Spam:** Low (more than 15 messages in 5 seconds), Medium (8) or High (5).
+- **Ignored channels / roles:** pickers for places and people AutoMod should skip. Ignoring a category covers its channels.
+- **Reset** puts everything back to the defaults (and switches AutoMod off).
+
+It starts **off**. A safe way to roll it out: switch it on with *Log only*, watch the log channel for a day, then switch to *Delete*. Admins, members with Manage Messages, and the staff role are never checked. Hits are reported in the `logs` channel.
+
+## Anti-Nuke
+
+Run `<prefix>antinuke` to open the panel. **Only the server owner can use it**, so a compromised admin can't switch it off.
+
+It watches the audit log and reacts when someone who is **not trusted** crosses the threshold:
+
+| Button | Protects against |
+| --- | --- |
+| Channel delete / create | mass deleting or spamming channels |
+| Role delete / create | mass deleting or spamming roles |
+| Bans / Kicks | mass banning or kicking |
+| Webhooks | new webhooks (deleted straight away) |
+| Bot add | bots added by someone untrusted (removed) |
+| Role perms | dangerous permissions given to a role (reverted) |
+
+- **Punish:** *Strip roles* (removes their dangerous roles, the gentlest), *Kick* or *Ban*.
+- **Trigger:** 3, 5 or 10 mass actions within 10 seconds.
+- **Restore:** puts back the channels and roles the offender deleted, and removes what they spammed.
+- **Trusted users:** pick people or bots that are never punished. Add your ticket bots and security bots here. The server owner and this bot are always trusted. `<prefix>antinuke trust <@user>` also adds or removes someone.
+
+The bot needs **View Audit Log** (the panel warns if it's missing), plus Manage Roles / Manage Channels / Kick / Ban / Manage Webhooks for the matching responses. **Keep the bot's role above the roles it has to manage**, or punishments will fail (the alert tells you when that happens). Alerts go to the `logs` channel and are DMed to the server owner.
+
+If another security bot is already protecting the server, keep only one Anti-Nuke active, or add that bot to the trusted list.
+
 ## Prefix
 
 Every command uses the server's prefix. If someone forgets it, **@mentioning the bot** always works as a prefix (for example `@F.R.I.D.A.Y help`), and mentioning the bot on its own shows the current prefix.
@@ -95,9 +135,11 @@ Only the owner can turn it on or off for a user. A listed user can type `help` i
 
 | Command | What it does |
 | --- | --- |
-| `<prefix>noprefix add <@user or id>` | Turn no-prefix on for a user |
-| `<prefix>noprefix remove <@user or id>` | Turn it off |
-| `<prefix>noprefix list` | Show who has it |
+| `<prefix>np add <@user or id>` | Turn no-prefix on for a user |
+| `<prefix>np remove <@user or id>` | Turn it off |
+| `<prefix>np list` | Show who has it |
+
+`noprefix` works as a longer name for `np`.
 
 A listed user triggers a command whenever a message *starts* with a command word (for example `ban`, `help`, `role`), so give it to people you trust. The list is stored in Firestore (`noprefix_users`) and follows the user into every server.
 
@@ -156,6 +198,8 @@ Then run `.config` in each server to set its channels and roles. Command changes
 ├── noprefix.js         owner-managed no-prefix users
 ├── help.js             help card and ticket (ModMail) system
 ├── mod.js, warn.js, strike.js, badwords.js   moderation
+├── automod.js          AutoMod rules and button panel
+├── antinuke.js         Anti-Nuke protection and button panel
 ├── verify.js           captcha verification
 ├── voicesystem.js      join-to-create voice rooms
 ├── activetime.js       staff activity tracking and daily report
@@ -165,6 +209,7 @@ Then run `.config` in each server to set its channels and roles. Command changes
 ├── firebase.js         Firestore connection
 ├── lib/
 │   ├── guildConfig.js  per-server settings (the only place channel/role IDs live)
+│   ├── protection.js   AutoMod + Anti-Nuke settings
 │   ├── prefix.js       shared command parser
 │   ├── owners.js       who the bot owner is (OWNER_ID)
 │   ├── noprefix.js     no-prefix user list (Firestore)

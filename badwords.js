@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { EmbedBuilder, PermissionFlagsBits } = require("discord.js");
 const guildConfig = require("./lib/guildConfig");
+const protection = require("./lib/protection");
 const { parseCommand } = require("./lib/prefix");
 const db = require("./firebase");
 
@@ -76,6 +77,14 @@ module.exports = (client) => {
 
             const isStaff = await guildConfig.isStaff(message.member);
             const exempt = await isFilterExempt(message.member);
+
+            // The AutoMod panel can switch the word filter off, or skip chosen channels/roles.
+            const automod = await protection.getAutomod(message.guild.id);
+            const filterActive =
+                automod.rules.badwords !== false &&
+                !automod.ignoredChannels.includes(message.channelId) &&
+                !(message.channel?.parentId && automod.ignoredChannels.includes(message.channel.parentId)) &&
+                !(message.member && message.member.roles.cache.some(role => automod.ignoredRoles.includes(role.id)));
             const parsed = await parseCommand(message);
             const command = parsed ? parsed.command : "";
             const args = parsed ? [parsed.command, ...parsed.args] : [];
@@ -126,7 +135,7 @@ module.exports = (client) => {
             let found = false;
             let detectedWord = null;
 
-            if (!found && !exempt) {
+            if (!found && !exempt && filterActive) {
                 for (const word of badWordsCache) {
                     const regex = new RegExp(
                         `\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,

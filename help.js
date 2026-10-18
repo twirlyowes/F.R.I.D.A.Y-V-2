@@ -300,6 +300,7 @@ ${p}addbadword  ${p}removebadword  ${p}badwordslist
 <a:settings:1532990547394957393> **Management Commands**
 \`\`\`
 ${p}config  ${p}prefix  ${p}setupverify  ${p}role
+${p}automod  ${p}antinuke
 ${p}sticky  ${p}say  ${p}dm
 ${p}atlogs  ${p}resetactivetime  ${p}removeuser  ${p}activetime
 \`\`\`
