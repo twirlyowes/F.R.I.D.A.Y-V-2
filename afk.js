@@ -29,9 +29,9 @@ async function loadAFK() {
             afkData.set(doc.id, doc.data());
         });
 
-        console.log(`✅ AFK loaded from Firebase (${afkData.size} users)`);
+        console.log(`<:success_g:1561271843346714777> AFK loaded from Firebase (${afkData.size} users)`);
     } catch (error) {
-        console.error("❌ Failed loading AFK from Firebase:", error);
+        console.error("<:error_g:1561271715164721245> Failed loading AFK from Firebase:", error);
     }
 }
 
@@ -39,7 +39,7 @@ async function saveAFK(userId, data) {
     try {
         await db.collection("afk").doc(userId).set(data);
     } catch (error) {
-        console.error("❌ Failed saving AFK:", error);
+        console.error("<:error_g:1561271715164721245> Failed saving AFK:", error);
     }
 }
 
@@ -47,7 +47,7 @@ async function removeAFK(userId) {
     try {
         await db.collection("afk").doc(userId).delete();
     } catch (error) {
-        console.error("❌ Failed removing AFK:", error);
+        console.error("<:error_g:1561271715164721245> Failed removing AFK:", error);
     }
 }
 
@@ -102,7 +102,7 @@ async function applyAfkNickname(member) {
         return { changed: true, original };
     } catch (error) {
         console.error(
-            `❌ Failed setting AFK nickname for ${member.id}:`,
+            `<:error_g:1561271715164721245> Failed setting AFK nickname for ${member.id}:`,
             error && error.message ? error.message : error
         );
 
@@ -127,7 +127,7 @@ async function restoreNickname(member, data) {
         await member.setNickname(data.originalNickname || null);
     } catch (error) {
         console.error(
-            `❌ Failed restoring nickname for ${member.id}:`,
+            `<:error_g:1561271715164721245> Failed restoring nickname for ${member.id}:`,
             error && error.message ? error.message : error
         );
     }
