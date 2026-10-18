@@ -780,9 +780,6 @@ require("./automod")(client);
 console.log("Loading anti-nuke...");
 require("./antinuke")(client);
 
-console.log("Loading access control...");
-require("./access")(client);
-
 console.log("Loading no-prefix...");
 require("./noprefix")(client);
 require("./activetime")(client);
