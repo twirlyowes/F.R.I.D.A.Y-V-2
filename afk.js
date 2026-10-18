@@ -1,7 +1,7 @@
+
 const {
     ContainerBuilder,
     TextDisplayBuilder,
-    SeparatorBuilder,
     SectionBuilder,
     ThumbnailBuilder,
     MessageFlags
@@ -25,13 +25,18 @@ async function loadAFK() {
         afkData.clear();
 
         snapshot.forEach(doc => {
-            if (!doc.id.includes("_")) return; // legacy un-scoped record
+            if (!doc.id.includes("_")) return;
             afkData.set(doc.id, doc.data());
         });
 
-        console.log(`<:success_g:1561271843346714777> AFK loaded from Firebase (${afkData.size} users)`);
+        console.log(
+            `<:success_g:1561271843346714777> AFK loaded from Firebase (${afkData.size} users)`
+        );
     } catch (error) {
-        console.error("<:error_g:1561271715164721245> Failed loading AFK from Firebase:", error);
+        console.error(
+            "<:error_g:1561271715164721245> Failed loading AFK from Firebase:",
+            error
+        );
     }
 }
 
@@ -39,7 +44,10 @@ async function saveAFK(userId, data) {
     try {
         await db.collection("afk").doc(userId).set(data);
     } catch (error) {
-        console.error("<:error_g:1561271715164721245> Failed saving AFK:", error);
+        console.error(
+            "<:error_g:1561271715164721245> Failed saving AFK:",
+            error
+        );
     }
 }
 
@@ -47,7 +55,10 @@ async function removeAFK(userId) {
     try {
         await db.collection("afk").doc(userId).delete();
     } catch (error) {
-        console.error("<:error_g:1561271715164721245> Failed removing AFK:", error);
+        console.error(
+            "<:error_g:1561271715164721245> Failed removing AFK:",
+            error
+        );
     }
 }
 
@@ -77,23 +88,29 @@ const AFK_PREFIX = "[AFK] ";
 const MAX_REASON = 200;
 const MAX_AFK_NOTICES = 5;
 
-// AFK reasons are user text: never let them ping @everyone, roles or users.
+// AFK reasons must never ping @everyone, roles, or users.
 const NO_PINGS = { parse: [] };
 
 /**
- * Tags the member's nickname with "[AFK] ".
- * Returns { changed, original }: whether WE changed it, and what it was before
- * (a string, or null for "no nickname").
+ * Sets the server nickname to "[AFK] DISPLAY NAME".
+ * Uses member.displayName instead of member.user.username.
+ * Preserves the original nickname for restoration.
  */
 async function applyAfkNickname(member) {
-    if (!member || !member.manageable) return { changed: false, original: null };
+    if (!member || !member.manageable) {
+        return { changed: false, original: null };
+    }
 
     try {
         const original = member.nickname || null;
-        const baseName = original || member.user.username;
 
-        // Already tagged: leave it alone.
-        if (baseName.startsWith(AFK_PREFIX)) return { changed: false, original };
+        // The name visible in the server, e.g. ADRIEN.
+        const baseName = member.displayName;
+
+        // Don't add the AFK prefix twice.
+        if (baseName.startsWith(AFK_PREFIX)) {
+            return { changed: false, original };
+        }
 
         const newNick = `${AFK_PREFIX}${baseName}`.slice(0, 32);
 
@@ -103,7 +120,7 @@ async function applyAfkNickname(member) {
     } catch (error) {
         console.error(
             `<:error_g:1561271715164721245> Failed setting AFK nickname for ${member.id}:`,
-            error && error.message ? error.message : error
+            error?.message || error
         );
 
         return { changed: false, original: null };
@@ -111,24 +128,28 @@ async function applyAfkNickname(member) {
 }
 
 /**
- * Undoes OUR nickname change, but never overwrites a nickname the user
- * picked themselves while they were away.
+ * Restores the original nickname only if the bot changed it
+ * and the current nickname still has our AFK prefix.
  */
 async function restoreNickname(member, data) {
     if (!member || !member.manageable) return;
 
-    // Older saved records don't have nickChanged: assume we changed it.
-    const weChangedIt = data.nickChanged === undefined ? true : data.nickChanged;
+    // Older saved records don't have nickChanged.
+    const weChangedIt =
+        data.nickChanged === undefined ? true : data.nickChanged;
+
     if (!weChangedIt) return;
 
-    if (!member.nickname || !member.nickname.startsWith(AFK_PREFIX)) return;
+    if (!member.nickname || !member.nickname.startsWith(AFK_PREFIX)) {
+        return;
+    }
 
     try {
         await member.setNickname(data.originalNickname || null);
     } catch (error) {
         console.error(
             `<:error_g:1561271715164721245> Failed restoring nickname for ${member.id}:`,
-            error && error.message ? error.message : error
+            error?.message || error
         );
     }
 }
@@ -137,7 +158,12 @@ async function restoreNickname(member, data) {
    COMPONENTS V2 CARD BUILDER
 --------------------------------------------------------- */
 
-function createAFKCard(color, content, avatarURL, avatarDescription = "User avatar") {
+function createAFKCard(
+    color,
+    content,
+    avatarURL,
+    avatarDescription = "User avatar"
+) {
     const container = new ContainerBuilder()
         .setAccentColor(color);
 
@@ -172,7 +198,7 @@ module.exports = (client) => {
             const parsed = await parseCommand(message);
 
             /* ---------------------------------------------------------
-               ENABLE AFK (or change the reason if already AFK)
+               ENABLE AFK OR UPDATE THE REASON
             --------------------------------------------------------- */
 
             if (parsed && parsed.command === "afk") {
@@ -186,9 +212,7 @@ module.exports = (client) => {
                 const time = Date.now();
                 const existing = afkData.get(key);
 
-                // Already AFK: keep the nickname info from the FIRST time.
-                // Otherwise the "[AFK] ..." name would be saved as the
-                // "original" and could never be removed.
+                // Keep the original nickname when updating an AFK reason.
                 const nick = existing
                     ? {
                         changed:
@@ -217,7 +241,13 @@ module.exports = (client) => {
 
                 const card = createAFKCard(
                     SKY_BLUE,
-`<a:Moon:1532988257338527835> **AFK Enabled**\n\nAFK enabled successfully.\n\n<a:LP_Message:1532991009066324049> **Reason**\n> ${reason}\n\n<a:Clock:1532990759371018372> **Started**\n> ${formatTime(time)}\n\n<a:sparkles:1532986077651140620> Hope you have a great time away!`,
+                    `<a:Moon:1532988257338527835> **AFK Enabled**\n\n` +
+                    `AFK enabled successfully.\n\n` +
+                    `<a:LP_Message:1532991009066324049> **Reason**\n` +
+                    `> ${reason}\n\n` +
+                    `<a:Clock:1532990759371018372> **Started**\n` +
+                    `> ${formatTime(time)}\n\n` +
+                    `<a:sparkles:1532986077651140620> Hope you have a great time away!`,
                     avatarURL,
                     `${message.author.username}'s avatar`
                 );
@@ -230,20 +260,20 @@ module.exports = (client) => {
             }
 
             /* ---------------------------------------------------------
-               THE AUTHOR IS BACK: remove their AFK.
-               This runs BEFORE the mention check and does not return, so a
-               message that also pings another AFK user still clears yours.
+               THE AUTHOR IS BACK: REMOVE THEIR AFK
             --------------------------------------------------------- */
 
             const mine = afkData.get(key);
 
-            if (mine && Date.now() - (mine.setupAt || mine.time || 0) > 2000) {
+            if (
+                mine &&
+                Date.now() - (mine.setupAt || mine.time || 0) > 2000
+            ) {
                 const duration = formatDuration(Date.now() - mine.time);
 
                 afkData.delete(key);
 
                 await removeAFK(key);
-
                 await restoreNickname(message.member, mine);
 
                 const avatarURL = message.author.displayAvatarURL({
@@ -253,7 +283,11 @@ module.exports = (client) => {
 
                 const card = createAFKCard(
                     SUCCESS_GREEN,
-`<a:back:1532987608542744847> **Welcome Back!**\n\nAFK removed.\n\n<a:Clock:1532990759371018372> **Time Away**\n> ${duration}\n\n<a:success:1532986625343099050> Welcome back to **${message.guild.name}**. Hope you had a great break!`,
+                    `<a:back:1532987608542744847> **Welcome Back!**\n\n` +
+                    `AFK removed.\n\n` +
+                    `<a:Clock:1532990759371018372> **Time Away**\n` +
+                    `> ${duration}\n\n` +
+                    `<a:success:1532986625343099050> Welcome back to **${message.guild.name}**. Hope you had a great break!`,
                     avatarURL,
                     `${message.author.username}'s avatar`
                 );
@@ -270,7 +304,7 @@ module.exports = (client) => {
             }
 
             /* ---------------------------------------------------------
-               SOMEONE PINGED AN AFK USER
+               SOMEONE MENTIONED AN AFK USER
             --------------------------------------------------------- */
 
             if (message.mentions.users.size > 0) {
@@ -281,24 +315,39 @@ module.exports = (client) => {
                 );
 
                 if (afkUsers.size > 0) {
-                    const shown = [...afkUsers.values()].slice(0, MAX_AFK_NOTICES);
+                    const shown = [...afkUsers.values()]
+                        .slice(0, MAX_AFK_NOTICES);
 
                     const mentions = shown.map(user => {
-                        const data = afkData.get(afkKey(message.guild.id, user.id));
+                        const data = afkData.get(
+                            afkKey(message.guild.id, user.id)
+                        );
 
-                        return `<a:Moon:1532988257338527835> **${user.username} is currently AFK**\n\n<a:LP_Message:1532991009066324049> **Reason**\n> ${data.reason}\n\n<a:Clock:1532990759371018372> **Away Since**\n> ${formatTime(data.time)}`;
+                        return (
+                            `<a:Moon:1532988257338527835> **${user.username} is currently AFK**\n\n` +
+                            `<a:LP_Message:1532991009066324049> **Reason**\n` +
+                            `> ${data.reason}\n\n` +
+                            `<a:Clock:1532990759371018372> **Away Since**\n` +
+                            `> ${formatTime(data.time)}`
+                        );
                     });
 
                     if (afkUsers.size > shown.length) {
-                        mentions.push(`…and ${afkUsers.size - shown.length} more AFK user(s).`);
+                        mentions.push(
+                            `…and ${afkUsers.size - shown.length} more AFK user(s).`
+                        );
                     }
 
                     const firstAFKUser = shown[0];
 
                     const card = createAFKCard(
                         SKY_BLUE,
-`${mentions.join("\n\n")}\n<a:sparkles:1532986077651140620> Hope they get back to you soon!`,
-                        firstAFKUser.displayAvatarURL({ extension: "png", size: 128 }),
+                        `${mentions.join("\n\n")}\n` +
+                        `<a:sparkles:1532986077651140620> Hope they get back to you soon!`,
+                        firstAFKUser.displayAvatarURL({
+                            extension: "png",
+                            size: 128
+                        }),
                         `${firstAFKUser.username}'s avatar`
                     );
 
