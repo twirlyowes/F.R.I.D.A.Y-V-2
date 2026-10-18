@@ -173,7 +173,7 @@ module.exports = client => {
 
                 const options = cardReply(
                     WARNED_GREEN,
-                    `✅ ${user.user.username} has been warned.`,
+                    `<:success_g:1561271843346714777> ${user.user.username} has been warned.`,
                     `**Reason**\n${reason}\n\n` +
                     `**Warned by**\n${message.author.username} (${message.author.id})\n\n` +
                     `**Timestamp**\n${formattedDate}\n\n` +
@@ -389,7 +389,7 @@ module.exports = client => {
                         }
                     } catch (err) {
                         console.error(
-                            "❌ Warning removal log error:",
+                            "<:error_g:1561271715164721245> Warning removal log error:",
                             err
                         );
                     }
@@ -463,7 +463,7 @@ module.exports = client => {
                         }
                     } catch (err) {
                         console.error(
-                            "❌ Warning reset log error:",
+                            "<:error_g:1561271715164721245> Warning reset log error:",
                             err
                         );
                     }
