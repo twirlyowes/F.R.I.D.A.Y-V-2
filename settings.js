@@ -183,7 +183,10 @@ async function buildPanel(guild, userId, selectedKey = null, note = null) {
     .setPlaceholder("Choose a setting to change")
     .addOptions(
       Object.entries(SETTINGS).map(([key, def]) => ({
-        label: `${cfg[key] ? "<:success_g:1561271843346714777>" : "⚪"} ${def.label}`.slice(0, 100),
+        label: def.label.slice(0, 100),
+        emoji: cfg[key]
+          ? { id: "1561271843346714777", name: "success_g" }
+          : { name: "⚪" },
         description: def.description.slice(0, 100),
         value: key,
         default: key === selectedKey
