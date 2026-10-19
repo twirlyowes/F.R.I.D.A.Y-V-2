@@ -344,7 +344,12 @@ module.exports = (client) => {
 
         await channel.permissionOverwrites.edit(
           message.guild.roles.everyone,
-          { SendMessages: false },
+          {
+            SendMessages: false,
+            CreatePublicThreads: false,
+            CreatePrivateThreads: false,
+            SendMessagesInThreads: false
+          },
           { reason: auditReason(message, reason) }
         );
 
@@ -378,7 +383,12 @@ module.exports = (client) => {
 
         await channel.permissionOverwrites.edit(
           message.guild.roles.everyone,
-          { SendMessages: null },
+          {
+            SendMessages: null,
+            CreatePublicThreads: null,
+            CreatePrivateThreads: null,
+            SendMessagesInThreads: null
+          },
           { reason: auditReason(message, reason) }
         );
 
