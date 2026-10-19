@@ -1,5 +1,3 @@
-
-
 const { 
     EmbedBuilder, 
     ActionRowBuilder, 
@@ -9,7 +7,8 @@ const {
     TextInputBuilder, 
     TextInputStyle, 
     PermissionFlagsBits,
-    ChannelType 
+    ChannelType,
+    MessageFlags
 } = require('discord.js');
 
 
@@ -20,7 +19,109 @@ const pendingCaptchas = new Map(); // guildId:userId -> { answer, attempts, time
 const cooldowns = new Map();       // guildId:userId -> timestamp expiration
 const deletedMessages = new Map(); // channelId -> Array of up to 15 deleted messages
 
+// ---------------------------------------------------------------------------
+// Snipe: button sessions live here (message id -> session), not in a collector,
+// so a click is always answered, even after a restart or when it has expired.
+// ---------------------------------------------------------------------------
+const snipeSessions = new Map(); // messageId -> { entries, index, authorId, channelName, message, createdAt, lastUsed }
+const SNIPE_IDLE_MS = 2 * 60 * 1000; // buttons stop after 2 minutes without a click
+const SNIPE_MAX_MS = 10 * 60 * 1000; // ...or 10 minutes in total
+
+function snipeTruncate(text, max) {
+    const value = String(text);
+    return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function snipeRow(authorId, index, total, disabled = false) {
+    const id = action => `snipe:${action}:${authorId}`;
+
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(id("first")).setEmoji("⏮️").setStyle(ButtonStyle.Secondary).setDisabled(disabled || index === 0),
+        new ButtonBuilder().setCustomId(id("prev")).setEmoji("◀️").setStyle(ButtonStyle.Secondary).setDisabled(disabled || index === 0),
+        new ButtonBuilder().setCustomId(id("stop")).setEmoji("⏹️").setStyle(ButtonStyle.Danger).setDisabled(disabled),
+        new ButtonBuilder().setCustomId(id("next")).setEmoji("▶️").setStyle(ButtonStyle.Secondary).setDisabled(disabled || index >= total - 1),
+        new ButtonBuilder().setCustomId(id("last")).setEmoji("⏭️").setStyle(ButtonStyle.Secondary).setDisabled(disabled || index >= total - 1)
+    );
+}
+
+function snipePayload(session, disabled = false) {
+    const sniped = session.entries[session.index];
+    const total = session.entries.length;
+    const unix = Math.floor(sniped.time / 1000);
+
+    const embed = new EmbedBuilder()
+        .setTitle("Sniped Message")
+        .addFields(
+            // Discord limits an embed field to 1024 characters; a long message used to crash the command
+            { name: "Content:", value: snipeTruncate(sniped.content, 1024), inline: false },
+            { name: "Author", value: snipeTruncate(sniped.author.username, 256), inline: false },
+            // Discord shows this in each viewer's own time zone
+            { name: "Timestamp", value: `<t:${unix}:F> (<t:${unix}:R>)`, inline: false }
+        )
+        .setFooter({ text: `Channel: #${session.channelName} | Snipe #${session.index + 1}/${total}` });
+
+    if (sniped.image) {
+        embed.setImage(sniped.image);
+    }
+
+    return { embeds: [embed], components: [snipeRow(session.authorId, session.index, total, disabled)] };
+}
+
+const snipeExpired = session => Date.now() - session.lastUsed > SNIPE_IDLE_MS || Date.now() - session.createdAt > SNIPE_MAX_MS;
+
 module.exports = function(client) {
+    // Buttons on snipe messages (one handler for all of them)
+    client.on("interactionCreate", async (interaction) => {
+        try {
+            if (!interaction.isButton() || !interaction.customId.startsWith("snipe:")) return;
+
+            const [, action, authorId] = interaction.customId.split(":");
+
+            if (interaction.user.id !== authorId) {
+                return await interaction.reply({ content: "You cannot use these buttons.", flags: MessageFlags.Ephemeral });
+            }
+
+            const session = snipeSessions.get(interaction.message.id);
+
+            // Expired, or the bot restarted since this message was sent: say so instead of failing silently
+            if (!session || snipeExpired(session)) {
+                snipeSessions.delete(interaction.message.id);
+
+                await interaction.update({ components: [snipeRow(authorId, 0, 0, true)] });
+                await interaction.followUp({ content: "This snipe has expired. Run the snipe command again.", flags: MessageFlags.Ephemeral }).catch(() => {});
+                return;
+            }
+
+            const last = session.entries.length - 1;
+
+            if (action === "first") session.index = 0;
+            else if (action === "prev") session.index = Math.max(0, session.index - 1);
+            else if (action === "next") session.index = Math.min(last, session.index + 1);
+            else if (action === "last") session.index = last;
+            else if (action === "stop") {
+                snipeSessions.delete(interaction.message.id);
+                return await interaction.update(snipePayload(session, true));
+            } else {
+                return await interaction.deferUpdate();
+            }
+
+            session.lastUsed = Date.now();
+            await interaction.update(snipePayload(session));
+        } catch (err) {
+            console.error("Error handling snipe interaction:", err);
+        }
+    });
+
+    // Grey out the buttons of snipe messages nobody has touched for a while
+    setInterval(() => {
+        for (const [id, session] of snipeSessions) {
+            if (!snipeExpired(session)) continue;
+
+            snipeSessions.delete(id);
+            session.message?.edit(snipePayload(session, true)).catch(() => {});
+        }
+    }, 30 * 1000).unref();
+
     // 1. Global Message Deletion Caching (Snipe System)
     client.on("messageDelete", (message) => {
         try {
@@ -69,105 +170,39 @@ module.exports = function(client) {
 
             if (command === "snipe") {
                 if (!message.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
-                    return message.reply({ content: "<:error_g:1561271715164721245> You do not have permission to use this command (Requires **Manage Messages**).", ephemeral: true }).catch(() => {});
+                    return message.reply({ content: "<:error_g:1561271715164721245> You do not have permission to use this command (Requires **Manage Messages**).", allowedMentions: { repliedUser: false } }).catch(() => {});
                 }
 
-                const channelId = message.channel.id;
-                const channelSnipes = deletedMessages.get(channelId);
+                const channelSnipes = deletedMessages.get(message.channel.id);
 
                 if (!channelSnipes || channelSnipes.length === 0) {
                     return message.reply("There are no recently deleted messages to snipe in this channel.").catch(() => {});
                 }
 
-                let currentIndex = 0;
+                let startIndex = 0;
                 if (args[0] && !isNaN(args[0])) {
                     const parsedIndex = parseInt(args[0]) - 1;
                     if (parsedIndex >= 0 && parsedIndex < channelSnipes.length) {
-                        currentIndex = parsedIndex;
+                        startIndex = parsedIndex;
                     }
                 }
 
-                const generateSnipeMessage = (index) => {
-                    const sniped = channelSnipes[index];
-                    const total = channelSnipes.length;
-
-                    const timeString = new Date(sniped.time).toLocaleString("en-US", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                        hour12: true
-                    });
-
-                    const embed = new EmbedBuilder()
-                        .setTitle("Sniped Message")
-                        .addFields(
-                            { name: "Content:", value: sniped.content, inline: false },
-                            { name: "Author", value: sniped.author.username, inline: false },
-                            { name: "Timestamp", value: timeString, inline: false }
-                        )
-                        .setFooter({ text: `Channel: #${message.channel.name} | Snipe #${index + 1}/${total}` });
-
-                    if (sniped.image) {
-                        embed.setImage(sniped.image);
-                    }
-
-                    const row = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId("snipe_first").setEmoji("⏮️").setStyle(ButtonStyle.Secondary).setDisabled(index === 0),
-                        new ButtonBuilder().setCustomId("snipe_prev").setEmoji("◀️").setStyle(ButtonStyle.Secondary).setDisabled(index === 0),
-                        new ButtonBuilder().setCustomId("snipe_stop").setEmoji("⏹️").setStyle(ButtonStyle.Danger),
-                        new ButtonBuilder().setCustomId("snipe_next").setEmoji("▶️").setStyle(ButtonStyle.Secondary).setDisabled(index === total - 1),
-                        new ButtonBuilder().setCustomId("snipe_last").setEmoji("⏭️").setStyle(ButtonStyle.Secondary).setDisabled(index === total - 1)
-                    );
-
-                    return { embeds: [embed], components: [row] };
+                // A frozen copy: deletions that happen while someone is browsing don't shift the list
+                const session = {
+                    entries: channelSnipes.slice(),
+                    index: startIndex,
+                    authorId: message.author.id,
+                    channelName: message.channel.name,
+                    message: null,
+                    createdAt: Date.now(),
+                    lastUsed: Date.now()
                 };
 
-                const sentMessage = await message.reply(generateSnipeMessage(currentIndex)).catch(() => {});
+                const sentMessage = await message.reply(snipePayload(session)).catch(() => null);
                 if (!sentMessage) return;
 
-                const collector = sentMessage.createMessageComponentCollector({ time: 60000 });
-
-                collector.on("collect", async (interaction) => {
-                    try {
-                        if (interaction.user.id !== message.author.id) {
-                            return interaction.reply({ content: "You cannot use these buttons.", ephemeral: true }).catch(() => {});
-                        }
-
-                        if (interaction.customId === "snipe_first") {
-                            currentIndex = 0;
-                        } else if (interaction.customId === "snipe_prev") {
-                            if (currentIndex > 0) currentIndex--;
-                        } else if (interaction.customId === "snipe_next") {
-                            if (currentIndex < channelSnipes.length - 1) currentIndex++;
-                        } else if (interaction.customId === "snipe_last") {
-                            currentIndex = channelSnipes.length - 1;
-                        } else if (interaction.customId === "snipe_stop") {
-                            collector.stop();
-                            await interaction.update({ components: [] }).catch(() => {});
-                            return;
-                        }
-
-                        await interaction.update(generateSnipeMessage(currentIndex)).catch(() => {});
-                    } catch (err) {
-                        console.error("Error handling snipe interaction:", err);
-                    }
-                });
-
-                collector.on("end", async () => {
-                    try {
-                        const disabledRow = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder().setCustomId("snipe_first").setEmoji("⏮️").setStyle(ButtonStyle.Secondary).setDisabled(true),
-                            new ButtonBuilder().setCustomId("snipe_prev").setEmoji("◀️").setStyle(ButtonStyle.Secondary).setDisabled(true),
-                            new ButtonBuilder().setCustomId("snipe_stop").setEmoji("⏹️").setStyle(ButtonStyle.Danger).setDisabled(true),
-                            new ButtonBuilder().setCustomId("snipe_next").setEmoji("▶️").setStyle(ButtonStyle.Secondary).setDisabled(true),
-                            new ButtonBuilder().setCustomId("snipe_last").setEmoji("⏭️").setStyle(ButtonStyle.Secondary).setDisabled(true)
-                        );
-                        await sentMessage.edit({ components: [disabledRow] }).catch(() => {});
-                    } catch {}
-                });
+                session.message = sentMessage;
+                snipeSessions.set(sentMessage.id, session);
             }
         } catch (error) {
             console.error("Error in snipe command handler:", error);
