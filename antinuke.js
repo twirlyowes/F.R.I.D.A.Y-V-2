@@ -37,24 +37,19 @@ const { COLORS, createCard } = require("./lib/pixelVillaUI");
 // Definitions
 // ---------------------------------------------------------------------------
 const FEATURES = {
-  channelDelete: { label: "Channel delete", desc: "mass channel deletion" },
-  channelCreate: { label: "Channel create", desc: "mass channel creation" },
-  roleDelete: { label: "Role delete", desc: "mass role deletion" },
-  roleCreate: { label: "Role create", desc: "mass role creation" },
-  ban: { label: "Bans", desc: "mass banning" },
-  kick: { label: "Kicks", desc: "mass kicking" },
-  webhook: { label: "Webhooks", desc: "new webhooks are deleted" },
-  botAdd: { label: "Bot add", desc: "bots added by untrusted users are removed" },
-  rolePerms: { label: "Role perms", desc: "dangerous permissions given to a role are reverted" }
+  channelDelete: { label: "Channel delete" },
+  channelCreate: { label: "Channel create" },
+  roleDelete: { label: "Role delete" },
+  roleCreate: { label: "Role create" },
+  ban: { label: "Bans" },
+  kick: { label: "Kicks" },
+  webhook: { label: "Webhooks" },
+  botAdd: { label: "Bot add" },
+  rolePerms: { label: "Role perms" }
 };
 
 const PUNISHMENTS = ["strip", "kick", "ban"];
 const PUNISHMENT_TEXT = { strip: "Strip roles", kick: "Kick", ban: "Ban" };
-const PUNISHMENT_HELP = {
-  strip: "Removes their roles that have dangerous permissions (the gentlest option).",
-  kick: "Kicks them from the server.",
-  ban: "Bans them from the server."
-};
 const THRESHOLDS = [3, 5, 10];
 
 // Permissions that make a role "dangerous" to hand out or keep
@@ -518,9 +513,7 @@ async function buildPanel(guild, userId, note = null) {
   const cfg = await protection.getAntinuke(guild.id);
   const serverCfg = await guildConfig.get(guild.id);
   const savedQuarantineRole = serverCfg.quarantineRole ? guild.roles.cache.get(serverCfg.quarantineRole) : null;
-  const quarantineLine = savedQuarantineRole
-    ? "<@&" + savedQuarantineRole.id + "> (assigned on trigger; manageable roles removed)"
-    : "not configured (legacy punishment is used)";
+  const quarantineLine = savedQuarantineRole ? "<@&" + savedQuarantineRole.id + ">" : "not set";
   const me = guild.members.me;
 
   const permissionLine = BOT_PERMISSIONS.map(
@@ -530,7 +523,7 @@ async function buildPanel(guild, userId, note = null) {
   const auditMissing = !me?.permissions.has(PermissionFlagsBits.ViewAuditLog);
 
   const featureLines = Object.entries(FEATURES).map(
-    ([key, def]) => `${flag(cfg.protections[key])} **${def.label}** — ${def.desc}`
+    ([key, def]) => `${flag(cfg.protections[key])} **${def.label}**`
   );
 
   const trusted = cfg.trusted.length
@@ -541,16 +534,16 @@ async function buildPanel(guild, userId, note = null) {
     color: cfg.enabled ? COLORS.GREEN : COLORS.SKY_BLUE,
     content:
       `# Anti-Nuke\n\n${note ? `${note}\n\n` : ""}` +
-      `**Master switch:** ${cfg.enabled ? "🟢 ON" : "🔴 OFF"}\n` +
+      `**Status:** ${cfg.enabled ? "🟢 ON" : "🔴 OFF"}\n` +
       `**Quarantine:** ${quarantineLine}\n` +
-      `**Fallback punishment:** ${PUNISHMENT_TEXT[cfg.punishment]}\n> ${PUNISHMENT_HELP[cfg.punishment]}\n` +
-      `**Trigger:** ${cfg.threshold} mass actions within ${cfg.windowSeconds} seconds\n` +
-      `**Auto-restore:** ${cfg.restore ? "on" : "off"} (puts back channels/roles the offender deleted)\n\n` +
+      `**Punishment:** ${PUNISHMENT_TEXT[cfg.punishment]}\n` +
+      `**Trigger:** ${cfg.threshold} actions in ${cfg.windowSeconds}s\n` +
+      `**Auto-restore:** ${cfg.restore ? "on" : "off"}\n\n` +
       `${featureLines.join("\n")}\n\n` +
-      `**Trusted (never punished):** ${trusted}\n` +
-      `-# The server owner and this bot are always trusted. Add your other bots here (ticket bots, security bots).\n\n` +
+      `**Trusted (exempt):** ${trusted}\n` +
+      `-# Server owner and bot owner are trusted automatically. Use wl to add trusted users.\n\n` +
       `**My permissions:** ${permissionLine}\n` +
-      `${auditMissing ? "<:error_g:1561271715164721245> I need **View Audit Log**, or Anti-Nuke cannot see who did something.\n" : ""}\n` +
+      `${auditMissing ? "<:error_g:1561271715164721245> Missing **View Audit Log** — Anti-Nuke cannot identify offenders.\n" : ""}\n` +
       `-# F.R.I.D.A.Y • Anti-Nuke`,
     avatarURL: avatarOf(guild.client),
     avatarDescription: "F.R.I.D.A.Y"
