@@ -321,7 +321,9 @@ async function createResource(guild, field) {
     throw new Error("I need the **Manage Channels** permission to create the " + field.name + ".");
   }
   const type = CHANNEL_TYPES[def.type]?.[0];
-  if (!type) throw new Error("This setting cannot create that type of resource (setting type: " + def.type + ").");
+  if (type === undefined || type === null) {
+    throw new Error("This setting cannot create that type of resource (setting type: " + def.type + ").");
+  }
 
   const channelOptions = {
     name: field.createName || field.name.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
