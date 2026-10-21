@@ -26,6 +26,7 @@ const {
 const guildConfig = require("./lib/guildConfig");
 const protection = require("./lib/protection");
 const { parseCommand } = require("./lib/prefix");
+const owners = require("./lib/owners");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
 
 // ---------------------------------------------------------------------------
@@ -101,10 +102,11 @@ function cleanup() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function canManage(member) {
+function canManage(member, userId) {
   return (
     member.permissions.has(PermissionsBitField.Flags.Administrator) ||
-    member.permissions.has(PermissionsBitField.Flags.ManageGuild)
+    member.permissions.has(PermissionsBitField.Flags.ManageGuild) ||
+    owners.canManageSecurity(userId)
   );
 }
 
@@ -467,7 +469,7 @@ async function handlePanel(interaction) {
     });
   }
 
-  if (!interaction.guild || !interaction.member || !canManage(interaction.member)) {
+  if (!interaction.guild || !interaction.member || !canManage(interaction.member, interaction.user.id)) {
     return interaction.reply({
       content: "You need the **Manage Server** permission to change AutoMod.",
       flags: MessageFlags.Ephemeral
@@ -573,7 +575,7 @@ module.exports = client => {
 
       if (parsed && parsed.command === "automod") {
         if (parsed.args.length) return message.reply({ content: "Usage: " + parsed.prefix + "automod (open the configuration panel).", allowedMentions: { parse: [] } });
-        if (!canManage(message.member)) {
+        if (!canManage(message.member, message.author.id)) {
           return message.reply({
             content: "You need the **Manage Server** permission to change AutoMod.",
             allowedMentions: { parse: [] }

@@ -12,7 +12,6 @@ const {
 
 const guildConfig = require("./lib/guildConfig");
 const { parseCommand } = require("./lib/prefix");
-const { extractSnowflake } = require("./lib/commandArgs");
 
 // All tracking maps are keyed "guildId:userId" so servers never mix stats.
 const trackKey = (guildId, userId) => `${guildId}:${userId}`;
@@ -1049,7 +1048,6 @@ module.exports = (client) => {
                 commandName ===
                 "atlogs"
             ) {
-                if (words.length !== 0) return message.reply("Usage: " + parsed.prefix + "atlogs (no arguments).");
                 const hasAdmin =
                     message.member.permissions.has(
                         "Administrator"
@@ -1112,7 +1110,6 @@ module.exports = (client) => {
                 commandName ===
                 "resetactivetime"
             ) {
-                if (words.length !== 0) return message.reply("Usage: " + parsed.prefix + "resetactivetime resets activity tracking for the whole server; no user argument is accepted.");
                 const hasAdmin =
                     message.member.permissions.has(
                         "Administrator"
@@ -1254,9 +1251,19 @@ module.exports = (client) => {
                     );
                 }
 
-                const targetId = words.length === 1 ? extractSnowflake(words[0]) : null;
+                const targetId =
+                    words[0] &&
+                    words[0].replace(
+                        /[<@!>]/g,
+                        ""
+                    );
 
-                if (!targetId) {
+                if (
+                    !targetId ||
+                    !/^\d{15,25}$/.test(
+                        targetId
+                    )
+                ) {
                     const card =
                         createCard({
                             color:
@@ -1325,23 +1332,42 @@ module.exports = (client) => {
                 commandName ===
                 "activetime"
             ) {
-                let targetMember = null;
-                if (words.length === 0) {
-                    targetMember = message.member;
-                } else if (words.length === 1 && extractSnowflake(words[0])) {
-                    const targetId = extractSnowflake(words[0]);
-                    targetMember = message.guild.members.cache.get(targetId) || await message.guild.members.fetch(targetId).catch(() => null);
-                } else {
-                    const query = words.join(" ").trim().toLowerCase();
-                    const members = [...message.guild.members.cache.values()];
-                    const names = member => [member.user.username, member.user.globalName, member.displayName, member.nickname].filter(Boolean).map(value => value.toLowerCase());
-                    const uniqueById = list => [...new Map(list.map(member => [member.id, member])).values()];
-                    const exact = uniqueById(members.filter(member => names(member).some(name => name === query)));
-                    const candidates = exact.length ? exact : uniqueById(members.filter(member => names(member).some(name => name.includes(query))));
-                    if (candidates.length > 1) return message.reply(noPingOptions({ components: [createCard({ color: COLORS.RED, content: "That name matches multiple members. Please mention the exact member or use their user ID." })], flags: MessageFlags.IsComponentsV2 }));
-                    targetMember = candidates.length === 1 ? candidates[0] : null;
+                let targetMember =
+                    message.mentions.members.first();
+
+                if (
+                    !targetMember &&
+                    words.length > 0
+                ) {
+                    const query =
+                        words
+                            .join(" ")
+                            .toLowerCase();
+
+                    targetMember =
+                        message.guild.members.cache.find(
+                            m =>
+                                m.user.username
+                                    .toLowerCase()
+                                    .includes(
+                                        query
+                                    ) ||
+                                (
+                                    m.nickname &&
+                                    m.nickname
+                                        .toLowerCase()
+                                        .includes(
+                                            query
+                                        )
+                                    )
+                        );
                 }
-                if (!targetMember) return message.reply(noPingOptions({ components: [createCard({ color: COLORS.RED, content: "Could not find that member. Use an exact name, a mention, or a user ID." })], flags: MessageFlags.IsComponentsV2 }));
+
+                if (!targetMember) {
+                    targetMember =
+                        message.member;
+                }
+
                 if (
                     !isStaff(
                         targetMember
