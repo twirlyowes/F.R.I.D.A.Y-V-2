@@ -43,14 +43,14 @@ function card(guild, color, content) {
   });
 }
 
-async function buildPanel(guild, userId, note = "") {
+async function buildPanel(guild, userId) {
   const cfg = await getConfig(guild.id);
   const panel = card(guild, cfg.enabled ? COLORS.GREEN : COLORS.SKY_BLUE,
-    `# AntiBot Protection\n\n` +
-    (note ? `${note}\n\n` : "") +
+    `# AntiBot\n\n` +
     `**Status:** ${cfg.enabled ? "🟢 ON" : "🔴 OFF"}\n\n` +
-    `When enabled, FRIDAY checks who invited each new bot. Bots added by the server owner, bot owner, extra owners, or AntiNuke trusted users are allowed. If the inviter cannot be verified from the audit log, FRIDAY will alert rather than automatically kick a potentially legitimate bot.\n\n` +
-    `**Required permissions:** View Audit Log, Kick Members\n\n-# F.R.I.D.A.Y • AntiBot`);
+    `Blocks bots added by untrusted users. Server owner, bot owner, extra owners and Anti-Nuke trusted users are allowed.\n` +
+    `If the inviter cannot be verified, FRIDAY logs it without kicking the bot.\n\n` +
+    `**Needs:** View Audit Log • Kick Members\n\n-# F.R.I.D.A.Y • AntiBot`);
   const button = new ButtonBuilder()
     .setCustomId(`ab:toggle:${userId}`)
     .setLabel(cfg.enabled ? "AntiBot: ON" : "AntiBot: OFF")
@@ -115,9 +115,8 @@ module.exports = client => {
       }
       if (action !== "toggle" || !interaction.isButton()) return interaction.deferUpdate();
       const current = await getConfig(interaction.guild.id);
-      const next = await setEnabled(interaction.guild.id, !current.enabled);
-      return interaction.update(await buildPanel(interaction.guild, panelOwnerId,
-        `AntiBot protection is now **${next.enabled ? "ON" : "OFF"}**.`));
+      await setEnabled(interaction.guild.id, !current.enabled);
+      return interaction.update(await buildPanel(interaction.guild, panelOwnerId));
     } catch (error) {
       console.error("[AntiBot] Button error:", error);
       if (!interaction.replied && !interaction.deferred) {
@@ -142,7 +141,7 @@ module.exports = client => {
         const channel = await require("./lib/guildConfig").getLogChannel(member.guild).catch(() => null);
         if (channel) await channel.send({
           components: [card(member.guild, COLORS.SKY_BLUE,
-            `# AntiBot: inviter unverified\n\n**Bot:** <@${member.id}>\nFRIDAY could not verify the inviter from the audit log, so it did not automatically remove the bot. Check the server audit log.\n\n-# F.R.I.D.A.Y • AntiBot`)],
+            `# AntiBot: inviter unverified\n\n**Bot:** <@${member.id}>\n**Result:** Inviter not found in audit log; no action taken.\n\n-# F.R.I.D.A.Y • AntiBot`)],
           flags: MessageFlags.IsComponentsV2,
           allowedMentions: { parse: [] }
         }).catch(() => {});
@@ -170,7 +169,7 @@ module.exports = client => {
       const channel = await require("./lib/guildConfig").getLogChannel(member.guild).catch(() => null);
       if (channel) await channel.send({
         components: [card(member.guild, COLORS.RED,
-          `# AntiBot triggered\n\n**Bot:** <@${member.id}> (` + "`" + `${member.id}` + "`" + `)\n**Invited by:** <@${inviterId}>\n**Result:** ${removed ? "Bot removed" : "Could not remove bot — check my role and Kick Members permission."}\n\n-# F.R.I.D.A.Y • AntiBot`)],
+          `# AntiBot triggered\n\n**Bot:** <@${member.id}>\n**Invited by:** <@${inviterId}>\n**Result:** ${removed ? "Removed" : "Failed (check Kick Members and role position)"}\n\n-# F.R.I.D.A.Y • AntiBot`)],
         flags: MessageFlags.IsComponentsV2,
         allowedMentions: { parse: [] }
       }).catch(() => {});
