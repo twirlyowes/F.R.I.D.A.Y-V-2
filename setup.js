@@ -70,7 +70,8 @@ const FEATURES = {
   },
   youtube: {
     label: "YouTube Alerts",
-    description: "Choose an announcement channel and enter the YouTube channel URL.",
+    optional: true,
+    description: "Optional. Choose an announcement channel and enter the YouTube channel URL.",
     fields: [
       { key: "youtubeChannel", name: "YouTube Alerts Channel", createName: "youtube-alerts" },
       { key: "youtubeUrl", name: "YouTube Channel URL" }
@@ -78,7 +79,8 @@ const FEATURES = {
   },
   slowmode: {
     label: "Auto-Slowmode",
-    description: "Choose the channel where FRIDAY watches for chat bursts.",
+    optional: true,
+    description: "Optional. Choose the channel where FRIDAY watches for chat bursts.",
     fields: [{ key: "slowmodeChannel", name: "Auto-Slowmode Channel", createName: "general" }]
   },
   quarantine: {
@@ -140,7 +142,8 @@ async function buildMainPanel(guild, userId, note = "") {
   const cfg = await guildConfig.get(guild.id);
   const lines = Object.entries(FEATURES).map(([key, feature]) => {
     const configured = feature.fields.filter(field => cfg[field.key]).length;
-    return "**" + feature.label + "** — " + configured + "/" + feature.fields.length + " setting(s) configured";
+    const optionalTag = feature.optional ? " *(optional)*" : "";
+    return "**" + feature.label + "**" + optionalTag + " — " + configured + "/" + feature.fields.length + " setting(s) configured";
   });
 
   const menu = new StringSelectMenuBuilder()
@@ -148,7 +151,7 @@ async function buildMainPanel(guild, userId, note = "") {
     .setPlaceholder("Choose a feature to configure")
     .addOptions(Object.entries(FEATURES).map(([key, feature]) => ({
       label: feature.label,
-      description: feature.description.slice(0, 100),
+      description: (feature.optional ? "Optional · " : "") + feature.description.slice(0, feature.optional ? 85 : 100),
       value: key
     })));
 
@@ -273,6 +276,7 @@ async function buildFeaturePanel(guild, userId, featureKey, index = 0, note = ""
           : def.type === "string"
             ? "Enter a URL or skip."
             : "Select a resource, create one, or skip.") +
+        (feature.optional ? "\n\n*Optional feature: Setup All skips this section. Configure it only if you need it.*" : "") +
         "\n\n-# F.R.I.D.A.Y • Guided Setup"),
       ...rows
     ],
@@ -435,6 +439,10 @@ module.exports = client => {
         const cfg = await guildConfig.get(guild.id);
 
         for (const feature of Object.values(FEATURES)) {
+          if (feature.optional) {
+            skipped.push("⏭️ **" + feature.label + "** — optional; left unchanged. Configure it from the feature menu if needed.");
+            continue;
+          }
           for (const field of feature.fields) {
             const latestCfg = await guildConfig.get(guild.id);
             if (latestCfg[field.key]) {
@@ -467,7 +475,7 @@ module.exports = client => {
         if (errors.length) sections.push("## <:error_g:1561271715164721245> Errors\n" + errors.join("\n"));
         const title = errors.length ? "Setup All • Completed with Errors" : "Setup All • Completed";
         const content = sections.join("\n\n") +
-          "\n\nYouTube Channel URL must be entered in its setup step. Use `.config` to change settings later.";
+          "\n\nOptional features can be configured from the feature menu. Use `.config` to change settings later.";
         return interaction.editReply(statusPage(guild, errors.length ? "error" : "completed", title, content,
           new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Primary),
