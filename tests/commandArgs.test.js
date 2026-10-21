@@ -33,3 +33,11 @@ test('strict integers reject suffixes and decimals', () => {
   assert.equal(parseStrictInteger('5people', 0, 99), null); assert.equal(parseStrictInteger('5.9', 0, 99), null);
   assert.equal(parseStrictInteger('100', 0, 99), null);
 });
+const { suggestCommand } = require('../lib/commandNameHints');
+test('mistyped command names get suggestions without dispatching', () => {
+  assert.equal(suggestCommand('mute'), null);
+  assert.equal(suggestCommand('mut'), 'mute');
+  assert.equal(suggestCommand('bna'), 'ban');
+  assert.equal(suggestCommand('helpp'), 'help');
+  assert.equal(suggestCommand('gibberish'), null);
+});

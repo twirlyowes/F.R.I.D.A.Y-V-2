@@ -336,6 +336,16 @@ client.on(
 
     const { command, args, prefix: PREFIX } = parsed;
 
+    if (!parsed.viaNoPrefix) {
+      const suggestion = require("./lib/commandNameHints").suggestCommand(command);
+      if (suggestion) {
+        return message.reply(cardReply(COLORS.SKY_BLUE,
+          "Unknown command `" + PREFIX + command + "`." +
+          "\n\nDid you mean `" + PREFIX + suggestion + "`? Nothing was executed."
+        ));
+      }
+    }
+
     try {
 
       if (command === "testembed") {
