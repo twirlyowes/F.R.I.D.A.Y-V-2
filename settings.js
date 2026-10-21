@@ -16,6 +16,7 @@ const {
 const guildConfig = require("./lib/guildConfig");
 const quarantine = require("./lib/quarantine");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
+const { clearSetting } = require("./lib/setupClear");
 
 const { parseCommand, getPrefix, DEFAULT_PREFIX, MAX_PREFIX_LENGTH } = require("./lib/prefix");
 const { SETTINGS } = guildConfig;
@@ -369,17 +370,20 @@ async function handlePanelInteraction(interaction) {
       : interaction.reply({ ...panel, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
   }
 
-  // 5) clear the selected setting
+  // 5) clear the selected setting and undo resources made by the setup wizard.
   if (action === "clear" && interaction.isButton()) {
     const key = parts[2];
     const def = SETTINGS[key];
     if (!def) return interaction.deferUpdate();
 
-    await guildConfig.unset(guild.id, key);
-
-    return interaction.update(
-      await buildPanel(guild, userId, key, `🧹 **${def.label}** has been cleared.`)
-    );
+    try {
+      const result = await clearSetting(guild, key);
+      return interaction.update(await buildPanel(guild, userId, key, result.message));
+    } catch (error) {
+      return interaction.update(await buildPanel(guild, userId, key,
+        "<:error_g:1561271715164721245> Could not clear this setting: " +
+        String(error.message || "unknown error")));
+    }
   }
 
   // 6) done: remove the menus
@@ -569,8 +573,8 @@ module.exports = client => {
           );
         }
 
-        await guildConfig.unset(message.guild.id, key);
-        return reply(message, COLORS.GREEN, `**${SETTINGS[key].label}** has been cleared.`);
+        const result = await clearSetting(message.guild, key);
+        return reply(message, result.retained ? COLORS.RED : COLORS.GREEN, result.message);
       }
 
       return reply(
