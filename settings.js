@@ -14,6 +14,7 @@ const {
 } = require("discord.js");
 
 const guildConfig = require("./lib/guildConfig");
+const quarantine = require("./lib/quarantine");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
 
 const { parseCommand, getPrefix, DEFAULT_PREFIX, MAX_PREFIX_LENGTH } = require("./lib/prefix");
@@ -300,6 +301,14 @@ async function handlePanelInteraction(interaction) {
       return interaction.update(await buildPanel(guild, userId, key, `<:error_g:1561271715164721245> ${result.error}`));
     }
 
+    if (key === "quarantineRole") {
+      try {
+        await quarantine.configureRole(guild, result.value);
+      } catch (error) {
+        return interaction.update(await buildPanel(guild, userId, key, "<:error_g:1561271715164721245> " + error.message));
+      }
+    }
+
     await guildConfig.set(guild.id, key, result.value);
 
     return interaction.update(
@@ -463,7 +472,7 @@ module.exports = client => {
       }
     }
 
-    if (!["config", "settings", "setup"].includes(command)) return;
+    if (!["config", "settings"].includes(command)) return;
 
     try {
       if (!canManage(message.member)) {
@@ -527,6 +536,14 @@ module.exports = client => {
             return reply(message, COLORS.RED, result.error);
           }
           value = result.value;
+        }
+
+        if (key === "quarantineRole") {
+          try {
+            await quarantine.configureRole(message.guild, value);
+          } catch (error) {
+            return reply(message, COLORS.RED, error.message);
+          }
         }
 
         await guildConfig.set(message.guild.id, key, value);

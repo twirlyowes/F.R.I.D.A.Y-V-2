@@ -774,6 +774,9 @@ console.log("Loading activetime...");
 console.log("Loading settings...");
 require("./settings")(client);
 
+console.log("Loading guided setup...");
+require("./setup")(client);
+
 console.log("Loading automod...");
 require("./automod")(client);
 

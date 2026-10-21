@@ -27,6 +27,7 @@ const {
 } = require("discord.js");
 
 const guildConfig = require("./lib/guildConfig");
+const quarantine = require("./lib/quarantine");
 const protection = require("./lib/protection");
 const owners = require("./lib/owners");
 const { parseCommand } = require("./lib/prefix");
@@ -436,8 +437,23 @@ async function trigger(guild, user, kind, total, cfg) {
   if (last && Date.now() - last < PUNISH_COOLDOWN_MS) return;
   lastPunished.set(key, Date.now());
 
-  // Stop the damage first...
-  const punishment = await punish(guild, user, cfg);
+  // Quarantine is primary when configured; existing punishment remains the fallback.
+  const serverCfg = await guildConfig.get(guild.id);
+  let punishment;
+  if (serverCfg.quarantineRole) {
+    const result = await quarantine.quarantineMember(guild, user.id, serverCfg.quarantineRole);
+    if (result.ok) {
+      punishment = result;
+    } else {
+      const fallback = await punish(guild, user, cfg);
+      punishment = {
+        ok: false,
+        text: "Quarantine failed: " + result.text + ". Fallback punishment: " + fallback.text
+      };
+    }
+  } else {
+    punishment = await punish(guild, user, cfg);
+  }
 
   // ...then repair it
   const recovery = cfg.restore ? await recover(guild, user.id) : null;
@@ -486,6 +502,11 @@ function toggleButton(id, label, on) {
 
 async function buildPanel(guild, userId, note = null) {
   const cfg = await protection.getAntinuke(guild.id);
+  const serverCfg = await guildConfig.get(guild.id);
+  const savedQuarantineRole = serverCfg.quarantineRole ? guild.roles.cache.get(serverCfg.quarantineRole) : null;
+  const quarantineLine = savedQuarantineRole
+    ? "<@&" + savedQuarantineRole.id + "> (assigned on trigger; manageable roles removed)"
+    : "not configured (legacy punishment is used)";
   const me = guild.members.me;
 
   const permissionLine = BOT_PERMISSIONS.map(
@@ -507,7 +528,8 @@ async function buildPanel(guild, userId, note = null) {
     content:
       `# Anti-Nuke\n\n${note ? `${note}\n\n` : ""}` +
       `**Master switch:** ${cfg.enabled ? "🟢 ON" : "🔴 OFF"}\n` +
-      `**Punishment:** ${PUNISHMENT_TEXT[cfg.punishment]}\n> ${PUNISHMENT_HELP[cfg.punishment]}\n` +
+      `**Quarantine:** ${quarantineLine}\n` +
+      `**Fallback punishment:** ${PUNISHMENT_TEXT[cfg.punishment]}\n> ${PUNISHMENT_HELP[cfg.punishment]}\n` +
       `**Trigger:** ${cfg.threshold} mass actions within ${cfg.windowSeconds} seconds\n` +
       `**Auto-restore:** ${cfg.restore ? "on" : "off"} (puts back channels/roles the offender deleted)\n\n` +
       `${featureLines.join("\n")}\n\n` +
@@ -542,7 +564,7 @@ async function buildPanel(guild, userId, note = null) {
       .setStyle(cfg.enabled ? ButtonStyle.Success : ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId(`an:pun:${userId}`)
-      .setLabel(`Punish: ${PUNISHMENT_TEXT[cfg.punishment]}`)
+      .setLabel(`Fallback: ${PUNISHMENT_TEXT[cfg.punishment]}`)
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId(`an:thr:${userId}`)
@@ -827,6 +849,14 @@ module.exports = client => {
     try {
       const guild = channel.guild;
       if (!guild) return;
+
+      // Keep new channels inaccessible to Quarantine even if channel-create protection is off.
+      const serverCfg = await guildConfig.get(guild.id);
+      if (serverCfg.quarantineRole) {
+        await quarantine.applyToChannel(guild, channel, serverCfg.quarantineRole).catch(error => {
+          console.warn("[AntiNuke] Could not apply quarantine overwrite to a new channel:", error.message);
+        });
+      }
 
       const cfg = await enabledFor(guild, "channelCreate");
       if (!cfg) return;

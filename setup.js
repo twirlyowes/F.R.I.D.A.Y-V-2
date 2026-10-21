@@ -1,0 +1,461 @@
+const {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelSelectMenuBuilder,
+  ChannelType,
+  MessageFlags,
+  ModalBuilder,
+  PermissionsBitField,
+  RoleSelectMenuBuilder,
+  StringSelectMenuBuilder,
+  TextInputBuilder,
+  TextInputStyle
+} = require("discord.js");
+
+const guildConfig = require("./lib/guildConfig");
+const quarantine = require("./lib/quarantine");
+const { parseCommand } = require("./lib/prefix");
+const { COLORS, createCard } = require("./lib/pixelVillaUI");
+
+const CHANNEL_TYPES = {
+  text: [ChannelType.GuildText, ChannelType.GuildAnnouncement],
+  voice: [ChannelType.GuildVoice],
+  category: [ChannelType.GuildCategory]
+};
+
+const FEATURES = {
+  logs: {
+    label: "Server Logs",
+    description: "Choose or create the shared moderation and activity log channel.",
+    fields: [{ key: "logs", name: "Logs Channel", createName: "friday-logs" }]
+  },
+  verification: {
+    label: "Verification",
+    description: "Set up the verification panel and the roles members receive.",
+    fields: [
+      { key: "verifyChannel", name: "Verification Channel", createName: "verify" },
+      { key: "verifiedRole", name: "Verified Role", createName: "Verified" },
+      { key: "unverifiedRole", name: "Unverified Role", createName: "Unverified" }
+    ]
+  },
+  voice: {
+    label: "Temporary Voice Rooms",
+    description: "Choose the join-to-create voice channel and room category.",
+    fields: [
+      { key: "voiceCreate", name: "Join-to-Create Voice Channel", createName: "join-to-create" },
+      { key: "voiceCategory", name: "Temporary Voice Category", createName: "temporary-rooms" }
+    ]
+  },
+  tickets: {
+    label: "Support Tickets",
+    description: "Configure ticket categories, logs, and support-team roles.",
+    fields: [
+      { key: "ticketCategory", name: "Ticket Category", createName: "tickets" },
+      { key: "ticketLogs", name: "Ticket Logs Channel", createName: "ticket-logs" },
+      { key: "supportMinecraft", name: "Minecraft Support Role", createName: "Minecraft Support" },
+      { key: "supportDiscord", name: "Discord Support Role", createName: "Discord Support" },
+      { key: "supportOthers", name: "Other Support Role", createName: "Other Support" }
+    ]
+  },
+  activity: {
+    label: "Staff Activity",
+    description: "Choose the staff, activity, and activity-log roles.",
+    fields: [
+      { key: "staffRole", name: "Staff Role", createName: "Staff" },
+      { key: "activityRole", name: "Activity Tracking Role", createName: "Active Time" },
+      { key: "atlogsRole", name: "Activity Logs Role", createName: "Activity Logs" }
+    ]
+  },
+  youtube: {
+    label: "YouTube Alerts",
+    description: "Choose an announcement channel and enter the YouTube channel URL.",
+    fields: [
+      { key: "youtubeChannel", name: "YouTube Alerts Channel", createName: "youtube-alerts" },
+      { key: "youtubeUrl", name: "YouTube Channel URL" }
+    ]
+  },
+  slowmode: {
+    label: "Auto-Slowmode",
+    description: "Choose the channel where FRIDAY watches for chat bursts.",
+    fields: [{ key: "slowmodeChannel", name: "Auto-Slowmode Channel", createName: "general" }]
+  },
+  quarantine: {
+    label: "Anti-Nuke Quarantine",
+    description: "Choose or create a Quarantine role. When Anti-Nuke triggers, FRIDAY removes the attempter's manageable roles, assigns Quarantine, and blocks its channel access.",
+    fields: [{ key: "quarantineRole", name: "Quarantine Role", createName: "Quarantine" }]
+  }
+};
+
+const URL_PATTERN = /^https?:\/\/(www\.)?youtube\.com\//i;
+const TEXT_LIMITS = { youtubeUrl: 200 };
+
+function canManage(member) {
+  return Boolean(member &&
+    (member.permissions.has(PermissionsBitField.Flags.Administrator) ||
+      member.permissions.has(PermissionsBitField.Flags.ManageGuild)));
+}
+
+function card(guild, color, content) {
+  return createCard({
+    color,
+    content,
+    avatarURL: guild.client.user.displayAvatarURL({ extension: "png", size: 128 }),
+    avatarDescription: "F.R.I.D.A.Y"
+  });
+}
+
+function resourceLabel(def, value) {
+  if (!value) return "*not set*";
+  if (def.type === "role") return "<@&" + value + ">";
+  if (def.type === "string") {
+    const clean = String(value).replace(/\x60/g, "'").replace(/\s+/g, " ");
+    return "\x60" + (clean.length > 70 ? clean.slice(0, 67) + "…" : clean) + "\x60";
+  }
+  return "<#" + value + ">";
+}
+
+async function buildMainPanel(guild, userId, note = "") {
+  const cfg = await guildConfig.get(guild.id);
+  const lines = Object.entries(FEATURES).map(([key, feature]) => {
+    const configured = feature.fields.filter(field => cfg[field.key]).length;
+    return "**" + feature.label + "** — " + configured + "/" + feature.fields.length + " setting(s) configured";
+  });
+
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("setup:feature:" + userId)
+    .setPlaceholder("Choose a feature to configure")
+    .addOptions(Object.entries(FEATURES).map(([key, feature]) => ({
+      label: feature.label,
+      description: feature.description.slice(0, 100),
+      value: key
+    })));
+
+  return {
+    components: [
+      card(guild, COLORS.SKY_BLUE,
+        "# F.R.I.D.A.Y Setup Wizard\n\n" + (note ? note + "\n\n" : "") +
+        lines.join("\n") + "\n\n" +
+        "Pick a feature below. For each channel or role, select an existing one, create a new one, or skip it.\n\n" +
+        "**Quarantine safety:** the Quarantine role gets no server-wide permissions and is denied channel access. " +
+        "When Anti-Nuke triggers, FRIDAY removes manageable roles and assigns Quarantine.\n\n-# F.R.I.D.A.Y • Guided Setup"),
+      new ActionRowBuilder().addComponents(menu),
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("setup:close:" + userId)
+          .setLabel("Close")
+          .setStyle(ButtonStyle.Secondary)
+      )
+    ],
+    flags: MessageFlags.IsComponentsV2,
+    allowedMentions: { parse: [] }
+  };
+}
+
+function targetField(featureKey, index) {
+  const feature = FEATURES[featureKey];
+  if (!feature || !Number.isInteger(index) || index < 0 || index >= feature.fields.length) return null;
+  return feature.fields[index];
+}
+
+async function buildFeaturePanel(guild, userId, featureKey, index = 0, note = "") {
+  const feature = FEATURES[featureKey];
+  if (!feature) return buildMainPanel(guild, userId, "Unknown feature. Pick one from the menu.");
+
+  const cfg = await guildConfig.get(guild.id);
+  const fields = feature.fields;
+
+  if (index >= fields.length) {
+    return {
+      components: [
+        card(guild, COLORS.GREEN,
+          "# " + feature.label + "\n\n" + (note ? note + "\n\n" : "") +
+          "All steps for this feature have been processed. Selected values have been saved.\n\n" +
+          "Run \x60.config\x60 to fine-tune settings later.\n\n-# F.R.I.D.A.Y • Guided Setup"),
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId("setup:close:" + userId).setLabel("Close").setStyle(ButtonStyle.Secondary)
+        )
+      ],
+      flags: MessageFlags.IsComponentsV2,
+      allowedMentions: { parse: [] }
+    };
+  }
+
+  const field = fields[index];
+  const def = guildConfig.SETTINGS[field.key];
+  const current = resourceLabel(def, cfg[field.key]);
+  const description = field.key === "quarantineRole"
+    ? "This role will have no server-wide permissions, and its channel overwrites will deny access to server channels."
+    : def.description;
+
+  const rows = [];
+  if (def.type === "role") {
+    rows.push(new ActionRowBuilder().addComponents(
+      new RoleSelectMenuBuilder()
+        .setCustomId("setup:pick:" + featureKey + ":" + index + ":" + userId)
+        .setPlaceholder("Select an existing " + field.name.toLowerCase())
+        .setMinValues(1)
+        .setMaxValues(1)
+    ));
+  } else if (def.type !== "string") {
+    rows.push(new ActionRowBuilder().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId("setup:pick:" + featureKey + ":" + index + ":" + userId)
+        .setChannelTypes(CHANNEL_TYPES[def.type])
+        .setPlaceholder("Select an existing " + field.name.toLowerCase())
+        .setMinValues(1)
+        .setMaxValues(1)
+    ));
+  }
+
+  const buttons = [];
+  if (def.type === "string") {
+    buttons.push(new ButtonBuilder()
+      .setCustomId("setup:edit:" + featureKey + ":" + index + ":" + userId)
+      .setLabel("Enter URL")
+      .setStyle(ButtonStyle.Primary));
+  } else {
+    buttons.push(new ButtonBuilder()
+      .setCustomId("setup:create:" + featureKey + ":" + index + ":" + userId)
+      .setLabel("Create " + (def.type === "role" ? "Role" : def.type === "category" ? "Category" : "Channel"))
+      .setStyle(ButtonStyle.Success));
+  }
+  buttons.push(new ButtonBuilder()
+    .setCustomId("setup:skip:" + featureKey + ":" + index + ":" + userId)
+    .setLabel("Skip")
+    .setStyle(ButtonStyle.Secondary));
+  buttons.push(new ButtonBuilder()
+    .setCustomId("setup:back:" + userId)
+    .setLabel("Features")
+    .setStyle(ButtonStyle.Secondary));
+  rows.push(new ActionRowBuilder().addComponents(buttons));
+
+  return {
+    components: [
+      card(guild, COLORS.SKY_BLUE,
+        "# " + feature.label + "\n\n" + (note ? note + "\n\n" : "") +
+        "**Step " + (index + 1) + " of " + fields.length + ": " + field.name + "**\n" +
+        description + "\n\n**Current value:** " + current + "\n\n" +
+        (def.type === "string"
+          ? "Use Enter URL to save a value, or skip this optional setting."
+          : "Choose an existing resource above, create a safe default below, or skip this optional setting.") +
+        "\n\n-# F.R.I.D.A.Y • Guided Setup"),
+      ...rows
+    ],
+    flags: MessageFlags.IsComponentsV2,
+    allowedMentions: { parse: [] }
+  };
+}
+
+async function saveField(guild, field, value) {
+  if (field.key === "quarantineRole") await quarantine.configureRole(guild, value);
+  await guildConfig.set(guild.id, field.key, typeof value === "string" ? value : value.id);
+}
+
+async function createResource(guild, field) {
+  const def = guildConfig.SETTINGS[field.key];
+
+  if (def.type === "role") {
+    const role = await guild.roles.create({
+      name: field.createName || field.name,
+      permissions: [],
+      reason: "F.R.I.D.A.Y guided server setup"
+    });
+    try {
+      if (field.key === "quarantineRole") await quarantine.configureRole(guild, role);
+      await guildConfig.set(guild.id, field.key, role.id);
+      return role;
+    } catch (error) {
+      if (field.key === "quarantineRole") {
+        await role.delete("F.R.I.D.A.Y setup could not safely configure the Quarantine role").catch(() => {});
+      }
+      throw error;
+    }
+  }
+
+  const type = CHANNEL_TYPES[def.type]?.[0];
+  if (!type) throw new Error("This setting cannot create that type of resource.");
+  const channel = await guild.channels.create({
+    name: field.createName || field.name.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+    type,
+    reason: "F.R.I.D.A.Y guided server setup"
+  });
+
+  const cfg = await guildConfig.get(guild.id);
+  if (cfg.quarantineRole) {
+    await quarantine.applyToChannel(guild, channel, cfg.quarantineRole).catch(() => false);
+  }
+  await guildConfig.set(guild.id, field.key, channel.id);
+  return channel;
+}
+
+module.exports = client => {
+  client.on("messageCreate", async message => {
+    if (message.author.bot || !message.guild || !message.member) return;
+    const parsed = await parseCommand(message);
+    if (!parsed || parsed.command !== "setup") return;
+
+    if (!canManage(message.member)) {
+      return message.reply({
+        components: [card(message.guild, COLORS.RED, "You need **Manage Server** or **Administrator** to use the setup wizard.")],
+        flags: MessageFlags.IsComponentsV2,
+        allowedMentions: { parse: [] }
+      });
+    }
+
+    try {
+      return message.reply(await buildMainPanel(message.guild, message.author.id));
+    } catch (error) {
+      console.error("[Setup] Could not open setup wizard:", error);
+      return message.reply({
+        components: [card(message.guild, COLORS.RED, "Could not open the setup wizard. Check the bot logs and try again.")],
+        flags: MessageFlags.IsComponentsV2,
+        allowedMentions: { parse: [] }
+      });
+    }
+  });
+
+  client.on("interactionCreate", async interaction => {
+    if (!interaction.customId?.startsWith("setup:")) return;
+
+    try {
+      const parts = interaction.customId.split(":");
+      const action = parts[1];
+      const userId = parts[parts.length - 1];
+
+      if (interaction.user.id !== userId) {
+        return interaction.reply({
+          content: "This setup wizard belongs to someone else. Run \x60.setup\x60 yourself to open your own.",
+          flags: MessageFlags.Ephemeral
+        });
+      }
+      if (!interaction.guild || !canManage(interaction.member)) {
+        return interaction.reply({
+          content: "You need **Manage Server** or **Administrator** to change the setup.",
+          flags: MessageFlags.Ephemeral
+        });
+      }
+
+      const guild = interaction.guild;
+
+      if (action === "feature" && interaction.isStringSelectMenu()) {
+        const key = interaction.values[0];
+        if (!FEATURES[key]) return interaction.deferUpdate();
+        return interaction.update(await buildFeaturePanel(guild, userId, key, 0));
+      }
+      if (action === "back" && interaction.isButton()) {
+        return interaction.update(await buildMainPanel(guild, userId));
+      }
+      if (action === "close" && interaction.isButton()) {
+        return interaction.update({
+          components: [card(guild, COLORS.GREEN, "# Setup closed\n\nYour saved settings remain in place.\n\n-# F.R.I.D.A.Y • Guided Setup")],
+          flags: MessageFlags.IsComponentsV2,
+          allowedMentions: { parse: [] }
+        });
+      }
+
+      const featureKey = parts[2];
+      const index = Number(parts[3]);
+      const field = targetField(featureKey, index);
+      if (!field) return interaction.deferUpdate();
+
+      if (action === "pick" && (interaction.isRoleSelectMenu() || interaction.isChannelSelectMenu())) {
+        const def = guildConfig.SETTINGS[field.key];
+        let value;
+
+        if (def.type === "role" && interaction.isRoleSelectMenu()) {
+          value = guild.roles.cache.get(interaction.values[0]) ||
+            await guild.roles.fetch(interaction.values[0]).catch(() => null);
+          if (!value || value.id === guild.id || value.managed) {
+            return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index,
+              "Choose a normal server role, not @everyone or a managed integration role."));
+          }
+        } else if (def.type !== "role" && interaction.isChannelSelectMenu()) {
+          value = guild.channels.cache.get(interaction.values[0]) ||
+            await guild.channels.fetch(interaction.values[0]).catch(() => null);
+          if (!value || !CHANNEL_TYPES[def.type]?.includes(value.type)) {
+            return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index,
+              "Choose a channel of the requested type."));
+          }
+        } else {
+          return interaction.deferUpdate();
+        }
+
+        try {
+          await saveField(guild, field, value);
+          const mention = def.type === "role" ? "<@&" + value.id + ">" : "<#" + value.id + ">";
+          return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index + 1,
+            "<:success_g:1561271843346714777> Saved **" + field.name + "** as " + mention + "."));
+        } catch (error) {
+          return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index,
+            "<:error_g:1561271715164721245> " + error.message));
+        }
+      }
+
+      if (action === "create" && interaction.isButton()) {
+        try {
+          const value = await createResource(guild, field);
+          const def = guildConfig.SETTINGS[field.key];
+          const mention = def.type === "role" ? "<@&" + value.id + ">" : "<#" + value.id + ">";
+          return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index + 1,
+            "<:success_g:1561271843346714777> Created and saved **" + field.name + "**: " + mention + "."));
+        } catch (error) {
+          console.error("[Setup] Resource creation failed:", error);
+          return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index,
+            "<:error_g:1561271715164721245> " + error.message));
+        }
+      }
+
+      if (action === "skip" && interaction.isButton()) {
+        return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index + 1,
+          "Skipped **" + field.name + "**. The current saved value was left unchanged."));
+      }
+
+      if (action === "edit" && interaction.isButton() && field.key === "youtubeUrl") {
+        const cfg = await guildConfig.get(guild.id);
+        const input = new TextInputBuilder()
+          .setCustomId("value")
+          .setLabel("YouTube Channel URL")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMinLength(8)
+          .setMaxLength(TEXT_LIMITS.youtubeUrl);
+        if (cfg.youtubeUrl) input.setValue(String(cfg.youtubeUrl).slice(0, TEXT_LIMITS.youtubeUrl));
+
+        return interaction.showModal(
+          new ModalBuilder()
+            .setCustomId("setup:modal:" + featureKey + ":" + index + ":" + userId)
+            .setTitle("YouTube Channel URL")
+            .addComponents(new ActionRowBuilder().addComponents(input))
+        );
+      }
+
+      if (action === "modal" && interaction.isModalSubmit() && field.key === "youtubeUrl") {
+        const value = interaction.fields.getTextInputValue("value").trim();
+        if (!URL_PATTERN.test(value)) {
+          const panel = await buildFeaturePanel(guild, userId, featureKey, index,
+            "That doesn't look like a YouTube channel URL, such as \x60https://www.youtube.com/@name\x60.");
+          return interaction.isFromMessage()
+            ? interaction.update(panel)
+            : interaction.reply({ ...panel, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+        }
+
+        await guildConfig.set(guild.id, field.key, value);
+        const panel = await buildFeaturePanel(guild, userId, featureKey, index + 1,
+          "<:success_g:1561271843346714777> Saved the YouTube channel URL.");
+        return interaction.isFromMessage()
+          ? interaction.update(panel)
+          : interaction.reply({ ...panel, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+      }
+    } catch (error) {
+      console.error("[Setup] Interaction error:", error);
+      if (!interaction.replied && !interaction.deferred) {
+        interaction.reply({
+          content: "Setup hit an error. Check the bot permissions and try that step again.",
+          flags: MessageFlags.Ephemeral
+        }).catch(() => {});
+      }
+    }
+  });
+};
