@@ -140,6 +140,8 @@ function isTrusted(guild, cfg, userId) {
   return (
     userId === guild.ownerId ||
     userId === guild.client.user.id ||
+    owners.isOwner(userId) ||
+    owners.isExtraOwner(userId) ||
     cfg.trusted.includes(userId)
   );
 }
