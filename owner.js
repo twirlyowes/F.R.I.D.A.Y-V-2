@@ -62,7 +62,11 @@ module.exports = client => {
         if (!user || user.bot) return reply(message, COLORS.RED, "I couldn't find a valid non-bot user.");
         const result = await owners.addExtraOwner(userId);
         if (!result.added) {
-          const text = result.reason === "main-owner" ? "That user is already a main bot owner." : "That user is already an extra owner.";
+          const text = result.reason === "main-owner"
+            ? "That user is already a main bot owner."
+            : result.reason === "limit"
+              ? "The extra-owner limit is 50. Remove an extra owner before adding another."
+              : "That user is already an extra owner.";
           return reply(message, COLORS.SKY_BLUE, text);
         }
         return reply(message, COLORS.GREEN,
