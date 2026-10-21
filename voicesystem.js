@@ -10,6 +10,7 @@ const db = require("./firebase");
 
 const guildConfig = require("./lib/guildConfig");
 const { parseCommand, getPrefix } = require("./lib/prefix");
+const { extractSnowflake, parseStrictInteger } = require("./lib/commandArgs");
 
 // Active temporary channels tracker: Map<ChannelID, OwnerID>
 const activeTempChannels = new Map();
@@ -25,9 +26,7 @@ const VALID_VC_COMMANDS = new Set([
   "vcadd",
   "vcremove",
   "vckick",
-  "vcp",
-  "vcowner",
-  "vcsync"
+  "vcowner"
 ]);
 
 // ---- Components V2 card helpers (embed -> card conversion only) ----
@@ -135,36 +134,17 @@ module.exports = (client) => {
 
   // 4. Optimized findTargetMember function with tiered search strategy
   async function findTargetMember(message, args) {
-    // 1. Check Mention
-    let targetMember = message.mentions.members.first();
-    if (targetMember) return targetMember;
-
-    if (args.length === 0) return null;  
-
-    const query = args.join(" ").toLowerCase();  
-      
-    // 2. Check User ID
-    const rawId = query.replace(/[<@!>]/g, "");  
-    if (/^\d+$/.test(rawId)) {  
-      const fetched = await message.guild.members.fetch(rawId).catch(() => null);  
-      if (fetched) return fetched;  
-    }  
-
-    // 3. Search in cached members first
-    let cachedMatch = message.guild.members.cache.find(m =>   
-      m.user.username.toLowerCase().includes(query) ||  
-      (m.user.globalName && m.user.globalName.toLowerCase().includes(query)) ||  
-      (m.nickname && m.nickname.toLowerCase().includes(query))  
-    );
-    if (cachedMatch) return cachedMatch;
-
-    // 4. Fallback: Full guild members fetch only as a last resort
-    await message.guild.members.fetch().catch(() => {});  
-    return message.guild.members.cache.find(m =>   
-      m.user.username.toLowerCase().includes(query) ||  
-      (m.user.globalName && m.user.globalName.toLowerCase().includes(query)) ||  
-      (m.nickname && m.nickname.toLowerCase().includes(query))  
-    );
+    if (!Array.isArray(args) || args.length === 0) return null;
+    const firstId = extractSnowflake(args[0]);
+    if (firstId) return args.length === 1 ? (message.guild.members.cache.get(firstId) || await message.guild.members.fetch(firstId).catch(() => null)) : null;
+    const query = args.join(" ").trim().toLowerCase();
+    if (!query) return null;
+    const members = [...message.guild.members.cache.values()];
+    const names = member => [member.user.username, member.user.globalName, member.displayName, member.nickname].filter(Boolean).map(value => value.toLowerCase());
+    const uniqueById = list => [...new Map(list.map(member => [member.id, member])).values()];
+    const exact = uniqueById(members.filter(member => names(member).some(name => name === query)));
+    const candidates = exact.length ? exact : uniqueById(members.filter(member => names(member).some(name => name.includes(query))));
+    return candidates.length === 1 ? candidates[0] : null;
   }
 
   // Track deletion actions to prevent duplicate deletion attempts
@@ -365,6 +345,7 @@ module.exports = (client) => {
 
     // LOCK COMMAND  
     if (command === "vclock") {  
+      if (args.length) return message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "Usage: vclock (no extra arguments)." })], flags: MessageFlags.IsComponentsV2 });
       if (!isOwner) return message.reply({ components: [notOwnerCard], flags: MessageFlags.IsComponentsV2 });  
       await memberChannel.permissionOverwrites.edit(message.guild.id, { Connect: false });  
       return message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: "<:lock:1532337641494937651> Voice channel has been **locked**." })], flags: MessageFlags.IsComponentsV2 });  
@@ -372,6 +353,7 @@ module.exports = (client) => {
 
     // UNLOCK COMMAND  
     if (command === "vcunlock") {  
+      if (args.length) return message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "Usage: vcunlock (no extra arguments)." })], flags: MessageFlags.IsComponentsV2 });
       if (!isOwner) return message.reply({ components: [notOwnerCard], flags: MessageFlags.IsComponentsV2 });  
       await memberChannel.permissionOverwrites.edit(message.guild.id, { Connect: true });  
       return message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: "<:unlock:1532337553217294528> Voice channel has been **unlocked**." })], flags: MessageFlags.IsComponentsV2 });  
@@ -379,6 +361,7 @@ module.exports = (client) => {
 
     // HIDE COMMAND  
     if (command === "vchide") {  
+      if (args.length) return message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "Usage: vchide (no extra arguments)." })], flags: MessageFlags.IsComponentsV2 });
       if (!isOwner) return message.reply({ components: [notOwnerCard], flags: MessageFlags.IsComponentsV2 });  
       await memberChannel.permissionOverwrites.edit(message.guild.id, { ViewChannel: false });  
       return message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: "<:hide:1532336151854190743> Voice channel is now **hidden**." })], flags: MessageFlags.IsComponentsV2 });  
@@ -386,6 +369,7 @@ module.exports = (client) => {
 
     // UNHIDE COMMAND  
     if (command === "vcunhide") {  
+      if (args.length) return message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "Usage: vcunhide (no extra arguments)." })], flags: MessageFlags.IsComponentsV2 });
       if (!isOwner) return message.reply({ components: [notOwnerCard], flags: MessageFlags.IsComponentsV2 });  
       await memberChannel.permissionOverwrites.edit(message.guild.id, { ViewChannel: true });  
       return message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: "<:unhide:1532336276164841482> Voice channel is now **visible**." })], flags: MessageFlags.IsComponentsV2 });  
@@ -404,8 +388,8 @@ module.exports = (client) => {
     // USER LIMIT COMMAND  
     if (command === "vclimit") {  
       if (!isOwner) return message.reply({ components: [notOwnerCard], flags: MessageFlags.IsComponentsV2 });  
-      const limit = parseInt(args[0], 10);  
-      if (isNaN(limit) || limit < 0 || limit > 99) {  
+      const limit = args.length === 1 ? parseStrictInteger(args[0], 0, 99) : null;  
+      if (limit === null) {  
         return message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1561271566233501797> Please specify a valid limit between 0 and 99." })], flags: MessageFlags.IsComponentsV2 });  
       }  
 

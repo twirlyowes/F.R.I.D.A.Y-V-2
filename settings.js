@@ -539,6 +539,7 @@ module.exports = client => {
       }
 
       if (sub === "clear" || sub === "reset" || sub === "unset") {
+        if (args.length !== 1) return reply(message, COLORS.RED, "Usage: " + PREFIX + "config clear <key> (provide exactly one key).");
         const keyRaw = args.shift();
         const key = Object.keys(SETTINGS).find(
           k => k.toLowerCase() === (keyRaw || "").toLowerCase()

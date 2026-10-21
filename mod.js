@@ -2,6 +2,7 @@ const { PermissionsBitField, MessageFlags } = require("discord.js");
 const guildConfig = require("./lib/guildConfig");
 const { parseCommand } = require("./lib/prefix");
 const { COLORS, createCard, getAvatarURL } = require("./lib/pixelVillaUI");
+const { extractSnowflake } = require("./lib/commandArgs");
 
 const WARNING_YELLOW = 0xFEE75C;
 const ORANGE = 0xF39C12;
@@ -417,8 +418,8 @@ module.exports = (client) => {
           );
         }
 
-        const userId = args[0];
-        const reason = args.slice(1).join(" ") || "No reason provided";
+        const userId = extractSnowflake(args[0]);
+        const reason = args.slice(1).join(" ").trim() || "No reason provided";
 
         if (!userId) {
           return message.reply(

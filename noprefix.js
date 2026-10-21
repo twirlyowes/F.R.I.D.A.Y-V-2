@@ -14,6 +14,7 @@
 const { MessageFlags } = require("discord.js");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
 const { parseCommand } = require("./lib/prefix");
+const { extractSnowflake } = require("./lib/commandArgs");
 const owners = require("./lib/owners");
 const noPrefix = require("./lib/noprefix");
 
@@ -66,6 +67,7 @@ module.exports = client => {
       const sub = (parsed.args[0] || "list").toLowerCase();
 
       if (["list", "show"].includes(sub)) {
+        if (parsed.args.length > 1) return reply(message, COLORS.RED, "Usage: " + p + "np list");
         const ids = noPrefix.list();
 
         return reply(
@@ -90,10 +92,9 @@ module.exports = client => {
         );
       }
 
-      const raw = parsed.args[1] || message.mentions.users.first()?.id || "";
-      const userId = raw.replace(/\D/g, "");
+      const userId = parsed.args.length === 2 ? extractSnowflake(parsed.args[1]) : null;
 
-      if (!/^\d{17,20}$/.test(userId)) {
+      if (!userId) {
         return reply(
           message,
           COLORS.RED,

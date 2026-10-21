@@ -805,10 +805,13 @@ module.exports = (client) => {
 
         if (
           !parsed ||
-          parsed.command !== 'quote' ||
-          parsed.args.length > 0
+          parsed.command !== 'quote'
         ) {
           return;
+        }
+
+        if (parsed.args.length > 0) {
+          return message.reply({ content: 'Usage: ' + parsed.prefix + 'quote (reply to a message; no extra arguments).', allowedMentions: { repliedUser: false } });
         }
 
         if (

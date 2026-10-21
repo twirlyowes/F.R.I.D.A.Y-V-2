@@ -19,6 +19,7 @@ const { COLORS, createCard, getAvatarURL } = require("./lib/pixelVillaUI");
 const WARNING_YELLOW = 0xFEE75C;
 const guildConfig = require("./lib/guildConfig");
 const { parseCommand } = require("./lib/prefix");
+const { extractSnowflake } = require("./lib/commandArgs");
 
 const PURPLE = 0x9B59B6;
 const BLURPLE = 0x5865F2;
@@ -26,6 +27,30 @@ const WHITE = 0xFFFFFF;
 
 module.exports = (client) => {
   const stickyCache = new Map();
+
+  async function resolveUserTarget(message, inputWords) {
+    const words = Array.isArray(inputWords) ? inputWords : [];
+    if (words.length === 0) return { user: message.author, member: message.member };
+    if (words.length === 1) {
+      const userId = extractSnowflake(words[0]);
+      if (userId) {
+        const user = await client.users.fetch(userId).catch(() => null);
+        if (!user) return { error: "Could not find that user. Check the mention or ID." };
+        const member = await message.guild.members.fetch(userId).catch(() => null);
+        return { user, member };
+      }
+    }
+    const query = words.join(" ").trim().toLowerCase();
+    if (!query) return { error: "Provide a user mention, ID, or name." };
+    const members = [...message.guild.members.cache.values()];
+    const fields = member => [member.user.username, member.user.globalName, member.displayName, member.nickname].filter(Boolean).map(name => name.toLowerCase());
+    const uniqueById = list => [...new Map(list.map(member => [member.id, member])).values()];
+    const exact = uniqueById(members.filter(member => fields(member).some(name => name === query)));
+    const candidates = exact.length ? exact : uniqueById(members.filter(member => fields(member).some(name => name.includes(query))));
+    if (candidates.length > 1) return { error: "That name matches multiple members. Please mention the exact user or use their ID." };
+    if (candidates.length === 1) return { user: candidates[0].user, member: candidates[0] };
+    return { error: "Could not find that user in this server. Use a mention or ID for users outside the server." };
+  }
 
   function cardReply(
     color,
@@ -84,29 +109,9 @@ module.exports = (client) => {
 
     try {
       if (command === "av" || command === "avatar") {
-        let targetUser = message.author;
-        const arg = words[0];
-
-        if (arg) {
-          const cleanedId = arg.replace(/<@!?(\d+)>/, "$1");
-
-          try {
-            targetUser = await client.users.fetch(cleanedId);
-          } catch (err) {
-            return message.reply(
-              cardReply(
-                COLORS.RED,
-                "Could not find a user with that ID or mention.",
-                message.author.displayAvatarURL({
-                  extension: "png",
-                  size: 128
-                }),
-                `${message.author.tag}'s avatar`
-              )
-            );
-          }
-        }
-
+        const resolvedTarget = await resolveUserTarget(message, words);
+        if (!resolvedTarget.user) return message.reply(cardReply(COLORS.RED, resolvedTarget.error, message.author.displayAvatarURL({ extension: "png", size: 128 }), message.author.tag + "'s avatar"));
+        const targetUser = resolvedTarget.user;
         const avatarURL = targetUser.displayAvatarURL({
           size: 4096,
           dynamic: true
@@ -195,37 +200,10 @@ module.exports = (client) => {
       }
 
       if (command === "ui" || command === "userinfo") {
-        let targetUser = message.author;
-        let targetMember = message.member;
-
-        const arg = words[0];
-
-        if (arg) {
-          const cleanedId = arg.replace(/<@!?(\d+)>/, "$1");
-
-          try {
-            targetUser = await client.users.fetch(cleanedId, {
-              force: true
-            });
-
-            targetMember = await message.guild.members
-              .fetch(targetUser.id)
-              .catch(() => null);
-          } catch {
-            return message.reply(
-              cardReply(
-                COLORS.RED,
-                "<a:error:1532986765105696778> Could not find a user with that ID or mention.",
-                message.author.displayAvatarURL({
-                  extension: "png",
-                  size: 128
-                }),
-                `${message.author.tag}'s avatar`
-              )
-            );
-          }
-        }
-
+        const resolvedTarget = await resolveUserTarget(message, words);
+        if (!resolvedTarget.user) return message.reply(cardReply(COLORS.RED, resolvedTarget.error, message.author.displayAvatarURL({ extension: "png", size: 128 }), message.author.tag + "'s avatar"));
+        let targetUser = resolvedTarget.user;
+        let targetMember = resolvedTarget.member;
         // fetch(true) force-refreshes the full User object (including flags),
         // so we no longer need the separate deprecated fetchFlags() call below.
         targetUser = await targetUser.fetch(true);
@@ -648,13 +626,12 @@ module.exports = (client) => {
           );
         }
 
-        const targetUser =
-          message.mentions.users.first() ||
-          message.guild.members.cache.get(words[0])?.user;
+        const targetIndex = words[0] && words[0].toLowerCase() === "to" ? 1 : 0;
+        const targetId = words[targetIndex] ? extractSnowflake(words[targetIndex]) : null;
+        const dmMessage = words.slice(targetIndex + 1).join(" ").trim();
+        const targetUser = targetId ? await client.users.fetch(targetId).catch(() => null) : null;
 
-        const dmMessage = words.slice(1).join(" ");
-
-        if (!targetUser || !dmMessage) {
+        if (!targetId || !targetUser || !dmMessage) {
           return message.reply(
             cardReply(
               WARNING_YELLOW,
@@ -1021,7 +998,7 @@ if (command === "hide") {
       }
 
       if (command === "calculate") {
-        const expr = words.join("");
+        const expr = words.join(" ");
 
         if (!expr) {
           return message.reply(
