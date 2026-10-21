@@ -131,6 +131,11 @@ module.exports = client => {
       const cfg = await getConfig(member.guild.id);
       if (!cfg.enabled) return;
 
+      // Anti-Nuke already handles this same event when its bot-add protection is on.
+      // Avoid racing it with a second kick and duplicate log messages.
+      const antinuke = await protection.getAntinuke(member.guild.id);
+      if (antinuke.enabled && antinuke.protections.botAdd) return;
+
       const entry = await findBotAdd(member.guild, member.id);
       if (!entry?.executor) {
         const channel = await require("./lib/guildConfig").getLogChannel(member.guild).catch(() => null);
@@ -143,7 +148,6 @@ module.exports = client => {
         return;
       }
 
-      const antinuke = await protection.getAntinuke(member.guild.id);
       const inviterId = entry.executor.id;
       const trusted = inviterId === member.guild.ownerId ||
         owners.isOwner(inviterId) ||
