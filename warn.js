@@ -97,7 +97,7 @@ module.exports = client => {
                         cardReply(
                             ERROR_RED,
                             "<a:error:1532986765105696778> Invalid Usage",
-                            `You must **explicitly ping the user** you want to warn.\n\n**Usage:** \`${PREFIX}warn @user [reason]\`\n\nReplying to a message does **not** count — you must type the @mention.`
+                            `**Usage:** \`${PREFIX}warn @user [reason]\`\n\nReplies do not count; mention the user directly.`
                         )
                     );
                 }
@@ -146,7 +146,7 @@ module.exports = client => {
                         cardReply(
                             WARN_YELLOW,
                             `<a:Warning:1532986372716236932> Warning Received | ${message.guild.name}`,
-                            `You have received a warning in **${message.guild.name}**.\n\n**Reason:** ${reason}`
+                            `**Reason:** ${reason}`
                         )
                     );
                 } catch {
@@ -230,7 +230,7 @@ module.exports = client => {
                         cardReply(
                             ERROR_RED,
                             "<a:error:1532986765105696778> Invalid Usage",
-                            `You must **explicitly ping the user** you want to check.\n\n**Usage:** \`${PREFIX}wlist @user\`\n\nReplying to a message does **not** count — you must type the @mention.`
+                            `**Usage:** \`${PREFIX}wlist @user\`\n\nReplies do not count; mention the user directly.`
                         )
                     );
                 }
@@ -295,7 +295,7 @@ module.exports = client => {
                         cardReply(
                             ERROR_RED,
                             "<a:error:1532986765105696778> Invalid Usage",
-                            `**Usage:** \`${PREFIX}wremove @user <warning ID>\`\n\nReplying to a message does **not** count — you must type the @mention.`
+                            `**Usage:** \`${PREFIX}wremove @user <warning ID>\`\n\nReplies do not count; mention the user directly.`
                         )
                     );
                 }
@@ -370,7 +370,7 @@ module.exports = client => {
                     `<a:LP_Message:1532991009066324049> **Reason**\n${removed.reason}\n\n` +
                     `<:Shield_2:1532989398642327594> **Originally Warned By**\n${removed.moderator}\n\n` +
                     `<a:settings:1532990547394957393> **Removed By**\n${message.author}\n\n` +
-                    `<a:sparkles:1532986077651140620> Warning has been removed successfully.`,
+                    ``,
                     getAvatarURL(user)
                 );
 
@@ -409,7 +409,7 @@ module.exports = client => {
                         cardReply(
                             ERROR_RED,
                             "<a:error:1532986765105696778> Invalid Usage",
-                            `**Usage:** \`${PREFIX}wreset @user\`\n\nReplying to a message does **not** count — you must type the @mention.`
+                            `**Usage:** \`${PREFIX}wreset @user\`\n\nReplies do not count; mention the user directly.`
                         )
                     );
                 }
