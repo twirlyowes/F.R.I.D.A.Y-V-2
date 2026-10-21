@@ -47,7 +47,6 @@ const client = new Client({
 // Many feature modules each listen for messages; raise the default cap of 10.
 client.setMaxListeners(50);
 consoleLogger.connect(client);
-client.setMaxListeners(20);
 
 const WARN_FILE = path.join(__dirname, "warnings.json");
 
