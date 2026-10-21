@@ -419,13 +419,9 @@ ${message.content || "*[No Text Content]*"}
                 const categoryCard = createCard({
                     color: COLORS.SKY_BLUE,
                     content:
-`# 📨 F.R.I.D.A.Y
+`# 📨 Support Ticket
 
-Welcome to F.R.I.D.A.Y.
-
-Please select the category that best matches your query.
-
-<a:sparkles:1532986077651140620> **Choose a category below.**`,
+Choose a category below.`,
                     avatarURL: getAvatarURL(message.author),
                     avatarDescription:
                         `${message.author.username}'s avatar`
@@ -448,11 +444,9 @@ Please select the category that best matches your query.
                     const serverCard = createCard({
                         color: COLORS.SKY_BLUE,
                         content:
-`# 📨 F.R.I.D.A.Y
+`# Choose a Server
 
-We share more than one server.
-
-Please choose which server your question is about.`,
+Select which server this ticket is for.`,
                         avatarURL: getAvatarURL(message.author),
                         avatarDescription:
                             `${message.author.username}'s avatar`
@@ -566,11 +560,9 @@ ${message.content || "*[No Text Content]*"}
                 const categoryCard = createCard({
                     color: COLORS.SKY_BLUE,
                     content:
-`# 📨 F.R.I.D.A.Y
+`# 📨 Support Ticket
 
-Please select the category that best matches your query.
-
-<a:sparkles:1532986077651140620> **Choose a category below.**`,
+Choose a category below.`,
                     avatarURL: getAvatarURL(interaction.user),
                     avatarDescription:
                         `${interaction.user.username}'s avatar`
@@ -901,14 +893,12 @@ ${categoryName}
                     createCard({
                         color: COLORS.GREEN,
                         content:
-`# <:success_g:1561271843346714777> Support Ticket Created
-
-Your support ticket has been successfully created.
+`# <:success_g:1561271843346714777> Ticket Created
 
 **Ticket:** #${formattedId}
 **Category:** ${categoryName}
 
-Our support team will assist you shortly.`,
+Our support team will get back to you soon.`,
                         avatarURL:
                             getAvatarURL(interaction.user),
                         avatarDescription:
