@@ -260,8 +260,15 @@ async function saveField(guild, field, value) {
 
 async function createResource(guild, field) {
   const def = guildConfig.SETTINGS[field.key];
+  if (!def) throw new Error("Unknown setup setting: " + field.key);
+
+  const botMember = guild.members.me || await guild.members.fetchMe().catch(() => null);
+  if (!botMember) throw new Error("I could not resolve my bot member in this server.");
 
   if (def.type === "role") {
+    if (!botMember.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+      throw new Error("I need the **Manage Roles** permission to create the " + field.name + ".");
+    }
     const role = await guild.roles.create({
       name: field.createName || field.name,
       permissions: [],
@@ -279,13 +286,25 @@ async function createResource(guild, field) {
     }
   }
 
+  if (!botMember.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+    throw new Error("I need the **Manage Channels** permission to create the " + field.name + ".");
+  }
   const type = CHANNEL_TYPES[def.type]?.[0];
-  if (!type) throw new Error("This setting cannot create that type of resource.");
-  const channel = await guild.channels.create({
+  if (!type) throw new Error("This setting cannot create that type of resource (setting type: " + def.type + ").");
+
+  const channelOptions = {
     name: field.createName || field.name.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
     type,
     reason: "F.R.I.D.A.Y guided server setup"
-  });
+  };
+  if (field.key === "voiceCreate") {
+    const cfg = await guildConfig.get(guild.id);
+    const category = cfg.voiceCategory
+      ? guild.channels.cache.get(cfg.voiceCategory) || await guild.channels.fetch(cfg.voiceCategory).catch(() => null)
+      : null;
+    if (category?.type === ChannelType.GuildCategory) channelOptions.parent = category.id;
+  }
+  const channel = await guild.channels.create(channelOptions);
 
   const cfg = await guildConfig.get(guild.id);
   if (cfg.quarantineRole) {
@@ -378,9 +397,9 @@ module.exports = client => {
           }
         }
 
-        const content = "# Setup All • Results\\n\\n" +
-          results.join("\\n") +
-          "\\n\\n**Note:** YouTube Channel URL needs to be entered manually. Review created channels and roles, then use .config to fine-tune permissions and settings.";
+        const content = "# Setup All • Results\n\n" +
+          results.join("\n") +
+          "\n\n**Note:** YouTube Channel URL needs to be entered manually. Review created channels and roles, then use .config to fine-tune permissions and settings.";
         return interaction.editReply({
           components: [
             card(guild, COLORS.SKY_BLUE, content),
