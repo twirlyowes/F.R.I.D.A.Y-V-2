@@ -43,8 +43,8 @@ const FEATURES = {
     label: "Temporary Voice Rooms",
     description: "Choose the join-to-create voice channel and room category.",
     fields: [
-      { key: "voiceCreate", name: "Join-to-Create Voice Channel", createName: "join-to-create" },
-      { key: "voiceCategory", name: "Temporary Voice Category", createName: "temporary-rooms" }
+      { key: "voiceCategory", name: "Temp VCs Category", createName: "Temp VCs" },
+      { key: "voiceCreate", name: "Join-to-Create Voice Channel", createName: "join-to-create" }
     ]
   },
   tickets: {
@@ -103,6 +103,26 @@ function card(guild, color, content) {
     avatarURL: guild.client.user.displayAvatarURL({ extension: "png", size: 128 }),
     avatarDescription: "F.R.I.D.A.Y"
   });
+}
+
+function statusPage(guild, status, title, content, actionRow = null) {
+  const styles = {
+    progress: { color: COLORS.SKY_BLUE, emoji: "<a:loading:1532985888118931517>", label: "IN PROGRESS" },
+    success: { color: COLORS.GREEN, emoji: "<:success_g:1561271843346714777>", label: "SUCCESS" },
+    completed: { color: COLORS.GREEN, emoji: "<a:success:1532986625343099050>", label: "COMPLETED" },
+    error: { color: COLORS.RED, emoji: "<:error_g:1561271715164721245>", label: "ERROR" }
+  };
+  const style = styles[status] || styles.progress;
+  return {
+    components: [
+      card(guild, style.color,
+        "# " + style.emoji + " " + title + "\n\n" + content +
+        "\n\n-# " + style.label + " • F.R.I.D.A.Y Setup"),
+      ...(actionRow ? [actionRow] : [])
+    ],
+    flags: MessageFlags.IsComponentsV2,
+    allowedMentions: { parse: [] }
+  };
 }
 
 function resourceLabel(def, value) {
@@ -302,10 +322,20 @@ async function createResource(guild, field) {
   };
   if (field.key === "voiceCreate") {
     const cfg = await guildConfig.get(guild.id);
-    const category = cfg.voiceCategory
+    let category = cfg.voiceCategory
       ? guild.channels.cache.get(cfg.voiceCategory) || await guild.channels.fetch(cfg.voiceCategory).catch(() => null)
       : null;
-    if (category?.type === ChannelType.GuildCategory) channelOptions.parent = category.id;
+    if (!category || category.type !== ChannelType.GuildCategory) {
+      category = guild.channels.cache.find(channel =>
+        channel.type === ChannelType.GuildCategory && channel.name.toLowerCase() === "temp vcs"
+      ) || null;
+      if (!category) category = await guild.channels.create({
+        name: "Temp VCs", type: ChannelType.GuildCategory,
+        reason: "F.R.I.D.A.Y guided voice setup"
+      });
+      await guildConfig.set(guild.id, "voiceCategory", category.id);
+    }
+    channelOptions.parent = category.id;
   }
   const channel = await guild.channels.create(channelOptions);
 
@@ -375,51 +405,52 @@ module.exports = client => {
         return interaction.update(await buildMainPanel(guild, userId));
       }
       if (action === "all" && interaction.isButton()) {
-        await interaction.deferUpdate();
-        const results = [];
+        await interaction.update(statusPage(guild, "progress", "Setup All • In Progress",
+          "FRIDAY is creating the missing channels and roles. Existing configured settings will be left unchanged."));
+        const successes = [];
+        const skipped = [];
+        const errors = [];
         const cfg = await guildConfig.get(guild.id);
 
         for (const feature of Object.values(FEATURES)) {
           for (const field of feature.fields) {
             const latestCfg = await guildConfig.get(guild.id);
             if (latestCfg[field.key]) {
-              results.push("↪️ **" + field.name + "** — already configured");
+              skipped.push("↪️ **" + field.name + "** — already configured");
               continue;
             }
             if (field.key === "youtubeUrl") {
-              results.push("⏭️ **" + field.name + "** — add manually in the YouTube Alerts step");
+              skipped.push("⏭️ **" + field.name + "** — add manually in the YouTube Alerts step");
               continue;
             }
             try {
               const latestCfg = await guildConfig.get(guild.id);
               if (latestCfg[field.key]) {
-                results.push("↪️ **" + field.name + "** — already configured; skipped");
+                skipped.push("↪️ **" + field.name + "** — already configured; skipped");
                 continue;
               }
               const value = await createResource(guild, field);
               cfg[field.key] = value.id;
-              results.push("<:success_g:1561271843346714777> **" + field.name + "** — created");
+              successes.push("<:success_g:1561271843346714777> **" + field.name + "** — created");
             } catch (error) {
-              results.push("<:error_g:1561271715164721245> **" + field.name + "** — " +
+              errors.push("<:error_g:1561271715164721245> **" + field.name + "** — " +
                 String(error.message || "failed").slice(0, 180));
             }
           }
         }
 
-        const content = "# Setup All • Results\n\n" +
-          results.join("\n") +
-          "\n\n**Note:** YouTube Channel URL needs to be entered manually. Review created channels and roles, then use .config to fine-tune permissions and settings.";
-        return interaction.editReply({
-          components: [
-            card(guild, COLORS.SKY_BLUE, content),
-            new ActionRowBuilder().addComponents(
-              new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Primary),
-              new ButtonBuilder().setCustomId("setup:close:" + userId).setLabel("Close").setStyle(ButtonStyle.Secondary)
-            )
-          ],
-          flags: MessageFlags.IsComponentsV2,
-          allowedMentions: { parse: [] }
-        });
+        const sections = [];
+        if (successes.length) sections.push("## <:success_g:1561271843346714777> Success\\n" + successes.join("\\n"));
+        if (skipped.length) sections.push("## <a:settings:1532990547394957393> Skipped / Already Configured\\n" + skipped.join("\\n"));
+        if (errors.length) sections.push("## <:error_g:1561271715164721245> Errors\\n" + errors.join("\\n"));
+        const title = errors.length ? "Setup All • Completed with Errors" : "Setup All • Completed";
+        const content = sections.join("\\n\\n") +
+          "\\n\\n**Note:** YouTube Channel URL needs to be entered manually. Review created channels and roles, then use .config to fine-tune permissions and settings.";
+        return interaction.editReply(statusPage(guild, errors.length ? "error" : "completed", title, content,
+          new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId("setup:close:" + userId).setLabel("Close").setStyle(ButtonStyle.Secondary)
+          )));
       }
       if (action === "close" && interaction.isButton()) {
         return interaction.update({
@@ -429,6 +460,11 @@ module.exports = client => {
         });
       }
 
+      if (action === "continue" && interaction.isButton()) {
+        const featureKey = parts[2];
+        const nextIndex = Number(parts[3]);
+        return interaction.update(await buildFeaturePanel(guild, userId, featureKey, nextIndex));
+      }
       const featureKey = parts[2];
       const index = Number(parts[3]);
       const field = targetField(featureKey, index);
@@ -470,21 +506,29 @@ module.exports = client => {
       }
 
       if (action === "create" && interaction.isButton()) {
+        const latestCfg = await guildConfig.get(guild.id);
+        if (latestCfg[field.key]) return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index,
+          "**Already configured.** Select a replacement above if you want to change it; no duplicate was created."));
+        await interaction.update(statusPage(guild, "progress", "Creating Resource • In Progress",
+          "Creating **" + field.name + "**. Please wait while FRIDAY applies the configuration."));
         try {
-          const latestCfg = await guildConfig.get(guild.id);
-          if (latestCfg[field.key]) {
-            return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index,
-              "**Already configured.** Select a replacement above if you want to change it; no duplicate was created."));
-          }
           const value = await createResource(guild, field);
           const def = guildConfig.SETTINGS[field.key];
           const mention = def.type === "role" ? "<@&" + value.id + ">" : "<#" + value.id + ">";
-          return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index + 1,
-            "<:success_g:1561271843346714777> Created and saved **" + field.name + "**: " + mention + "."));
+          return interaction.editReply(statusPage(guild, "success", "Resource Created • Success",
+            "<:success_g:1561271843346714777> Created and saved **" + field.name + "**: " + mention + ".",
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId("setup:continue:" + featureKey + ":" + (index + 1) + ":" + userId).setLabel("Continue Setup").setStyle(ButtonStyle.Success),
+              new ButtonBuilder().setCustomId("setup:continue:" + featureKey + ":" + index + ":" + userId).setLabel("Back to Step").setStyle(ButtonStyle.Secondary)
+            )));
         } catch (error) {
           console.error("[Setup] Resource creation failed:", error);
-          return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index,
-            "<:error_g:1561271715164721245> " + error.message));
+          return interaction.editReply(statusPage(guild, "error", "Resource Creation • Error",
+            "<:error_g:1561271715164721245> Could not create **" + field.name + "**.\n\n" + String(error.message || "Unknown error").slice(0, 700),
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId("setup:continue:" + featureKey + ":" + index + ":" + userId).setLabel("Back to Step").setStyle(ButtonStyle.Secondary),
+              new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Secondary)
+            )));
         }
       }
 
