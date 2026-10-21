@@ -234,7 +234,7 @@ async function buildPanel(guild, userId, selectedKey = null, note = null) {
         .setCustomId(`cfg:clear:${selectedKey}:${userId}`)
         .setLabel("Clear")
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!cfg[selectedKey]),
+        .setDisabled(!cfg[selectedKey] && !cfg.__setupCreated?.[selectedKey]),
       new ButtonBuilder()
         .setCustomId(`cfg:done:${userId}`)
         .setLabel("Done")
