@@ -241,12 +241,10 @@ module.exports = (client) => {
                 const card = createAFKCard(
                     SKY_BLUE,
                     `<a:Moon:1532988257338527835> **AFK Enabled**\n\n` +
-                    `AFK enabled successfully.\n\n` +
                     `<a:LP_Message:1532991009066324049> **Reason**\n` +
                     `> ${reason}\n\n` +
                     `<a:Clock:1532990759371018372> **Started**\n` +
-                    `> ${formatTime(time)}\n\n` +
-                    `<a:sparkles:1532986077651140620> Hope you have a great time away!`,
+                    `> ${formatTime(time)}`,
                     avatarURL,
                     `${message.author.username}'s avatar`
                 );
@@ -283,10 +281,8 @@ module.exports = (client) => {
                 const card = createAFKCard(
                     SUCCESS_GREEN,
                     `<a:back:1532987608542744847> **Welcome Back!**\n\n` +
-                    `AFK removed.\n\n` +
                     `<a:Clock:1532990759371018372> **Time Away**\n` +
-                    `> ${duration}\n\n` +
-                    `<a:success:1532986625343099050> Welcome back to **${message.guild.name}**. Hope you had a great break!`,
+                    `> ${duration}`,
                     avatarURL,
                     `${message.author.username}'s avatar`
                 );
