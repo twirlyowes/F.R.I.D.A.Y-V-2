@@ -541,7 +541,7 @@ async function buildPanel(guild, userId, note = null) {
       `**Auto-restore:** ${cfg.restore ? "on" : "off"}\n\n` +
       `${featureLines.join("\n")}\n\n` +
       `**Trusted (exempt):** ${trusted}\n` +
-      `-# Server owner and bot owner are trusted automatically. Use wl to add trusted users.\n\n` +
+      `-# Server owner, bot and extra owners are trusted automatically; use wl for others.\n\n` +
       `**My permissions:** ${permissionLine}\n` +
       `${auditMissing ? "<:error_g:1561271715164721245> Missing **View Audit Log** — Anti-Nuke cannot identify offenders.\n" : ""}\n` +
       `-# F.R.I.D.A.Y • Anti-Nuke`,
