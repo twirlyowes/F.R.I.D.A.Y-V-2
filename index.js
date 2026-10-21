@@ -339,6 +339,7 @@ client.on(
     try {
 
       if (command === "testembed") {
+        if (args.length) return message.reply(cardReply(COLORS.RED, "Usage: " + PREFIX + "testembed (no arguments)."));
         const container =
           new ContainerBuilder()
             .setAccentColor(0x38BDF8)

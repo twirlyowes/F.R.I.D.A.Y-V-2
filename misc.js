@@ -83,6 +83,7 @@ module.exports = (client) => {
     const { command, args: words, prefix: PREFIX } = parsed;
 
     if (command === "ip") {
+      if (words.length) return message.reply(cardReply(COLORS.RED, "Usage: " + PREFIX + "ip (no arguments)."));
       try {
         const cfg = await guildConfig.get(message.guild.id);
 
@@ -402,6 +403,7 @@ module.exports = (client) => {
       }
 
       if (command === "si" || command === "serverinfo") {
+        if (words.length) return message.reply(cardReply(COLORS.RED, "Usage: " + PREFIX + "serverinfo (no arguments)."));
         const guild = message.guild;
 
         await guild.fetchOwner();
@@ -556,6 +558,10 @@ module.exports = (client) => {
 
         const stickyText = words.join(" ");
 
+        if (words[0] && words[0].toLowerCase() === "off" && words.length > 1) {
+          return message.reply(cardReply(COLORS.RED, "Use `" + PREFIX + "sticky off` with no extra words to disable a sticky message."));
+        }
+
         if (!stickyText) {
           return message.reply(
             cardReply(
@@ -687,6 +693,7 @@ module.exports = (client) => {
       }
 
       if (command === "botinfo") {
+        if (words.length) return message.reply(cardReply(COLORS.RED, "Usage: " + PREFIX + "botinfo (no arguments)."));
         const totalMembers = client.guilds.cache.reduce(
           (acc, guild) => acc + guild.memberCount,
           0
@@ -846,6 +853,7 @@ module.exports = (client) => {
         }
       }
 if (command === "hide") {
+        if (words.length) return message.reply(cardReply(COLORS.RED, "Usage: " + PREFIX + "hide (no arguments)."));
         if (
           !message.member.permissions.has(
             PermissionsBitField.Flags.ManageChannels
@@ -901,6 +909,7 @@ if (command === "hide") {
       }
 
       if (command === "unhide") {
+        if (words.length) return message.reply(cardReply(COLORS.RED, "Usage: " + PREFIX + "unhide (no arguments)."));
         if (
           !message.member.permissions.has(
             PermissionsBitField.Flags.ManageChannels

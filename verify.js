@@ -228,6 +228,7 @@ module.exports = function(client) {
             // ==================== VERIFICATION PANEL ====================
             // Roles/channels come from the config command (verifyChannel, verifiedRole, unverifiedRole).
             if (command === 'setupverify') {
+                if (args.length) return message.reply("Usage: " + parsed.prefix + "setupverify (no arguments).");
                 if (!message.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
                     return await message.reply('<:error_g:1561271715164721245> You need the **Manage Server** permission to deploy the verification panel.');
                 }

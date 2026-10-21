@@ -1,0 +1,28 @@
+name: Command validation
+
+on:
+  push:
+    branches:
+      - fix/command-argument-parsing
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run command argument tests
+        run: npm test
+      - name: Syntax-check all JavaScript files
+        shell: bash
+        run: find . -path './node_modules' -prune -o -name '*.js' -type f -print0 | xargs -0 -n1 node --check

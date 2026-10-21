@@ -273,6 +273,7 @@ function setupHelpCommand(client) {
             if (!parsed || parsed.command !== "help") return;
 
             const p = parsed.prefix;
+            if (parsed.args.length) return message.reply("Usage: " + p + "help (no arguments).");
 
             const avatarURL = client.user.displayAvatarURL({
                 extension: "png",

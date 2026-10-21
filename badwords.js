@@ -115,6 +115,7 @@ module.exports = (client) => {
 
                 // List All Words
                 if (command === "badwordslist") {
+                    if (args.length !== 1) return message.reply("Usage: " + parsed.prefix + "badwordslist");
                     const list = Array.from(badWordsCache);
                     if (list.length === 0) return message.reply("The bad words list is empty.");
 

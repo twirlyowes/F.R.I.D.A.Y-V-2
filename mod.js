@@ -279,6 +279,7 @@ module.exports = (client) => {
       // =========================================================
 
       if (command === "ping") {
+        if (args.length) return message.reply(cardReply(COLORS.RED, "Usage: " + PREFIX + "ping (no arguments).", message.author));
         const sent = await message.reply(
           cardReply(
             BLURPLE,
@@ -306,6 +307,7 @@ module.exports = (client) => {
       // =========================================================
 
       if (command === "uptime") {
+        if (args.length) return message.reply(cardReply(COLORS.RED, "Usage: " + PREFIX + "uptime (no arguments).", message.author));
         const uptime = Date.now() - startTime;
         const totalSeconds = Math.floor(uptime / 1000);
 
