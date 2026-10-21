@@ -211,6 +211,8 @@ module.exports = client => {
 
             if (command === "wlist") {
 
+                if (args.length !== 1) return message.channel.send(cardReply(ERROR_RED, "Invalid Usage", "Usage: " + PREFIX + "wlist @user"));
+
                 /*
                  * IMPORTANT:
                  * The user MUST be explicitly mentioned, same as warn/wremove/wreset.
@@ -300,9 +302,9 @@ module.exports = client => {
                     );
                 }
 
-                const warnId = args.find(arg => /^\d{6}$/.test(arg));
+                const warnId = args[1];
 
-                if (!warnId) {
+                if (args.length !== 2 || !/^\d{6}$/.test(warnId || "")) {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
@@ -401,6 +403,8 @@ module.exports = client => {
             // =========================================================
 
             if (command === "wreset") {
+
+                if (args.length !== 1) return message.channel.send(cardReply(ERROR_RED, "Invalid Usage", "Usage: " + PREFIX + "wreset @user"));
 
                 const user = getExplicitMentionedMember(message, args);
 

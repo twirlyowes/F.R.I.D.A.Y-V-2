@@ -572,6 +572,7 @@ module.exports = client => {
       const parsed = await parseCommand(message);
 
       if (parsed && parsed.command === "automod") {
+        if (parsed.args.length) return message.reply({ content: "Usage: " + parsed.prefix + "automod (open the configuration panel).", allowedMentions: { parse: [] } });
         if (!canManage(message.member)) {
           return message.reply({
             content: "You need the **Manage Server** permission to change AutoMod.",

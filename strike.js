@@ -388,6 +388,8 @@ module.exports = client => {
 
             if (command === "strikes") {
 
+                if (args.length !== 1) return message.channel.send(cardReply(ERROR_RED, "Invalid Usage", "Usage: " + PREFIX + "strikes @user"));
+
                 const user = getExplicitMentionedMember(
                     message,
                     args
@@ -580,6 +582,7 @@ module.exports = client => {
                 const strikeIdArg = args[1];
 
                 if (
+                    args.length !== 2 ||
                     !strikeIdArg ||
                     !/^\d+$/.test(strikeIdArg)
                 ) {

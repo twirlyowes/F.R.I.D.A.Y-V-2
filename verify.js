@@ -14,6 +14,7 @@ const {
 
 const guildConfig = require("./lib/guildConfig");
 const { parseCommand, getPrefix } = require("./lib/prefix");
+const { extractSnowflake } = require("./lib/commandArgs");
 
 const pendingCaptchas = new Map(); // guildId:userId -> { answer, attempts, timeoutId }
 const cooldowns = new Map();       // guildId:userId -> timestamp expiration
@@ -180,11 +181,12 @@ module.exports = function(client) {
                 }
 
                 let startIndex = 0;
-                if (args[0] && !isNaN(args[0])) {
-                    const parsedIndex = parseInt(args[0]) - 1;
-                    if (parsedIndex >= 0 && parsedIndex < channelSnipes.length) {
-                        startIndex = parsedIndex;
-                    }
+                if (args.length > 1) return message.reply("Usage: " + parsed.prefix + "snipe [positive message number].");
+                if (args.length === 1) {
+                    if (!/^\d+$/.test(args[0])) return message.reply("The snipe number must be a positive whole number.");
+                    const parsedIndex = Number(args[0]);
+                    if (!Number.isSafeInteger(parsedIndex) || parsedIndex < 1 || parsedIndex > channelSnipes.length) return message.reply("Choose a snipe number between 1 and " + channelSnipes.length + ".");
+                    startIndex = parsedIndex - 1;
                 }
 
                 // A frozen copy: deletions that happen while someone is browsing don't shift the list
@@ -226,6 +228,7 @@ module.exports = function(client) {
             // ==================== VERIFICATION PANEL ====================
             // Roles/channels come from the config command (verifyChannel, verifiedRole, unverifiedRole).
             if (command === 'setupverify') {
+                if (args.length) return message.reply("Usage: " + parsed.prefix + "setupverify (no arguments).");
                 if (!message.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
                     return await message.reply('<:error_g:1561271715164721245> You need the **Manage Server** permission to deploy the verification panel.');
                 }
@@ -254,7 +257,9 @@ module.exports = function(client) {
                     return message.reply({ embeds: [embed] });
                 }
 
-                const member = message.mentions.members.first();
+                const memberTokenIndex = args.findIndex(arg => /^<@!?\d{15,25}>$/.test(arg));
+                const memberId = memberTokenIndex >= 0 ? extractSnowflake(args[memberTokenIndex]) : null;
+                const member = memberId ? (message.guild.members.cache.get(memberId) || await message.guild.members.fetch(memberId).catch(() => null)) : null;
                 if (!member) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
@@ -262,10 +267,7 @@ module.exports = function(client) {
                     return message.reply({ embeds: [embed] });
                 }
 
-                const roleQuery = args
-                    .filter(arg => !arg.match(/<@!?\d+>/))
-                    .join(" ")
-                    .trim();
+                const roleQuery = args.filter((arg, index) => index !== memberTokenIndex).join(" ").trim();
 
                 if (!roleQuery) {
                     const embed = new EmbedBuilder()
@@ -275,12 +277,14 @@ module.exports = function(client) {
                 }
 
                 const cleanedQuery = roleQuery.toLowerCase();
-                const roleMentionId = roleQuery.replace(/[<@&>]/g, "");
-
-                const role = 
-                    message.guild.roles.cache.get(roleMentionId) || 
-                    message.guild.roles.cache.find(r => r.name.toLowerCase() === cleanedQuery) ||
-                    message.guild.roles.cache.find(r => r.name.toLowerCase().includes(cleanedQuery));
+                const roleMentionId = roleQuery.replace(/[<@&>]/g, "").trim();
+                let role = /^\d{15,25}$/.test(roleMentionId) ? message.guild.roles.cache.get(roleMentionId) : null;
+                if (!role) role = message.guild.roles.cache.find(r => r.name.toLowerCase() === cleanedQuery);
+                if (!role) {
+                    const partialRoles = message.guild.roles.cache.filter(r => r.name.toLowerCase().includes(cleanedQuery));
+                    if (partialRoles.size > 1) return message.reply("That role name is ambiguous. Please use the exact role name or mention the role.");
+                    if (partialRoles.size === 1) role = partialRoles.first();
+                }
 
                 if (!role) {
                     const embed = new EmbedBuilder()

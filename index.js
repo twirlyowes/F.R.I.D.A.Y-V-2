@@ -19,6 +19,7 @@ const guildConfig = require("./lib/guildConfig");
 const { parseCommand } = require("./lib/prefix");
 const consoleLogger = require("./console");
 const { COLORS, createCard, getAvatarURL } = require("./lib/pixelVillaUI");
+const { extractSnowflake, parseMuteArguments, parseStrictInteger } = require("./lib/commandArgs");
 
 const TOKEN = process.env.DISCORD_TOKEN;
 
@@ -256,35 +257,6 @@ function hierarchyCheck(
   );
 }
 
-function ms(time) {
-  if (!time) return null;
-
-  const number = parseInt(
-    time,
-    10
-  );
-
-  if (isNaN(number)) return null;
-
-  if (time.endsWith("s")) {
-    return number * 1000;
-  }
-
-  if (time.endsWith("m")) {
-    return number * 60000;
-  }
-
-  if (time.endsWith("h")) {
-    return number * 3600000;
-  }
-
-  if (time.endsWith("d")) {
-    return number * 86400000;
-  }
-
-  return null;
-}
-
 async function sendLog(
   guild,
   options
@@ -364,9 +336,20 @@ client.on(
 
     const { command, args, prefix: PREFIX } = parsed;
 
+    if (!parsed.viaNoPrefix) {
+      const suggestion = require("./lib/commandNameHints").suggestCommand(command);
+      if (suggestion) {
+        return message.reply(cardReply(COLORS.SKY_BLUE,
+          "Unknown command `" + PREFIX + command + "`." +
+          "\n\nDid you mean `" + PREFIX + suggestion + "`? Nothing was executed."
+        ));
+      }
+    }
+
     try {
 
       if (command === "testembed") {
+        if (args.length) return message.reply(cardReply(COLORS.RED, "Usage: " + PREFIX + "testembed (no arguments)."));
         const container =
           new ContainerBuilder()
             .setAccentColor(0x38BDF8)
@@ -412,80 +395,26 @@ client.on(
       }
 
       if (command === "mute") {
-        const user =
-          message.mentions.members.first();
-
-        const time = args[1];
-
-        const reason =
-          args.slice(2).join(" ") ||
-          "No reason provided";
-
-        if (
-          !user ||
-          !time ||
-          !ms(time)
-        ) {
-          return message.reply(
-            cardReply(
-              COLORS.RED,
-              `**Usage:** ${PREFIX}mute @user [time: 10m/1h] [reason]`
-            )
-          );
-        }
-
-        if (
-          !hasModPermission(
-            message.member
-          )
-        ) {
-          return message.reply(
-            cardReply(
-              COLORS.RED,
-              "You need the **Moderate Members** permission."
-            )
-          );
-        }
-
-        if (
-          !hierarchyCheck(
-            message,
-            user
-          )
-        ) {
-          return message.reply(
-            cardReply(
-              COLORS.RED,
-              "You cannot mute this user due to role hierarchy."
-            )
-          );
-        }
-
-        await user.timeout(
-          ms(time),
-          reason
-        );
-
-        const options =
-          cardReply(
-            COLORS.RED,
-            `**${user.user.tag}** has been muted.\n\n**Duration:** ${time}\n**Reason:** ${reason}\n**Moderator:** ${message.author.tag}`,
-            user
-          );
-
-        await message.reply(
-          options
-        );
-
-        await sendLog(
-          message.guild,
-          options
-        );
+        const parsedMute = parseMuteArguments(args);
+        if (!parsedMute) return message.reply(cardReply(COLORS.RED,
+          "**Usage:** " + PREFIX + "mute @user <duration> [reason]\n" +
+          "Examples: " + PREFIX + "mute @user 35m reason | " + PREFIX + "mute 35m @user reason\n" +
+          "Durations: 30s, 35m, 1.5h, 2d, or 35 minutes (maximum 28 days)."
+        ));
+        const user = message.guild.members.cache.get(parsedMute.userId) || await message.guild.members.fetch(parsedMute.userId).catch(() => null);
+        if (!user) return message.reply(cardReply(COLORS.RED, "I could not find that member in this server. Use their mention or user ID."));
+        if (!hasModPermission(message.member)) return message.reply(cardReply(COLORS.RED, "You need the **Moderate Members** permission."));
+        if (!hierarchyCheck(message, user)) return message.reply(cardReply(COLORS.RED, "You cannot mute this user due to role hierarchy."));
+        if (!user.moderatable) return message.reply(cardReply(COLORS.RED, "I cannot mute this user because of my role hierarchy or permissions."));
+        await user.timeout(parsedMute.durationMs, parsedMute.reason);
+        const options = cardReply(COLORS.RED, "**" + user.user.tag + "** has been muted.\n\n" +
+          "**Duration:** " + parsedMute.durationLabel + "\n**Reason:** " + parsedMute.reason + "\n**Moderator:** " + message.author.tag, user);
+        await message.reply(options); await sendLog(message.guild, options);
       }
-
       if (command === "unmute") {
-        const user =
-          message.mentions.members.first();
+        const userId = extractSnowflake(args[0]);
+        if (!userId || args.length !== 1) return message.reply(cardReply(COLORS.RED, "Usage: " + PREFIX + "unmute @user (or user ID)."));
+        const user = message.guild.members.cache.get(userId) || await message.guild.members.fetch(userId).catch(() => null);
 
         if (!user) {
           return message.reply(
@@ -594,14 +523,9 @@ client.on(
           );
         }
 
-        const amount =
-          Number(args[0]);
+        const amount = args.length === 1 ? parseStrictInteger(args[0], 1, 100) : null;
 
-        if (
-          !amount ||
-          amount < 1 ||
-          amount > 100
-        ) {
+        if (amount === null) {
           return message.reply(
             cardReply(
               COLORS.RED,
@@ -639,28 +563,18 @@ client.on(
       }
 
       if (command === "vcp") {
-        const search =
-          args.join(" ")
-            .trim()
-            .toLowerCase();
-
-        const user =
-          message.mentions.members.first() ||
-          message.guild.members.cache.get(
-            search
-          ) ||
-          message.guild.members.cache.find(
-            member =>
-              member.user.username
-                .toLowerCase()
-                .includes(search)
-          ) ||
-          message.guild.members.cache.find(
-            member =>
-              member.displayName
-                .toLowerCase()
-                .includes(search)
-          );
+        const search = args.join(" ").trim().toLowerCase();
+        const directId = args.length === 1 ? extractSnowflake(args[0]) : null;
+        let user = directId ? (message.guild.members.cache.get(directId) || await message.guild.members.fetch(directId).catch(() => null)) : null;
+        if (!user && search) {
+          const members = [...message.guild.members.cache.values()];
+          const names = member => [member.user.username, member.user.globalName, member.displayName, member.nickname].filter(Boolean).map(name => name.toLowerCase());
+          const uniqueById = list => [...new Map(list.map(member => [member.id, member])).values()];
+          const exact = uniqueById(members.filter(member => names(member).some(name => name === search)));
+          const candidates = exact.length ? exact : uniqueById(members.filter(member => names(member).some(name => name.includes(search))));
+          if (candidates.length > 1) return message.reply(cardReply(COLORS.RED, "That name matches multiple members. Please mention the exact user or use their ID."));
+          if (candidates.length === 1) user = candidates[0];
+        }
 
         if (!user) {
           return message.reply(

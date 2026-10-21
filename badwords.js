@@ -93,9 +93,8 @@ module.exports = (client) => {
             if (isStaff) {
                 // Add Word
                 if (command === "addbadword") {
-                    if (!args[1]) return message.reply("Provide a word.");
-
-                    const word = args[1].toLowerCase();
+                    const word = args.slice(1).join(" ").trim().toLowerCase();
+                    if (!word) return message.reply("Provide a word or phrase.");
                     if (badWordsCache.has(word)) return message.reply("Word already exists.");
 
                     badWordsCache.add(word);
@@ -105,9 +104,8 @@ module.exports = (client) => {
 
                 // Remove Word
                 if (command === "removebadword") {
-                    if (!args[1]) return message.reply("Provide a word.");
-
-                    const word = args[1].toLowerCase();
+                    const word = args.slice(1).join(" ").trim().toLowerCase();
+                    if (!word) return message.reply("Provide a word or phrase.");
                     if (!badWordsCache.has(word)) return message.reply("Word not found in database.");
 
                     badWordsCache.delete(word);
@@ -117,6 +115,7 @@ module.exports = (client) => {
 
                 // List All Words
                 if (command === "badwordslist") {
+                    if (args.length !== 1) return message.reply("Usage: " + parsed.prefix + "badwordslist");
                     const list = Array.from(badWordsCache);
                     if (list.length === 0) return message.reply("The bad words list is empty.");
 

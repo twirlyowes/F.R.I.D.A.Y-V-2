@@ -21,6 +21,7 @@ const { MessageFlags } = require("discord.js");
 const db = require("./firebase");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
 const { parseCommand } = require("./lib/prefix");
+const { extractSnowflake } = require("./lib/commandArgs");
 
 const ALLOWED = "allowed_guilds";
 const META_DOC = db.collection("bot_meta").doc("access");
@@ -160,6 +161,7 @@ module.exports = client => {
       }
 
       if (command === "servers") {
+        if (args.length !== 0) return reply(message, COLORS.RED, "Usage: " + parsed.prefix + "servers");
         const joined = [...client.guilds.cache.values()].map(
           g => `• **${g.name}** — \`${g.id}\` (${g.memberCount} members)`
         );
@@ -177,9 +179,9 @@ module.exports = client => {
         );
       }
 
-      const guildId = (args[0] || "").replace(/\D/g, "");
+      const guildId = args.length === 1 ? extractSnowflake(args[0]) : null;
 
-      if (!/^\d{17,20}$/.test(guildId)) {
+      if (!guildId) {
         return reply(
           message,
           COLORS.RED,

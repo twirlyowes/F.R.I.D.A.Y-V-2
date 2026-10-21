@@ -30,6 +30,7 @@ const guildConfig = require("./lib/guildConfig");
 const protection = require("./lib/protection");
 const owners = require("./lib/owners");
 const { parseCommand } = require("./lib/prefix");
+const { extractSnowflake } = require("./lib/commandArgs");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
 
 // ---------------------------------------------------------------------------
@@ -701,9 +702,10 @@ module.exports = client => {
       }
 
       if ((parsed.args[0] || "").toLowerCase() === "trust") {
-        const id = (parsed.args[1] || message.mentions.users.first()?.id || "").replace(/\D/g, "");
+        if (parsed.args.length !== 2) return message.reply({ content: `Usage: ${parsed.prefix}antinuke trust <@user | id>`, allowedMentions: { parse: [] } });
+        const id = extractSnowflake(parsed.args[1]);
 
-        if (!/^\d{17,20}$/.test(id)) {
+        if (!id) {
           return message.reply({
             content: `Tell me who: \`${parsed.prefix}antinuke trust <@user | id>\``,
             allowedMentions: { parse: [] }
@@ -723,6 +725,7 @@ module.exports = client => {
         });
       }
 
+      if (parsed.args.length) return message.reply({ content: `Usage: ${parsed.prefix}antinuke or ${parsed.prefix}antinuke trust <@user | id>`, allowedMentions: { parse: [] } });
       return message.reply(await buildPanel(guild, message.author.id));
     } catch (error) {
       console.error("[AntiNuke] Command error:", error);
