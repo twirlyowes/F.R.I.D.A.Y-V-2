@@ -780,6 +780,12 @@ require("./automod")(client);
 console.log("Loading anti-nuke...");
 require("./antinuke")(client);
 
+console.log("Loading antibot...");
+require("./antibot")(client);
+
+console.log("Loading owner management...");
+require("./owner")(client);
+
 console.log("Loading no-prefix...");
 require("./noprefix")(client);
 require("./activetime")(client);
