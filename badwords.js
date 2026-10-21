@@ -167,9 +167,7 @@ module.exports = (client) => {
                         .setDescription(
 `<a:Warning:1532986372716236932> ${message.author}
 
-Your message has been removed because it contained a prohibited word.
-
-Please follow the server rules and keep the chat respectful.`
+Message removed for a prohibited word.`
                         )
                 ]
             }).catch(() => null);
@@ -257,9 +255,7 @@ ${deletedMessage.slice(0, 1000)}
                         .setDescription(
 `<a:Warning:1532986372716236932> ${newMessage.author}
 
-Your edited message was removed because editing in a link is not allowed.
-
-Please follow the server rules and keep the chat respectful.`
+Edited messages cannot add links.`
                         )
                 ]
             }).catch(() => null);
