@@ -325,7 +325,7 @@ async function createResource(guild, field) {
     let category = cfg.voiceCategory
       ? guild.channels.cache.get(cfg.voiceCategory) || await guild.channels.fetch(cfg.voiceCategory).catch(() => null)
       : null;
-    if (!category || category.type !== ChannelType.GuildCategory) {
+    if (!category || category.type !== ChannelType.GuildCategory || category.name.toLowerCase() !== "temp vcs") {
       category = guild.channels.cache.find(channel =>
         channel.type === ChannelType.GuildCategory && channel.name.toLowerCase() === "temp vcs"
       ) || null;
