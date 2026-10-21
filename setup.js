@@ -83,7 +83,7 @@ const FEATURES = {
   },
   quarantine: {
     label: "Anti-Nuke Quarantine",
-    description: "Choose or create a Quarantine role. When Anti-Nuke triggers, FRIDAY removes the attempter's manageable roles, assigns Quarantine, and blocks its channel access.",
+    description: "Role assigned when Anti-Nuke quarantines a user.",
     fields: [{ key: "quarantineRole", name: "Quarantine Role", createName: "Quarantine" }]
   }
 };
@@ -157,9 +157,7 @@ async function buildMainPanel(guild, userId, note = "") {
       card(guild, COLORS.SKY_BLUE,
         "# F.R.I.D.A.Y Setup Wizard\n\n" + (note ? note + "\n\n" : "") +
         lines.join("\n") + "\n\n" +
-        "Pick a feature below. For each channel or role, select an existing one, create a new one, or skip it.\n\n" +
-        "**Quarantine safety:** the Quarantine role gets no server-wide permissions and is denied channel access. " +
-        "When Anti-Nuke triggers, FRIDAY removes manageable roles and assigns Quarantine.\n\n-# F.R.I.D.A.Y • Guided Setup"),
+        "Select a feature to configure or replace settings. Use Setup All to create missing resources.\n\n-# F.R.I.D.A.Y • Guided Setup"),
       new ActionRowBuilder().addComponents(menu),
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -196,8 +194,7 @@ async function buildFeaturePanel(guild, userId, featureKey, index = 0, note = ""
       components: [
         card(guild, COLORS.GREEN,
           "# " + feature.label + "\n\n" + (note ? note + "\n\n" : "") +
-          "All steps for this feature have been processed. Selected values have been saved.\n\n" +
-          "Run \x60.config\x60 to fine-tune settings later.\n\n-# F.R.I.D.A.Y • Guided Setup"),
+          "Feature setup finished. Use `.config` to edit these settings later.\n\n-# F.R.I.D.A.Y • Guided Setup"),
         new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId("setup:close:" + userId).setLabel("Close").setStyle(ButtonStyle.Secondary)
@@ -272,10 +269,10 @@ async function buildFeaturePanel(guild, userId, featureKey, index = 0, note = ""
         "**Step " + (index + 1) + " of " + fields.length + ": " + field.name + "**\n" +
         description + "\n\n**Current value:** " + current + "\n\n" +
         (isConfigured
-          ? "This setting is already configured. You can keep it, or replace it with another resource using the selector or create button."
+          ? "Already set. Select/create a replacement or skip to keep it."
           : def.type === "string"
-            ? "Use Enter URL to save a value, or skip this optional setting."
-            : "Choose an existing resource above, create a safe default below, or skip this optional setting.") +
+            ? "Enter a URL or skip."
+            : "Select a resource, create one, or skip.") +
         "\n\n-# F.R.I.D.A.Y • Guided Setup"),
       ...rows
     ],
@@ -429,7 +426,7 @@ module.exports = client => {
       }
       if (action === "all" && interaction.isButton()) {
         await interaction.update(statusPage(guild, "progress", "Setup All • In Progress",
-          "FRIDAY is creating the missing channels and roles. Existing configured settings will be left unchanged."));
+          "Creating missing channels and roles; existing settings will be kept."));
         const successes = [];
         const skipped = [];
         const errors = [];
@@ -468,7 +465,7 @@ module.exports = client => {
         if (errors.length) sections.push("## <:error_g:1561271715164721245> Errors\n" + errors.join("\n"));
         const title = errors.length ? "Setup All • Completed with Errors" : "Setup All • Completed";
         const content = sections.join("\n\n") +
-          "\n\n**Note:** YouTube Channel URL needs to be entered manually. Review created channels and roles, then use .config to fine-tune permissions and settings.";
+          "\n\nYouTube Channel URL must be entered in its setup step. Use `.config` to change settings later.";
         return interaction.editReply(statusPage(guild, errors.length ? "error" : "completed", title, content,
           new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Primary),
