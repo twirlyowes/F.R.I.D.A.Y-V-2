@@ -37,7 +37,7 @@ module.exports = client => {
         return reply(message, COLORS.SKY_BLUE,
           `# Extra Owners (${ids.length})\n\n` +
           (ids.length ? ids.map(id => `• <@${id}> (` + "`" + `${id}` + "`" + `)`).join("\n") : "*Nobody has been added yet.*") +
-          `\n\nExtra owners can manage **AutoMod** and **Anti-Nuke** only.\n-# F.R.I.D.A.Y • Owner Management`);
+          `\n\n**Access:** AutoMod + Anti-Nuke only.\n-# F.R.I.D.A.Y • Owner Management`);
       }
 
       if (!["add", "remove"].includes(sub)) {
@@ -70,7 +70,7 @@ module.exports = client => {
           return reply(message, COLORS.SKY_BLUE, text);
         }
         return reply(message, COLORS.GREEN,
-          `<:success_g:1561271843346714777> Added <@${userId}> as an extra owner. They can manage AutoMod and Anti-Nuke, but not other owner-only features.`);
+          `<:success_g:1561271843346714777> Added <@${userId}> as an extra owner. Access: AutoMod + Anti-Nuke only.`);
       }
 
       const removed = await owners.removeExtraOwner(userId);
