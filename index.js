@@ -46,6 +46,26 @@ const client = new Client({
 
 // Many feature modules each listen for messages; raise the default cap of 10.
 client.setMaxListeners(50);
+
+// Discord.js emits client-level errors for some rejected gateway/API operations.
+// Without an error listener, Node treats an emitted "error" as fatal and exits,
+// taking the entire bot offline for a single failed Discord request.
+client.on("error", error => {
+  console.error("[Discord Client Error] A Discord operation failed; keeping the bot process alive:", error);
+});
+
+client.on("shardError", error => {
+  console.error("[Discord Gateway Error] A shard connection error occurred:", error);
+});
+
+// Discord API requests can fail when a channel permission is missing or an
+// interaction token has expired. Log otherwise-unhandled promise rejections
+// instead of letting Node 22 terminate the process; individual handlers should
+// still catch and handle expected errors locally.
+process.on("unhandledRejection", reason => {
+  console.error("[Unhandled Promise Rejection] Bot kept running; investigate this error:", reason);
+});
+
 consoleLogger.connect(client);
 
 const WARN_FILE = path.join(__dirname, "warnings.json");
