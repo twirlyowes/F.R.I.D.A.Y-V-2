@@ -393,7 +393,7 @@ async function handlePanelInteraction(interaction) {
         createCard({
           color: COLORS.GREEN,
           content:
-            "# Setup saved\n\nYour settings are saved. Run the config command again any time to change them.\n\n-# F.R.I.D.A.Y • Setup",
+            "# Settings saved\n\nYour changes have been saved.\n\n-# F.R.I.D.A.Y • Setup",
           avatarURL: guild.client.user.displayAvatarURL({ extension: "png", size: 128 }),
           avatarDescription: "F.R.I.D.A.Y"
         })
