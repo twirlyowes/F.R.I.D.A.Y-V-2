@@ -691,7 +691,7 @@ module.exports = client => {
 
     try {
       const parsed = await parseCommand(message);
-      if (!parsed || parsed.command !== "antinuke") return;
+      if (!parsed || !["antinuke", "wl", "whitelist"].includes(parsed.command)) return;
 
       const guild = message.guild;
 
@@ -700,6 +700,61 @@ module.exports = client => {
           content: "Only the server owner, bot owner, or an extra owner can manage Anti-Nuke.",
           allowedMentions: { parse: [] }
         });
+      }
+
+      // ----- wl / whitelist: add a user to the trusted list and reopen the panel -----
+      if (["wl", "whitelist"].includes(parsed.command)) {
+        const target = message.mentions.users.first()
+          || message.guild.members.cache.get((parsed.args[0] || "").replace(/\D/g, ""))?.user;
+
+        if (!target || !/^\d{17,20}$/.test(target.id)) {
+          return message.reply({
+            components: [
+              createCard({
+                color: COLORS.RED,
+                content: "# Whitelist a user\n\n**Usage:** `" + parsed.prefix + "wl <@user | user ID>`\nMention a server member or provide their user ID.\n\n-# F.R.I.D.A.Y • Anti-Nuke",
+                avatarURL: avatarOf(client),
+                avatarDescription: "F.R.I.D.A.Y"
+              })
+            ],
+            flags: MessageFlags.IsComponentsV2,
+            allowedMentions: { parse: [] }
+          });
+        }
+
+        const current = await protection.getAntinuke(guild.id);
+        if (current.trusted.includes(target.id)) {
+          return message.reply(await buildPanel(
+            guild,
+            message.author.id,
+            `<:success_g:1561271843346714777> **${target.tag || target.username}** is already on the Anti-Nuke whitelist.`
+          ));
+        }
+
+        if (current.trusted.length >= 50) {
+          return message.reply({
+            components: [
+              createCard({
+                color: COLORS.RED,
+                content: "# Whitelist is full\n\nThe Anti-Nuke trusted list is limited to 50 users. Remove someone from the trusted list before adding another.\n\n-# F.R.I.D.A.Y • Anti-Nuke",
+                avatarURL: avatarOf(client),
+                avatarDescription: "F.R.I.D.A.Y"
+              })
+            ],
+            flags: MessageFlags.IsComponentsV2,
+            allowedMentions: { parse: [] }
+          });
+        }
+
+        await protection.updateAntinuke(guild.id, c => {
+          c.trusted = [...new Set([...c.trusted, target.id])].slice(0, 50);
+        });
+
+        return message.reply(await buildPanel(
+          guild,
+          message.author.id,
+          `<:success_g:1561271843346714777> **${target.tag || target.username}** has been added to the Anti-Nuke whitelist. They will be skipped by Anti-Nuke punishment checks.`
+        ));
       }
 
       if ((parsed.args[0] || "").toLowerCase() === "trust") {
