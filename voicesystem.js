@@ -499,7 +499,7 @@ module.exports = (client) => {
 
         const successCard = buildCard({
           color: CARD_COLORS.GREEN,
-          description: `${targetMember} <:owner:1532337324762075146> Channel ownership has been successfully transferred to ${targetMember}!`
+          description: `<:owner:1532337324762075146> Ownership transferred to ${targetMember}.`
         });
 
         return message.reply({ components: [successCard], flags: MessageFlags.IsComponentsV2 });  
