@@ -140,13 +140,15 @@ function isTrusted(guild, cfg, userId) {
   return (
     userId === guild.ownerId ||
     userId === guild.client.user.id ||
+    owners.isOwner(userId) ||
+    owners.isExtraOwner(userId) ||
     cfg.trusted.includes(userId)
   );
 }
 
 /** Only the server owner (or the bot owner) may change Anti-Nuke. */
 function canManage(guild, userId) {
-  return userId === guild.ownerId || owners.isOwner(userId);
+  return userId === guild.ownerId || owners.isOwner(userId) || owners.isExtraOwner(userId);
 }
 
 async function enabledFor(guild, kind) {
@@ -587,7 +589,7 @@ async function handlePanel(interaction) {
 
   if (!interaction.guild || !canManage(interaction.guild, interaction.user.id)) {
     return interaction.reply({
-      content: "Only the **server owner** can change Anti-Nuke.",
+      content: "Only the server owner, bot owner, or an extra owner can change Anti-Nuke.",
       flags: MessageFlags.Ephemeral
     });
   }
@@ -695,7 +697,7 @@ module.exports = client => {
 
       if (!canManage(guild, message.author.id)) {
         return message.reply({
-          content: "Only the **server owner** can manage Anti-Nuke.",
+          content: "Only the server owner, bot owner, or an extra owner can manage Anti-Nuke.",
           allowedMentions: { parse: [] }
         });
       }
