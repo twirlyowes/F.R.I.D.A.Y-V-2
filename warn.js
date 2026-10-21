@@ -369,8 +369,7 @@ module.exports = client => {
                     `<a:Warning:1532986372716236932> **Warning ID**\n\`${removed.id}\`\n\n` +
                     `<a:LP_Message:1532991009066324049> **Reason**\n${removed.reason}\n\n` +
                     `<:Shield_2:1532989398642327594> **Originally Warned By**\n${removed.moderator}\n\n` +
-                    `<a:settings:1532990547394957393> **Removed By**\n${message.author}\n\n` +
-                    ``,
+                    `<a:settings:1532990547394957393> **Removed By**\n${message.author}`,
                     getAvatarURL(user)
                 );
 
