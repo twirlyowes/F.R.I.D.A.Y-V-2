@@ -463,12 +463,12 @@ module.exports = client => {
         }
 
         const sections = [];
-        if (successes.length) sections.push("## <:success_g:1561271843346714777> Success\\n" + successes.join("\\n"));
-        if (skipped.length) sections.push("## <a:settings:1532990547394957393> Skipped / Already Configured\\n" + skipped.join("\\n"));
-        if (errors.length) sections.push("## <:error_g:1561271715164721245> Errors\\n" + errors.join("\\n"));
+        if (successes.length) sections.push("## <:success_g:1561271843346714777> Success\n" + successes.join("\n"));
+        if (skipped.length) sections.push("## <a:settings:1532990547394957393> Skipped / Already Configured\n" + skipped.join("\n"));
+        if (errors.length) sections.push("## <:error_g:1561271715164721245> Errors\n" + errors.join("\n"));
         const title = errors.length ? "Setup All • Completed with Errors" : "Setup All • Completed";
-        const content = sections.join("\\n\\n") +
-          "\\n\\n**Note:** YouTube Channel URL needs to be entered manually. Review created channels and roles, then use .config to fine-tune permissions and settings.";
+        const content = sections.join("\n\n") +
+          "\n\n**Note:** YouTube Channel URL needs to be entered manually. Review created channels and roles, then use .config to fine-tune permissions and settings.";
         return interaction.editReply(statusPage(guild, errors.length ? "error" : "completed", title, content,
           new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Primary),
