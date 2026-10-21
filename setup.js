@@ -142,6 +142,11 @@ async function buildMainPanel(guild, userId, note = "") {
       new ActionRowBuilder().addComponents(menu),
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
+          .setCustomId("setup:all:" + userId)
+          .setLabel("Setup All")
+          .setStyle(ButtonStyle.Success)
+          .setEmoji("🛠️"),
+        new ButtonBuilder()
           .setCustomId("setup:close:" + userId)
           .setLabel("Close")
           .setStyle(ButtonStyle.Secondary)
@@ -346,6 +351,47 @@ module.exports = client => {
       }
       if (action === "back" && interaction.isButton()) {
         return interaction.update(await buildMainPanel(guild, userId));
+      }
+      if (action === "all" && interaction.isButton()) {
+        await interaction.deferUpdate();
+        const results = [];
+        const cfg = await guildConfig.get(guild.id);
+
+        for (const feature of Object.values(FEATURES)) {
+          for (const field of feature.fields) {
+            if (cfg[field.key]) {
+              results.push("↪️ **" + field.name + "** — already configured");
+              continue;
+            }
+            if (field.key === "youtubeUrl") {
+              results.push("⏭️ **" + field.name + "** — add manually in the YouTube Alerts step");
+              continue;
+            }
+            try {
+              const value = await createResource(guild, field);
+              cfg[field.key] = value.id;
+              results.push("<:success_g:1561271843346714777> **" + field.name + "** — created");
+            } catch (error) {
+              results.push("<:error_g:1561271715164721245> **" + field.name + "** — " +
+                String(error.message || "failed").slice(0, 180));
+            }
+          }
+        }
+
+        const content = "# Setup All • Results\\n\\n" +
+          results.join("\\n") +
+          "\\n\\n**Note:** YouTube Channel URL needs to be entered manually. Review created channels and roles, then use .config to fine-tune permissions and settings.";
+        return interaction.editReply({
+          components: [
+            card(guild, COLORS.SKY_BLUE, content),
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId("setup:close:" + userId).setLabel("Close").setStyle(ButtonStyle.Secondary)
+            )
+          ],
+          flags: MessageFlags.IsComponentsV2,
+          allowedMentions: { parse: [] }
+        });
       }
       if (action === "close" && interaction.isButton()) {
         return interaction.update({
