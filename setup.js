@@ -17,6 +17,7 @@ const guildConfig = require("./lib/guildConfig");
 const quarantine = require("./lib/quarantine");
 const { parseCommand } = require("./lib/prefix");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
+const { trackCreatedResource, clearSetting } = require("./lib/setupClear");
 
 const CHANNEL_TYPES = {
   text: [ChannelType.GuildText, ChannelType.GuildAnnouncement],
@@ -256,6 +257,13 @@ async function buildFeaturePanel(guild, userId, featureKey, index = 0, note = ""
     .setLabel("Features")
     .setStyle(ButtonStyle.Secondary));
   rows.push(new ActionRowBuilder().addComponents(buttons));
+  rows.push(new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("setup:clear:" + featureKey + ":" + index + ":" + userId)
+      .setLabel("Clear Config / Undo")
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(!isConfigured && !cfg.__setupCreated?.[field.key])
+  ));
 
   return {
     components: [
@@ -300,6 +308,9 @@ async function createResource(guild, field) {
     try {
       if (field.key === "quarantineRole") await quarantine.configureRole(guild, role);
       await guildConfig.set(guild.id, field.key, role.id);
+      await trackCreatedResource(guild, field.key, role).catch(error => {
+        console.error("[Setup] Could not record created role for cleanup:", error);
+      });
       return role;
     } catch (error) {
       if (field.key === "quarantineRole") {
@@ -329,11 +340,20 @@ async function createResource(guild, field) {
       category = guild.channels.cache.find(channel =>
         channel.type === ChannelType.GuildCategory && channel.name.toLowerCase() === "temp vcs"
       ) || null;
-      if (!category) category = await guild.channels.create({
-        name: "Temp VCs", type: ChannelType.GuildCategory,
-        reason: "F.R.I.D.A.Y guided voice setup"
-      });
+      let createdCategory = false;
+      if (!category) {
+        category = await guild.channels.create({
+          name: "Temp VCs", type: ChannelType.GuildCategory,
+          reason: "F.R.I.D.A.Y guided voice setup"
+        });
+        createdCategory = true;
+      }
       await guildConfig.set(guild.id, "voiceCategory", category.id);
+      if (createdCategory) {
+        await trackCreatedResource(guild, "voiceCategory", category).catch(error => {
+          console.error("[Setup] Could not record Temp VCs category for cleanup:", error);
+        });
+      }
     }
     channelOptions.parent = category.id;
   }
@@ -344,6 +364,9 @@ async function createResource(guild, field) {
     await quarantine.applyToChannel(guild, channel, cfg.quarantineRole).catch(() => false);
   }
   await guildConfig.set(guild.id, field.key, channel.id);
+  await trackCreatedResource(guild, field.key, channel).catch(error => {
+    console.error("[Setup] Could not record created channel for cleanup:", error);
+  });
   return channel;
 }
 
@@ -469,6 +492,31 @@ module.exports = client => {
       const index = Number(parts[3]);
       const field = targetField(featureKey, index);
       if (!field) return interaction.deferUpdate();
+
+      if (action === "clear" && interaction.isButton()) {
+        await interaction.update(statusPage(guild, "progress", "Clear Config • In Progress",
+          "Clearing **" + field.name + "** and undoing setup-created resources where safe."));
+        try {
+          const result = await clearSetting(guild, field.key);
+          return interaction.editReply(statusPage(guild, result.retained ? "error" : "completed",
+            "Clear Config • " + (result.retained ? "Resource Retained" : "Completed"),
+            result.message,
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId("setup:continue:" + featureKey + ":" + index + ":" + userId)
+                .setLabel("Back to Setting").setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId("setup:back:" + userId)
+                .setLabel("Back to Features").setStyle(ButtonStyle.Secondary)
+            )));
+        } catch (error) {
+          console.error("[Setup] Clear config failed:", error);
+          return interaction.editReply(statusPage(guild, "error", "Clear Config • Error",
+            String(error.message || "Could not clear this setting.").slice(0, 800),
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId("setup:continue:" + featureKey + ":" + index + ":" + userId)
+                .setLabel("Back to Setting").setStyle(ButtonStyle.Secondary)
+            )));
+        }
+      }
 
       if (action === "pick" && (interaction.isRoleSelectMenu() || interaction.isChannelSelectMenu())) {
         const def = guildConfig.SETTINGS[field.key];
