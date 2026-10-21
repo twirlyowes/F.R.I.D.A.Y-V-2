@@ -397,10 +397,24 @@ async function recover(guild, userId) {
 
   for (const item of fresh(entry.roles)) {
     try {
-      await guild.roles.create({ ...item.snap, reason: `${REASON}: restoring a deleted role` });
+      const restoredRole = await guild.roles.create({ ...item.snap, reason: `${REASON}: restoring a deleted role` });
       out.restoredRoles++;
-    } catch {
+
+      // Role IDs change when Discord recreates a deleted role. Keep the saved
+      // quarantine setting pointing at the restored role, then reapply its safe preset.
+      const serverCfg = await guildConfig.get(guild.id);
+      if (item.id && serverCfg.quarantineRole === item.id) {
+        await guildConfig.set(guild.id, "quarantineRole", restoredRole.id);
+        try {
+          await quarantine.configureRole(guild, restoredRole);
+        } catch (error) {
+          out.failed++;
+          console.error("[AntiNuke] Restored the Quarantine role but could not fully reapply its preset:", error.message);
+        }
+      }
+    } catch (error) {
       out.failed++;
+      console.error("[AntiNuke] Could not restore role:", error.message);
     }
   }
 
@@ -884,7 +898,7 @@ module.exports = client => {
       const entry = await findAuditEntry(guild, AuditLogEvent.RoleDelete, role.id);
       if (!entry?.executor || isTrusted(guild, cfg, entry.executor.id)) return;
 
-      remember(bookOf(guild.id, entry.executor.id).roles, { snap });
+      remember(bookOf(guild.id, entry.executor.id).roles, { id: role.id, snap });
       await registerHit(guild, cfg, entry.executor, "roleDelete");
     } catch (error) {
       console.error("[AntiNuke] roleDelete:", error);
