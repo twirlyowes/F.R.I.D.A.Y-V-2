@@ -189,6 +189,7 @@ async function buildFeaturePanel(guild, userId, featureKey, index = 0, note = ""
 
   const field = fields[index];
   const def = guildConfig.SETTINGS[field.key];
+  const isConfigured = Boolean(cfg[field.key]);
   const current = resourceLabel(def, cfg[field.key]);
   const description = field.key === "quarantineRole"
     ? "This role will have no server-wide permissions, and its channel overwrites will deny access to server channels."
@@ -242,9 +243,11 @@ async function buildFeaturePanel(guild, userId, featureKey, index = 0, note = ""
         "# " + feature.label + "\n\n" + (note ? note + "\n\n" : "") +
         "**Step " + (index + 1) + " of " + fields.length + ": " + field.name + "**\n" +
         description + "\n\n**Current value:** " + current + "\n\n" +
-        (def.type === "string"
-          ? "Use Enter URL to save a value, or skip this optional setting."
-          : "Choose an existing resource above, create a safe default below, or skip this optional setting.") +
+        (isConfigured
+          ? "This setting is already configured. You can keep it, or replace it with another resource using the selector or create button."
+          : def.type === "string"
+            ? "Use Enter URL to save a value, or skip this optional setting."
+            : "Choose an existing resource above, create a safe default below, or skip this optional setting.") +
         "\n\n-# F.R.I.D.A.Y • Guided Setup"),
       ...rows
     ],
@@ -378,7 +381,8 @@ module.exports = client => {
 
         for (const feature of Object.values(FEATURES)) {
           for (const field of feature.fields) {
-            if (cfg[field.key]) {
+            const latestCfg = await guildConfig.get(guild.id);
+            if (latestCfg[field.key]) {
               results.push("↪️ **" + field.name + "** — already configured");
               continue;
             }
@@ -387,6 +391,11 @@ module.exports = client => {
               continue;
             }
             try {
+              const latestCfg = await guildConfig.get(guild.id);
+              if (latestCfg[field.key]) {
+                results.push("↪️ **" + field.name + "** — already configured; skipped");
+                continue;
+              }
               const value = await createResource(guild, field);
               cfg[field.key] = value.id;
               results.push("<:success_g:1561271843346714777> **" + field.name + "** — created");
@@ -448,10 +457,12 @@ module.exports = client => {
         }
 
         try {
+          const latestCfg = await guildConfig.get(guild.id);
+          const replacing = Boolean(latestCfg[field.key] && latestCfg[field.key] !== value.id);
           await saveField(guild, field, value);
           const mention = def.type === "role" ? "<@&" + value.id + ">" : "<#" + value.id + ">";
           return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index + 1,
-            "<:success_g:1561271843346714777> Saved **" + field.name + "** as " + mention + "."));
+            "<:success_g:1561271843346714777> " + (replacing ? "Changed" : "Saved") + " **" + field.name + "** as " + mention + "."));
         } catch (error) {
           return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index,
             "<:error_g:1561271715164721245> " + error.message));
@@ -460,6 +471,11 @@ module.exports = client => {
 
       if (action === "create" && interaction.isButton()) {
         try {
+          const latestCfg = await guildConfig.get(guild.id);
+          if (latestCfg[field.key]) {
+            return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index,
+              "**Already configured.** Select a replacement above if you want to change it; no duplicate was created."));
+          }
           const value = await createResource(guild, field);
           const def = guildConfig.SETTINGS[field.key];
           const mention = def.type === "role" ? "<@&" + value.id + ">" : "<#" + value.id + ">";
