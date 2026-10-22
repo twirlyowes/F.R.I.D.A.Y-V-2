@@ -274,6 +274,61 @@ async function dmOwner(guild, text) {
 // ---------------------------------------------------------------------------
 // Punishment and recovery
 // ---------------------------------------------------------------------------
+/**
+ * A bot's integration role can retain Administrator even after the member is
+ * given Quarantine. Attempt to remove dangerous bits directly from each managed
+ * role the offender has, then fetch the role again to verify what Discord kept.
+ * If Discord blocks the edit, the caller must escalate to kick/ban.
+ */
+async function stripManagedDangerousPermissions(guild, userId) {
+  const member = await guild.members.fetch(userId).catch(() => null);
+  if (!member) return { ok: true, changed: 0, text: "" };
+
+  const candidates = [...member.roles.cache.values()].filter(
+    role => role.id !== guild.id && role.managed &&
+      DANGEROUS.some(permission => role.permissions.has(permission))
+  );
+
+  if (!candidates.length) return { ok: true, changed: 0, text: "" };
+
+  const stripped = [];
+  const unresolved = [];
+
+  for (const role of candidates) {
+    try {
+      await role.setPermissions(
+        role.permissions.remove(...DANGEROUS),
+        `${REASON}: neutralize dangerous permissions on a nuke attempter's managed role`
+      );
+    } catch (error) {
+      // Managed integration roles may be locked by Discord. Still fetch and
+      // verify: the edit may have succeeded despite a transient API error.
+      console.warn(`[AntiNuke] Could not edit managed role "${role.name}":`, error.message);
+    }
+
+    const current = await guild.roles.fetch(role.id, { force: true }).catch(
+      () => guild.roles.cache.get(role.id) || role
+    );
+    const remaining = DANGEROUS.filter(permission => current.permissions.has(permission));
+
+    if (remaining.length) {
+      unresolved.push(`${current.name} (${remaining.length} dangerous permission(s) remain)`);
+    } else {
+      stripped.push(current.name);
+    }
+  }
+
+  const parts = [];
+  if (stripped.length) {
+    parts.push(`removed dangerous permissions from ${stripped.length} managed role(s): ${stripped.join(", ")}`);
+  }
+  if (unresolved.length) {
+    parts.push(`could not neutralize ${unresolved.length} managed role(s): ${unresolved.join(", ")}`);
+  }
+
+  return { ok: unresolved.length === 0, changed: stripped.length, text: parts.join("; ") };
+}
+
 async function punish(guild, user, cfg) {
   const member = await guild.members.fetch(user.id).catch(() => null);
 
@@ -309,13 +364,19 @@ async function punish(guild, user, cfg) {
     await member.roles.remove([...removable.keys()], REASON);
 
     const stuck = dangerous.size - removable.size;
+    const strippedText = `Stripped ${removable.size} role(s): ${removable.map(r => r.name).join(", ")}`;
 
-    return {
-      ok: stuck === 0,
-      text:
-        `Stripped ${removable.size} role(s): ${removable.map(r => r.name).join(", ")}` +
-        (stuck ? `. ${stuck} role(s) above mine could not be removed` : "")
-    };
+    // If dangerous roles remain, do not leave the offender active just because
+    // at least one role was stripped. Escalate to a kick when possible.
+    if (stuck) {
+      const result = await kick(true);
+      return {
+        ok: result.ok,
+        text: `${strippedText}. ${stuck} dangerous role(s) could not be removed. ${result.text}`
+      };
+    }
+
+    return { ok: true, text: strippedText };
   } catch (error) {
     console.error("[AntiNuke] Punishment failed:", error.message);
     return { ok: false, text: `Punishment failed (${error.message})` };
@@ -446,22 +507,37 @@ async function trigger(guild, user, kind, total, cfg) {
   if (last && Date.now() - last < PUNISH_COOLDOWN_MS) return;
   lastPunished.set(key, Date.now());
 
-  // Quarantine is primary when configured; existing punishment remains the fallback.
+  // First try to strip dangerous permissions from the offender's managed
+  // integration role (for example, a bot role that already has Administrator).
+  // Quarantine overwrites alone cannot stop Administrator.
+  const managedStrip = await stripManagedDangerousPermissions(guild, user.id);
+  const managedNote = managedStrip.text ? managedStrip.text + ". " : "";
   const serverCfg = await guildConfig.get(guild.id);
   let punishment;
+
   if (serverCfg.quarantineRole) {
     const result = await quarantine.quarantineMember(guild, user.id, serverCfg.quarantineRole);
-    if (result.ok) {
-      punishment = result;
+
+    // A successful role assignment is not enough if a managed role still grants
+    // Administrator. Escalate instead of reporting quarantine as complete.
+    if (result.ok && managedStrip.ok) {
+      punishment = {
+        ok: true,
+        text: (managedNote ? managedNote : "") + result.text
+      };
     } else {
       const fallback = await punish(guild, user, cfg);
+      const reasons = [];
+      if (!managedStrip.ok) reasons.push("Managed-role permission stripping incomplete: " + managedStrip.text);
+      if (!result.ok) reasons.push("Quarantine incomplete: " + result.text);
       punishment = {
-        ok: false,
-        text: "Quarantine failed: " + result.text + ". Fallback punishment: " + fallback.text
+        ok: fallback.ok,
+        text: (reasons.length ? reasons.join(". ") + ". " : "") + "Fallback punishment: " + fallback.text
       };
     }
   } else {
     punishment = await punish(guild, user, cfg);
+    if (managedNote) punishment = { ...punishment, text: managedNote + punishment.text };
   }
 
   // ...then repair it
@@ -936,6 +1012,15 @@ module.exports = client => {
       } catch {
         reverted = false;
       }
+
+      // Verify against Discord's current role state instead of assuming that a
+      // resolved edit means the dangerous permissions are gone.
+      const verifiedRole = await guild.roles.fetch(newRole.id, { force: true }).catch(() => null);
+      reverted = Boolean(
+        reverted &&
+        verifiedRole &&
+        verifiedRole.permissions.bitfield === oldRole.permissions.bitfield
+      );
 
       await sendLog(
         guild,
