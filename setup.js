@@ -17,7 +17,7 @@ const guildConfig = require("./lib/guildConfig");
 const quarantine = require("./lib/quarantine");
 const { parseCommand } = require("./lib/prefix");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
-const { trackCreatedResource, clearSetting } = require("./lib/setupClear");
+const { trackCreatedResource, trackSetupAllAssignment, clearSetting, clearAllSetupResources } = require("./lib/setupClear");
 
 const CHANNEL_TYPES = {
   text: [ChannelType.GuildText, ChannelType.GuildAnnouncement],
@@ -49,14 +49,12 @@ const FEATURES = {
     ]
   },
   tickets: {
-    label: "Support Tickets",
-    description: "Configure ticket categories, logs, and support-team roles.",
+    label: "ModMail Support",
+    description: "Configure the shared ModMail category, ticket logs, and one support-team role.",
     fields: [
-      { key: "ticketCategory", name: "Ticket Category", createName: "tickets" },
+      { key: "ticketCategory", name: "ModMail Category", createName: "mod-mail" },
       { key: "ticketLogs", name: "Ticket Logs Channel", createName: "ticket-logs" },
-      { key: "supportMinecraft", name: "Minecraft Support Role", createName: "Minecraft Support" },
-      { key: "supportDiscord", name: "Discord Support Role", createName: "Discord Support" },
-      { key: "supportOthers", name: "Other Support Role", createName: "Other Support" }
+      { key: "supportRole", name: "Support Role", createName: "Support" }
     ]
   },
   activity: {
@@ -168,6 +166,11 @@ async function buildMainPanel(guild, userId, note = "") {
           .setLabel("Setup All")
           .setStyle(ButtonStyle.Success)
           .setEmoji("🛠️"),
+        new ButtonBuilder()
+          .setCustomId("setup:clearall:" + userId)
+          .setLabel("Clear All")
+          .setStyle(ButtonStyle.Danger)
+          .setEmoji("🧹"),
         new ButtonBuilder()
           .setCustomId("setup:close:" + userId)
           .setLabel("Close")
@@ -290,7 +293,7 @@ async function saveField(guild, field, value) {
   await guildConfig.set(guild.id, field.key, typeof value === "string" ? value : value.id);
 }
 
-async function createResource(guild, field) {
+async function createResource(guild, field, trackingOptions = {}) {
   const def = guildConfig.SETTINGS[field.key];
   if (!def) throw new Error("Unknown setup setting: " + field.key);
 
@@ -309,7 +312,7 @@ async function createResource(guild, field) {
     try {
       if (field.key === "quarantineRole") await quarantine.configureRole(guild, role);
       await guildConfig.set(guild.id, field.key, role.id);
-      await trackCreatedResource(guild, field.key, role).catch(error => {
+      await trackCreatedResource(guild, field.key, role, trackingOptions).catch(error => {
         console.error("[Setup] Could not record created role for cleanup:", error);
       });
       return role;
@@ -353,8 +356,12 @@ async function createResource(guild, field) {
       }
       await guildConfig.set(guild.id, "voiceCategory", category.id);
       if (createdCategory) {
-        await trackCreatedResource(guild, "voiceCategory", category).catch(error => {
+        await trackCreatedResource(guild, "voiceCategory", category, trackingOptions).catch(error => {
           console.error("[Setup] Could not record Temp VCs category for cleanup:", error);
+        });
+      } else {
+        await trackSetupAllAssignment(guild, "voiceCategory", category.id, trackingOptions).catch(error => {
+          console.error("[Setup] Could not record Setup All voice category assignment:", error);
         });
       }
     }
@@ -367,7 +374,7 @@ async function createResource(guild, field) {
     await quarantine.applyToChannel(guild, channel, cfg.quarantineRole).catch(() => false);
   }
   await guildConfig.set(guild.id, field.key, channel.id);
-  await trackCreatedResource(guild, field.key, channel).catch(error => {
+  await trackCreatedResource(guild, field.key, channel, trackingOptions).catch(error => {
     console.error("[Setup] Could not record created channel for cleanup:", error);
   });
   return channel;
@@ -459,7 +466,7 @@ module.exports = client => {
                 skipped.push("↪️ **" + field.name + "** — already configured; skipped");
                 continue;
               }
-              const value = await createResource(guild, field);
+              const value = await createResource(guild, field, { scope: "setupAll" });
               cfg[field.key] = value.id;
               successes.push("<:success_g:1561271843346714777> **" + field.name + "** — created");
             } catch (error) {
@@ -481,6 +488,26 @@ module.exports = client => {
             new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("setup:close:" + userId).setLabel("Close").setStyle(ButtonStyle.Secondary)
           )));
+      }
+      if (action === "clearall" && interaction.isButton()) {
+        await interaction.update(statusPage(guild, "progress", "Clear All • In Progress",
+          "Undoing resources and settings created by Setup All. Existing channels and roles selected manually will be preserved."));
+        try {
+          const result = await clearAllSetupResources(guild);
+          const title = result.retained ? "Clear All • Completed with Items Kept" : "Clear All • Completed";
+          return interaction.editReply(statusPage(guild, result.retained ? "error" : "completed", title, result.message,
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Primary),
+              new ButtonBuilder().setCustomId("setup:close:" + userId).setLabel("Close").setStyle(ButtonStyle.Secondary)
+            )));
+        } catch (error) {
+          console.error("[Setup] Clear All failed:", error);
+          return interaction.editReply(statusPage(guild, "error", "Clear All • Error",
+            String(error.message || "Could not undo Setup All resources.").slice(0, 900),
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Secondary)
+            )));
+        }
       }
       if (action === "close" && interaction.isButton()) {
         return interaction.update({

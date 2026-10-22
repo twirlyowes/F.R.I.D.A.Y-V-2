@@ -24,8 +24,9 @@ const {
     getAvatarURL
 } = require("./lib/pixelVillaUI");
 
-// Ticket category -> guild config key holding that category's support role
-const SUPPORT_ROLE_KEYS = {
+// Legacy role keys are only used to keep previously-open category tickets working.
+// New ModMail tickets all use the single Support Role.
+const LEGACY_SUPPORT_ROLE_KEYS = {
     minecraft: "supportMinecraft",
     discord: "supportDiscord",
     others: "supportOthers"
@@ -33,7 +34,13 @@ const SUPPORT_ROLE_KEYS = {
 
 async function getSupportRoleId(guildId, category) {
     const cfg = await guildConfig.get(guildId);
-    return cfg[SUPPORT_ROLE_KEYS[category]] || null;
+    const legacyKey = LEGACY_SUPPORT_ROLE_KEYS[category];
+    return (legacyKey && cfg[legacyKey]) ||
+        cfg.supportRole ||
+        cfg.supportMinecraft ||
+        cfg.supportDiscord ||
+        cfg.supportOthers ||
+        null;
 }
 
 async function getTicketLogsChannel(client, guildId) {
@@ -60,19 +67,9 @@ async function getEligibleGuilds(client, userId) {
 function buildCategoryRow(guildId) {
     return new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-            .setCustomId(`modmail_cat_minecraft_${guildId}`)
-            .setLabel("Minecraft")
+            .setCustomId(`modmail_cat_support_${guildId}`)
+            .setLabel("Open ModMail Ticket")
             .setStyle(ButtonStyle.Primary)
-            .setEmoji("⛏️"),
-        new ButtonBuilder()
-            .setCustomId(`modmail_cat_discord_${guildId}`)
-            .setLabel("Discord")
-            .setStyle(ButtonStyle.Secondary)
-            .setEmoji("💬"),
-        new ButtonBuilder()
-            .setCustomId(`modmail_cat_others_${guildId}`)
-            .setLabel("Others")
-            .setStyle(ButtonStyle.Success)
             .setEmoji("📩")
     );
 }
@@ -92,6 +89,8 @@ function buildServerRow(guilds) {
 }
 
 const CATEGORY_NAMES = {
+    support: "ModMail",
+    // Keep historic labels for transcripts and tickets opened before the unified flow.
     minecraft: "Minecraft",
     discord: "Discord",
     others: "Others"
@@ -421,7 +420,7 @@ ${message.content || "*[No Text Content]*"}
                     content:
 `# 📨 Support Ticket
 
-Choose a category below.`,
+Open your ModMail ticket below. All enquiries go to one support team.`,
                     avatarURL: getAvatarURL(message.author),
                     avatarDescription:
                         `${message.author.username}'s avatar`
@@ -562,7 +561,7 @@ ${message.content || "*[No Text Content]*"}
                     content:
 `# 📨 Support Ticket
 
-Choose a category below.`,
+Open your ModMail ticket below. All enquiries go to one support team.`,
                     avatarURL: getAvatarURL(interaction.user),
                     avatarDescription:
                         `${interaction.user.username}'s avatar`
@@ -590,6 +589,14 @@ Choose a category below.`,
 
                 const [categoryKey, buttonGuildId] =
                     customId.replace("modmail_cat_", "").split("_");
+
+                // Ignore stale buttons from the retired Minecraft / Discord / Others flow.
+                if (categoryKey !== "support") {
+                    await interaction.user.send(
+                        "<:warning_g:1561271566233501797> The support options have changed. Send me a new DM to open a ModMail ticket."
+                    ).catch(() => {});
+                    return;
+                }
 
                 let targetGuildId = buttonGuildId;
 
@@ -672,8 +679,7 @@ Choose a category below.`,
                 const formattedId =
                     padTicketId(ticketIdNum);
 
-                const channelName =
-                    `${categoryKey}-${formattedId}`;
+                const channelName = formattedId;
 
                 const supportRoleId =
                     await getSupportRoleId(guild.id, categoryKey);

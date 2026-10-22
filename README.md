@@ -8,7 +8,7 @@ Built with Node 22, discord.js v14 and Firebase (Firestore).
 
 ## Features
 
-- **Support tickets (ModMail):** members DM the bot, pick a category, and a private ticket channel is opened in the server. Members who share several servers with the bot choose which one.
+- **Support tickets (ModMail):** members DM the bot to open a numbered private ticket in one shared ModMail category. Every ticket is handled by one configured Support Role. Members who share several servers with the bot choose which server to contact.
 - **Moderation:** warnings, strikes, mute/kick/ban, purge, lock/hide, snipe, bad-word filter (per-server word lists).
 - **AutoMod:** spam, repeats, mass mentions, emoji spam, invites, links and caps, switched on and tuned with buttons.
 - **Anti-Nuke:** stops a rogue or compromised admin from mass-deleting channels/roles, mass-banning, adding bots and more, then repairs the damage.
@@ -61,14 +61,16 @@ Examples:
 | `unverifiedRole` | role | Removed on verification (optional) |
 | `voiceCreate` | voice channel | Joining it creates a personal room |
 | `voiceCategory` | category | Where rooms are created (optional) |
-| `ticketCategory` | category | Where ticket channels are created |
-| `ticketLogs` | text channel | Ticket logs/transcripts |
-| `supportMinecraft`, `supportDiscord`, `supportOthers` | role | Staff role for each ticket category |
+| `ticketCategory` | category | ModMail category containing numbered ticket channels (created as `mod-mail`) |
+| `ticketLogs` | text channel | ModMail ticket logs and transcripts |
+| `supportRole` | role | One shared role for all ModMail tickets |
 | `slowmodeChannel` | text channel | Gets automatic slowmode during bursts |
 | `youtubeChannel`, `youtubeUrl` | text channel, URL | YouTube upload alerts |
 | `ipMessage` | text | What the `ip` command replies with |
 
 Settings are stored in Firestore (`guild_configs/{serverId}`).
+
+The `.setup` wizard includes **Setup All** to create missing required resources and **Clear All** to undo only resources and settings recorded as created by Setup All. Existing ticket channels and manually selected channels or roles are preserved.
 
 ---
 
