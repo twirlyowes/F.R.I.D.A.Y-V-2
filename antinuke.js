@@ -30,6 +30,7 @@ const guildConfig = require("./lib/guildConfig");
 const quarantine = require("./lib/quarantine");
 const protection = require("./lib/protection");
 const owners = require("./lib/owners");
+const serverOwners = require("./lib/serverOwners");
 const { parseCommand } = require("./lib/prefix");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
 
@@ -132,19 +133,19 @@ function remember(list, item) {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function isTrusted(guild, cfg, userId) {
+async function isTrusted(guild, cfg, userId) {
   return (
     userId === guild.ownerId ||
     userId === guild.client.user.id ||
     owners.isOwner(userId) ||
-    owners.isExtraOwner(userId) ||
+    await serverOwners.isOwner(guild.id, userId) ||
     cfg.trusted.includes(userId)
   );
 }
 
-/** Only the server owner (or the bot owner) may change Anti-Nuke. */
-function canManage(guild, userId) {
-  return userId === guild.ownerId || owners.isOwner(userId) || owners.isExtraOwner(userId);
+/** Server owners and locally delegated owners can manage only this server. */
+async function canManage(guild, userId) {
+  return userId === guild.ownerId || owners.isOwner(userId) || await serverOwners.isOwner(guild.id, userId);
 }
 
 async function enabledFor(guild, kind) {
@@ -617,7 +618,7 @@ async function buildPanel(guild, userId, note = null) {
       `**Auto-restore:** ${cfg.restore ? "on" : "off"}\n\n` +
       `${featureLines.join("\n")}\n\n` +
       `**Trusted (exempt):** ${trusted}\n` +
-      `-# Server owner, bot and extra owners are trusted automatically; use wl for others.\n\n` +
+      `-# Server owner, bot owner and owners delegated in this server are trusted automatically; use wl to exempt others here.\n\n` +
       `**My permissions:** ${permissionLine}\n` +
       `${auditMissing ? "<:error_g:1561271715164721245> Missing **View Audit Log** — Anti-Nuke cannot identify offenders.\n" : ""}\n` +
       `-# F.R.I.D.A.Y • Anti-Nuke`,
@@ -692,9 +693,9 @@ async function handlePanel(interaction) {
     });
   }
 
-  if (!interaction.guild || !canManage(interaction.guild, interaction.user.id)) {
+  if (!interaction.guild || !(await canManage(interaction.guild, interaction.user.id))) {
     return interaction.reply({
-      content: "Only the server owner, bot owner, or an extra owner can change Anti-Nuke.",
+      content: "Only the server owner, main bot owner, or an owner delegated in this server can change Anti-Nuke.",
       flags: MessageFlags.Ephemeral
     });
   }
@@ -800,7 +801,7 @@ module.exports = client => {
 
       const guild = message.guild;
 
-      if (!canManage(guild, message.author.id)) {
+      if (!(await canManage(guild, message.author.id))) {
         return message.reply({
           content: "Only the server owner, bot owner, or an extra owner can manage Anti-Nuke.",
           allowedMentions: { parse: [] }
@@ -858,7 +859,7 @@ module.exports = client => {
         return message.reply(await buildPanel(
           guild,
           message.author.id,
-          `<:success_g:1561271843346714777> **${target.tag || target.username}** has been added to the Anti-Nuke whitelist. They will be skipped by Anti-Nuke punishment checks.`
+          `<:success_g:1561271843346714777> **${target.tag || target.username}** has been added to this server\'s Anti-Nuke whitelist. They will be skipped by Anti-Nuke punishment checks in this server only.`
         ));
       }
 
@@ -919,7 +920,7 @@ module.exports = client => {
 
       const snap = snapshotChannel(channel);
       const entry = await findAuditEntry(guild, AuditLogEvent.ChannelDelete, channel.id);
-      if (!entry?.executor || isTrusted(guild, cfg, entry.executor.id)) return;
+      if (!entry?.executor || await isTrusted(guild, cfg, entry.executor.id)) return;
 
       remember(bookOf(guild.id, entry.executor.id).channels, { snap });
       await registerHit(guild, cfg, entry.executor, "channelDelete");
@@ -945,7 +946,7 @@ module.exports = client => {
       if (!cfg) return;
 
       const entry = await findAuditEntry(guild, AuditLogEvent.ChannelCreate, channel.id);
-      if (!entry?.executor || isTrusted(guild, cfg, entry.executor.id)) return;
+      if (!entry?.executor || await isTrusted(guild, cfg, entry.executor.id)) return;
 
       remember(bookOf(guild.id, entry.executor.id).createdChannels, { id: channel.id });
       await registerHit(guild, cfg, entry.executor, "channelCreate");
@@ -965,7 +966,7 @@ module.exports = client => {
 
       const snap = snapshotRole(role);
       const entry = await findAuditEntry(guild, AuditLogEvent.RoleDelete, role.id);
-      if (!entry?.executor || isTrusted(guild, cfg, entry.executor.id)) return;
+      if (!entry?.executor || await isTrusted(guild, cfg, entry.executor.id)) return;
 
       remember(bookOf(guild.id, entry.executor.id).roles, { id: role.id, snap });
       await registerHit(guild, cfg, entry.executor, "roleDelete");
@@ -983,7 +984,7 @@ module.exports = client => {
       if (!cfg) return;
 
       const entry = await findAuditEntry(guild, AuditLogEvent.RoleCreate, role.id);
-      if (!entry?.executor || isTrusted(guild, cfg, entry.executor.id)) return;
+      if (!entry?.executor || await isTrusted(guild, cfg, entry.executor.id)) return;
 
       remember(bookOf(guild.id, entry.executor.id).createdRoles, { id: role.id });
       await registerHit(guild, cfg, entry.executor, "roleCreate");
@@ -1003,7 +1004,7 @@ module.exports = client => {
       if (!gained.length) return;
 
       const entry = await findAuditEntry(guild, AuditLogEvent.RoleUpdate, newRole.id);
-      if (!entry?.executor || isTrusted(guild, cfg, entry.executor.id)) return;
+      if (!entry?.executor || await isTrusted(guild, cfg, entry.executor.id)) return;
 
       let reverted = true;
 
@@ -1050,7 +1051,7 @@ module.exports = client => {
       if (!entry?.executor) return;
 
       const kind = entry.action === AuditLogEvent.MemberBanAdd ? "ban" : "kick";
-      if (!cfg.protections[kind] || isTrusted(guild, cfg, entry.executor.id)) return;
+      if (!cfg.protections[kind] || await isTrusted(guild, cfg, entry.executor.id)) return;
 
       await registerHit(guild, cfg, entry.executor, kind);
     } catch (error) {
@@ -1086,7 +1087,7 @@ module.exports = client => {
       for (const entry of entries) {
         seenEntries.add(entry.id);
 
-        if (!entry.executor || isTrusted(guild, cfg, entry.executor.id)) continue;
+        if (!entry.executor || await isTrusted(guild, cfg, entry.executor.id)) continue;
 
         const hooks = await guild.fetchWebhooks().catch(() => null);
         const hook = hooks?.get(entry.targetId ?? entry.target?.id);
@@ -1108,10 +1109,10 @@ module.exports = client => {
       const guild = member.guild;
 
       const cfg = await enabledFor(guild, "botAdd");
-      if (!cfg || isTrusted(guild, cfg, member.id)) return;
+      if (!cfg || await isTrusted(guild, cfg, member.id)) return;
 
       const entry = await findAuditEntry(guild, AuditLogEvent.BotAdd, member.id);
-      if (!entry?.executor || isTrusted(guild, cfg, entry.executor.id)) return;
+      if (!entry?.executor || await isTrusted(guild, cfg, entry.executor.id)) return;
 
       let removed = true;
 

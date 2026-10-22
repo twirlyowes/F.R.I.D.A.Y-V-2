@@ -4,6 +4,7 @@ const {
 const db = require("./firebase");
 const protection = require("./lib/protection");
 const owners = require("./lib/owners");
+const serverOwners = require("./lib/serverOwners");
 const { parseCommand } = require("./lib/prefix");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
 
@@ -48,7 +49,7 @@ async function buildPanel(guild, userId) {
   const panel = card(guild, cfg.enabled ? COLORS.GREEN : COLORS.SKY_BLUE,
     `# AntiBot\n\n` +
     `**Status:** ${cfg.enabled ? "🟢 ON" : "🔴 OFF"}\n\n` +
-    `Blocks bots added by untrusted users. Server owner, bot owner, extra owners and Anti-Nuke trusted users are allowed.\n` +
+    `Blocks bots added by untrusted users. Server owner, bot owner, owners delegated in this server and Anti-Nuke trusted users are allowed.\n` +
     `If the inviter cannot be verified, FRIDAY logs it without kicking the bot.\n\n` +
     `**Needs:** View Audit Log • Kick Members\n\n-# F.R.I.D.A.Y • AntiBot`);
   const button = new ButtonBuilder()
@@ -151,7 +152,7 @@ module.exports = client => {
       const inviterId = entry.executor.id;
       const trusted = inviterId === member.guild.ownerId ||
         owners.isOwner(inviterId) ||
-        owners.isExtraOwner(inviterId) ||
+        await serverOwners.isOwner(member.guild.id, inviterId) ||
         antinuke.trusted.includes(inviterId);
 
       if (trusted) return;
