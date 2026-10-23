@@ -342,9 +342,12 @@ function flag(on) {
 }
 
 function toggleButton(id, label, on) {
+  const buttonLabel = id.includes(":badwords:")
+    ? `Anti badwords: ${on ? "ON" : "OFF"}`
+    : label;
   return new ButtonBuilder()
     .setCustomId(id)
-    .setLabel(label)
+    .setLabel(buttonLabel)
     .setStyle(on ? ButtonStyle.Success : ButtonStyle.Secondary);
 }
 
