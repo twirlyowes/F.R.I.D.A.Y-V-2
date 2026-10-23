@@ -9,18 +9,42 @@ const { parseCommand } = require("./lib/prefix");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
 
 const cache = new Map();
+const cacheFetchedAt = new Map();
+const pendingLoads = new Map();
+const nextRetryAt = new Map();
+const CACHE_TTL_MS = 30 * 1000;
+const ERROR_RETRY_MS = 5 * 1000;
 const docFor = guildId => db.collection("antibot_configs").doc(guildId);
 
 async function getConfig(guildId) {
-  if (cache.has(guildId)) return cache.get(guildId);
+  const now = Date.now();
+  const cached = cache.get(guildId);
+  const fetchedAt = cacheFetchedAt.get(guildId) || 0;
+  if (cached && now - fetchedAt < CACHE_TTL_MS) return cached;
+  if ((nextRetryAt.get(guildId) || 0) > now) return cached || { enabled: false };
+  if (pendingLoads.has(guildId)) return pendingLoads.get(guildId);
+
+  const task = (async () => {
+    try {
+      const doc = await docFor(guildId).get();
+      const cfg = { enabled: doc.exists ? doc.data()?.enabled === true : false };
+      cache.set(guildId, cfg);
+      cacheFetchedAt.set(guildId, Date.now());
+      nextRetryAt.delete(guildId);
+      return cfg;
+    } catch (error) {
+      console.error("[AntiBot] Config read failed:", error.message);
+      // Bound retry frequency during Firestore trouble and retain last-known-good state.
+      nextRetryAt.set(guildId, Date.now() + ERROR_RETRY_MS);
+      return cached || { enabled: false };
+    }
+  })();
+
+  pendingLoads.set(guildId, task);
   try {
-    const doc = await docFor(guildId).get();
-    const cfg = { enabled: doc.exists ? doc.data()?.enabled === true : false };
-    cache.set(guildId, cfg);
-    return cfg;
-  } catch (error) {
-    console.error("[AntiBot] Config read failed:", error.message);
-    return { enabled: false };
+    return await task;
+  } finally {
+    if (pendingLoads.get(guildId) === task) pendingLoads.delete(guildId);
   }
 }
 
@@ -28,6 +52,8 @@ async function setEnabled(guildId, enabled) {
   await docFor(guildId).set({ enabled }, { merge: true });
   const cfg = { enabled };
   cache.set(guildId, cfg);
+  cacheFetchedAt.set(guildId, Date.now());
+  nextRetryAt.delete(guildId);
   return cfg;
 }
 

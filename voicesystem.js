@@ -143,7 +143,7 @@ module.exports = (client) => {
         // before the older Firestore-tracked cleanup path can remove anything.
         const savedGuildConfig = await guildConfig.get(guildId);
         const looksLikeCreateChannel =
-          /join[\\s_-]*to[\\s_-]*create|create[\\s_-]*vc|create[\\s_-]*voice(?:[\\s_-]*channel)?/i.test(channel.name || "");
+          /join[\s_-]*to[\s_-]*create|create[\s_-]*vc|create[\s_-]*voice(?:[\s_-]*channel)?/i.test(channel.name || "");
         if (channelId === savedGuildConfig.voiceCreate || looksLikeCreateChannel) {
           activeTempChannels.delete(channelId);
           console.log(`[VoiceSystem] Preserving Join-to-Create channel during startup: ${channel.name} (${channelId}) in guild ${guildId}`);
@@ -252,7 +252,7 @@ module.exports = (client) => {
       // channel ID first, with a name fallback for servers whose old config is
       // missing or stale.
       const looksLikeCreateChannel =
-        /join[\\s_-]*to[\\s_-]*create|create[\\s_-]*vc|create[\\s_-]*voice(?:[\\s_-]*channel)?/i.test(channel.name || "");
+        /join[\s_-]*to[\s_-]*create|create[\s_-]*vc|create[\s_-]*voice(?:[\s_-]*channel)?/i.test(channel.name || "");
       if (channel.id === createChannelId || looksLikeCreateChannel) {
         console.log(`[VoiceSystem] Preserving Join-to-Create channel: ${channel.name} (${channel.id}) in guild ${guild.id}`);
         continue;
