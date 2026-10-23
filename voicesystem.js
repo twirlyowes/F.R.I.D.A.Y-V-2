@@ -237,8 +237,15 @@ module.exports = (client) => {
       if (channel.parentId !== categoryId) continue;
 
       // The Join-to-Create entry point must never be deleted, even if it is
-      // inside the same category and currently has no members.
-      if (channel.id === createChannelId) continue;
+      // inside the same category and currently has no members. Use the saved
+      // channel ID first, with a name fallback for servers whose old config is
+      // missing or stale.
+      const looksLikeCreateChannel =
+        /join[\\s_-]*to[\\s_-]*create|create[\\s_-]*vc|create[\\s_-]*voice(?:[\\s_-]*channel)?/i.test(channel.name || "");
+      if (channel.id === createChannelId || looksLikeCreateChannel) {
+        console.log(`[VoiceSystem] Preserving Join-to-Create channel: ${channel.name} (${channel.id}) in guild ${guild.id}`);
+        continue;
+      }
       if (channel.members.size > 0 || deletionTracker.has(channel.id)) continue;
 
       deletionTracker.add(channel.id);
