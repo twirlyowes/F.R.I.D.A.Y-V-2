@@ -2,6 +2,8 @@ const { MessageFlags } = require("discord.js");
 const guildConfig = require("./lib/guildConfig");
 const { parseCommand } = require("./lib/prefix");
 const { db } = require("./firebase");
+const { makeRecorder } = require("./lib/dashboardEvents");
+const dashboardEvents = makeRecorder(db);
 const { COLORS, createCard, getAvatarURL } = require("./lib/pixelVillaUI");
 
 // Colors used here that aren't in the shared COLORS set
@@ -134,6 +136,16 @@ module.exports = client => {
                     .set({
                         warnings: userWarnings
                     });
+
+                dashboardEvents.recordCase(message.guild.id, {
+                    action: "warn",
+                    targetId: user.id,
+                    targetName: user.user.tag,
+                    moderatorId: message.author.id,
+                    moderatorName: message.author.tag,
+                    reason,
+                    sourceRecordId: warnId
+                }).catch(error => console.error("[Dashboard Events] Warning case could not be recorded:", error.message));
 
                 // =====================================================
                 // DM USER
