@@ -9,18 +9,36 @@ const { parseCommand } = require("./lib/prefix");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
 
 const cache = new Map();
+const cacheFetchedAt = new Map();
+const pendingLoads = new Map();
+const CACHE_TTL_MS = 30 * 1000;
 const docFor = guildId => db.collection("antibot_configs").doc(guildId);
 
 async function getConfig(guildId) {
-  if (cache.has(guildId)) return cache.get(guildId);
+  const cached = cache.get(guildId);
+  const fetchedAt = cacheFetchedAt.get(guildId) || 0;
+  if (cached && Date.now() - fetchedAt < CACHE_TTL_MS) return cached;
+  if (pendingLoads.has(guildId)) return pendingLoads.get(guildId);
+
+  const task = (async () => {
+    try {
+      const doc = await docFor(guildId).get();
+      const cfg = { enabled: doc.exists ? doc.data()?.enabled === true : false };
+      cache.set(guildId, cfg);
+      cacheFetchedAt.set(guildId, Date.now());
+      return cfg;
+    } catch (error) {
+      console.error("[AntiBot] Config read failed:", error.message);
+      // Do not disable protection just because a refresh read failed.
+      return cached || { enabled: false };
+    }
+  })();
+
+  pendingLoads.set(guildId, task);
   try {
-    const doc = await docFor(guildId).get();
-    const cfg = { enabled: doc.exists ? doc.data()?.enabled === true : false };
-    cache.set(guildId, cfg);
-    return cfg;
-  } catch (error) {
-    console.error("[AntiBot] Config read failed:", error.message);
-    return { enabled: false };
+    return await task;
+  } finally {
+    pendingLoads.delete(guildId);
   }
 }
 
@@ -28,6 +46,7 @@ async function setEnabled(guildId, enabled) {
   await docFor(guildId).set({ enabled }, { merge: true });
   const cfg = { enabled };
   cache.set(guildId, cfg);
+  cacheFetchedAt.set(guildId, Date.now());
   return cfg;
 }
 
