@@ -16,6 +16,7 @@ const {
 const fs = require("fs").promises;
 const path = require("path");
 const guildConfig = require("./lib/guildConfig");
+const verificationRoles = require("./lib/verificationRoles");
 const { parseCommand } = require("./lib/prefix");
 const consoleLogger = require("./console");
 const { COLORS, createCard, getAvatarURL } = require("./lib/pixelVillaUI");
@@ -341,6 +342,19 @@ client.once(
     });
 
     await registerSlashCommands();
+
+    // Migrate and enforce existing Unverified configurations on startup.
+    for (const guild of client.guilds.cache.values()) {
+      try {
+        const cfg = await guildConfig.get(guild.id);
+        if (cfg.unverifiedRole && cfg.verifyChannel) {
+          const result = await verificationRoles.configureUnverifiedRole(guild, cfg.unverifiedRole, cfg.verifyChannel);
+          console.log("[Verification Roles] Secured Unverified in " + guild.name + " (" + result.configuredChannels + " channels).");
+        }
+      } catch (error) {
+        console.error("[Verification Roles] Could not secure Unverified in " + guild.id + ":", error.message);
+      }
+    }
   }
 );
 
@@ -755,6 +769,16 @@ client.on(
 );
 
 require("./firebase");
+
+// Newly created channels must not accidentally expose themselves to unverified members.
+client.on("channelCreate", async channel => {
+  if (!channel.guild || channel.isThread?.()) return;
+  try {
+    await verificationRoles.applyToChannel(channel.guild, channel);
+  } catch (error) {
+    console.error("[Verification Roles] Could not secure new channel " + channel.id + ":", error.message);
+  }
+});
 
 console.log("Loading help...");
 require("./help")(client);
