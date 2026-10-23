@@ -322,7 +322,6 @@ ${prefix}automod · ${prefix}addbadword · ${prefix}removebadword · ${prefix}ba
                 protection: {
                     label: "Server Protection",
                     description: "Anti-Nuke and Anti-Bot controls",
-                    emoji: "<:quarantine:1560000000000000000>",
                     content: `<:Shield_2:1532989398642327594> **SERVER PROTECTION**
 
 > Configure protection against destructive actions and suspicious bots.
@@ -334,8 +333,7 @@ ${prefix}antinuke
                 setup: {
                     label: "Server Setup",
                     description: "Configuration, roles, and verification",
-                    emoji: "<:settings:1532990547394957393>",
-                    content: `<:settings:1532990547394957393> **SERVER SETUP**
+                    content: `**SERVER SETUP**
 
 > Configure FRIDAY for this server.
 
@@ -344,8 +342,7 @@ ${prefix}config · ${prefix}prefix · ${prefix}role · ${prefix}setupverify`
                 modmail: {
                     label: "ModMail & Tickets",
                     description: "Support ticket system",
-                    emoji: "<:ticket:1560000000000000000>",
-                    content: `<:ticket:1560000000000000000> **MODMAIL & TICKETS**
+                    content: `**MODMAIL & TICKETS**
 
 > Members can open a support ticket by messaging FRIDAY directly.
 > Staff manage tickets through the configured ticket channels and buttons.
@@ -355,8 +352,7 @@ ${prefix}config · ${prefix}prefix · ${prefix}role · ${prefix}setupverify`
                 verification: {
                     label: "Verification",
                     description: "Verification setup",
-                    emoji: "<:verified:1560000000000000000>",
-                    content: `<:verified:1560000000000000000> **VERIFICATION**
+                    content: `**VERIFICATION**
 
 > Set up the server's verification system.
 
@@ -375,8 +371,7 @@ ${prefix}atlogs · ${prefix}resetactivetime · ${prefix}removeuser · ${prefix}a
                 voice: {
                     label: "Temporary Voice",
                     description: "Manage your temporary voice room",
-                    emoji: "<:mute:1560000000000000000>",
-                    content: `<:mute:1560000000000000000> **TEMPORARY VOICE ROOMS**
+                    content: `**TEMPORARY VOICE ROOMS**
 
 > Manage your own temporary voice channel.
 
@@ -410,7 +405,6 @@ ${prefix}sticky · ${prefix}say · ${prefix}dm`
                                 label: module.label,
                                 description: module.description,
                                 value,
-                                emoji: module.emoji
                             }))
                         )
                 );
