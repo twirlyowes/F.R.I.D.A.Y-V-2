@@ -3,6 +3,8 @@ const admin = require("firebase-admin");
 const guildConfig = require("./lib/guildConfig");
 const { parseCommand } = require("./lib/prefix");
 const { db } = require("./firebase");
+const { makeRecorder } = require("./lib/dashboardEvents");
+const dashboardEvents = makeRecorder(db);
 const { COLORS, createCard, getAvatarURL } = require("./lib/pixelVillaUI");
 
 /*
@@ -353,6 +355,16 @@ module.exports = client => {
                         return nextNumber;
                     }
                 );
+
+                dashboardEvents.recordCase(message.guild.id, {
+                    action: "strike",
+                    targetId: user.id,
+                    targetName: user.user.tag,
+                    moderatorId: message.author.id,
+                    moderatorName: message.author.tag,
+                    reason,
+                    sourceRecordId: strikeRef.id
+                }).catch(error => console.error("[Dashboard Events] Strike case could not be recorded:", error.message));
 
                 // -------------------------------------------------
                 // RESPONSE
