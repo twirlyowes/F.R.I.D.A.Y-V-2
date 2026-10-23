@@ -291,7 +291,7 @@ function setupHelpCommand(client) {
 
 **Prefix:** ${prefix}
 **Example:** ${prefix}help
-**Alternative:** Mention @F.R.I.D.A.Y and type help
+**Alternative:** Mention <@1559090795435266078> and type help
 
 -# F.R.I.D.A.Y • Select a module below.`
                 },
@@ -419,7 +419,8 @@ ${prefix}sticky · ${prefix}say · ${prefix}dm`
 
             await message.reply({
                 components: [card, buildModuleMenu()],
-                flags: MessageFlags.IsComponentsV2
+                flags: MessageFlags.IsComponentsV2,
+                allowedMentions: { parse: [] }
             });
 
             if (!client.__fridayHelpMenuLoaded) {
