@@ -159,13 +159,13 @@ module.exports = (client) => {
       // Retry missed events and transient Discord API failures once per minute.
       if (!client.voiceTempCleanupInterval) {
         client.voiceTempCleanupInterval = setInterval(() => {
-          cleanupTrackedEmptyChannels(client).catch(err =>
+          cleanupEmptyVoiceChannels(client).catch(err =>
             console.error("[VoiceSystem] Periodic cleanup sweep failed:", err)
           );
         }, 60_000);
         client.voiceTempCleanupInterval.unref?.();
       }
-      await cleanupTrackedEmptyChannels(client);
+      await cleanupEmptyVoiceChannels(client);
     } catch (err) {
       console.error("[VoiceSystem] Startup voice channel restoration failed:", err);
     }
@@ -208,40 +208,61 @@ module.exports = (client) => {
   // Track deletion actions to prevent duplicate deletion attempts.
   const deletionTracker = new Set();
 
-  async function cleanupTrackedEmptyChannels(clientInstance) {
-    const { channels: savedChannels = {} } = await loadVoiceChannels();
+  async function cleanupEmptyVoiceChannelsForGuild(guild) {
+    const cfg = await guildConfig.get(guild.id);
+    const categoryId = cfg.voiceCategory;
+    const createChannelId = cfg.voiceCreate;
 
-    for (const channelId of activeTempChannels.keys()) {
-      const channelData = savedChannels[channelId];
-      const guildId = channelData?.guildId;
-      if (!guildId) continue;
+    // Without an explicitly configured category, never guess which channels are disposable.
+    if (!categoryId) return;
 
-      const guild = clientInstance.guilds.cache.get(guildId);
-      if (!guild) continue;
+    // Refresh the guild channel list so this also catches empty rooms that were
+    // created manually, left over from a previous bot session, or never tracked in Firestore.
+    let channels;
+    try {
+      channels = await guild.channels.fetch();
+    } catch (error) {
+      console.error(`[VoiceSystem] Could not refresh channels in guild ${guild.id}; using cache for cleanup:`, error);
+      channels = guild.channels.cache;
+    }
 
-      const channel = await fetchTrackedChannel(guild, channelId);
-      if (channel === undefined) continue;
-      if (channel === null) {
-        activeTempChannels.delete(channelId);
-        await deleteVoiceChannel(channelId).catch(err =>
-          console.error(`[VoiceSystem] Failed removing missing channel record ${channelId}:`, err)
-        );
-        continue;
-      }
+    const category = channels.get(categoryId) || guild.channels.cache.get(categoryId);
+    if (!category || category.type !== ChannelType.GuildCategory) {
+      console.warn(`[VoiceSystem] Configured voice category ${categoryId} is missing/invalid in guild ${guild.id}; skipping cleanup.`);
+      return;
+    }
 
-      if (channel.type !== ChannelType.GuildVoice || channel.members.size > 0) continue;
-      if (deletionTracker.has(channelId)) continue;
+    for (const channel of channels.values()) {
+      if (!channel || channel.type !== ChannelType.GuildVoice) continue;
+      if (channel.parentId !== categoryId) continue;
 
-      deletionTracker.add(channelId);
+      // The Join-to-Create entry point must never be deleted, even if it is
+      // inside the same category and currently has no members.
+      if (channel.id === createChannelId) continue;
+      if (channel.members.size > 0 || deletionTracker.has(channel.id)) continue;
+
+      deletionTracker.add(channel.id);
       try {
-        await channel.delete("FRIDAY cleanup sweep: empty temporary voice channel");
-        activeTempChannels.delete(channelId);
-        await deleteVoiceChannel(channelId);
-        console.log(`[VoiceSystem] Deleted empty temporary channel during sweep: ${channel.name} (${channelId})`);
+        await channel.delete("FRIDAY cleanup: empty voice channel inside configured voice category");
+        activeTempChannels.delete(channel.id);
+        await deleteVoiceChannel(channel.id).catch(err =>
+          console.error(`[VoiceSystem] Channel ${channel.id} was deleted but its Firestore record could not be removed:`, err)
+        );
+        console.log(`[VoiceSystem] Deleted empty voice channel from configured category: ${channel.name} (${channel.id}) in guild ${guild.id}`);
       } catch (err) {
-        console.error(`[VoiceSystem] Could not delete empty temporary channel ${channelId}; will retry on next sweep:`, err);
+        console.error(`[VoiceSystem] Could not delete empty voice channel ${channel.id} in guild ${guild.id}; will retry:`, err);
       } finally {
-        deletionTracker.delete(channelId);
+        deletionTracker.delete(channel.id);
+      }
+    }
+  }
+
+  async function cleanupEmptyVoiceChannels(clientInstance) {
+    for (const guild of clientInstance.guilds.cache.values()) {
+      try {
+        await cleanupEmptyVoiceChannelsForGuild(guild);
+      } catch (error) {
+        console.error(`[VoiceSystem] Voice-category cleanup failed in guild ${guild.id}:`, error);
       }
     }
   }
@@ -364,57 +385,25 @@ module.exports = (client) => {
       }  
     }  
 
-    // Check if someone left a channel (instant auto-delete, no artificial delay).
-    // FIX: this block now runs for EVERY member, bots included — a music bot
-    // leaving a temp channel now correctly triggers cleanup instead of being
-    // skipped by the old function-wide "if (member.user.bot) return".
-    if (oldState.channelId && oldState.channelId !== newState.channelId) {
-      const channelId = oldState.channelId;
-
-      if (
-        channelId !== CREATE_CHANNEL_ID &&
-        !deletionTracker.has(channelId)
-      ) {
-        deletionTracker.add(channelId);
-
-        (async () => {
-          try {
-            if (!activeTempChannels.has(channelId)) return;
-
-            // Let voice-state caches settle, then fetch fresh channel state from Discord.
-            await new Promise(resolve => setTimeout(resolve, 1200));
-            const guild = oldState.guild;
-            const leftChannel = await fetchTrackedChannel(guild, channelId);
-            if (leftChannel === undefined) return;
-
-            if (leftChannel === null) {
-              activeTempChannels.delete(channelId);
-              await deleteVoiceChannel(channelId).catch(err =>
-                console.error(`[VoiceSystem] Failed removing missing channel record ${channelId}:`, err)
-              );
-              return;
-            }
-
-            if (leftChannel.type !== ChannelType.GuildVoice || leftChannel.members.size > 0) return;
-
-            try {
-              await leftChannel.delete("FRIDAY auto-cleanup: last member left temporary voice channel");
-              activeTempChannels.delete(channelId);
-              await deleteVoiceChannel(channelId);
-              console.log(`[VoiceSystem] Deleted empty temporary channel: ${leftChannel.name} (${channelId})`);
-            } catch (err) {
-              // Keep tracking the channel so the periodic sweep can retry.
-              console.error(`[VoiceSystem] Failed deleting empty temporary channel ${channelId}:`, err);
-            }
-
-          } catch (err) {
-            console.error("[VoiceSystem] Auto delete error:", err);
-          } finally {
-            deletionTracker.delete(channelId);
-          }
-        })();
-      }
-    } // closes oldState.channelId if
+    // When anyone leaves a voice channel, scan the configured voice category
+    // rather than relying on activeTempChannels. This also cleans up empty rooms
+    // that predate this process or were never recorded in Firestore.
+    if (
+      oldState.channelId &&
+      oldState.channelId !== newState.channelId &&
+      oldState.channelId !== CREATE_CHANNEL_ID
+    ) {
+      const leftGuild = oldState.guild;
+      (async () => {
+        try {
+          // Allow Discord.js voice-state caches to settle before checking emptiness.
+          await new Promise(resolve => setTimeout(resolve, 1200));
+          await cleanupEmptyVoiceChannelsForGuild(leftGuild);
+        } catch (err) {
+          console.error(`[VoiceSystem] Auto-cleanup after voice leave failed in guild ${leftGuild.id}:`, err);
+        }
+      })();
+    }
   }); // closes voiceStateUpdate
   // 2. Handle Owner Customizations & Commands with Set Lookup & Early Ignoring
   client.on("messageCreate", async (message) => {
