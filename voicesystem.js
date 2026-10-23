@@ -87,6 +87,18 @@ async function deleteVoiceChannel(id) {
     .doc(id)
     .delete();
 }
+
+// Return null only when Discord confirms the channel no longer exists.
+// Return undefined for transient/API/permission failures so its record is preserved.
+async function fetchTrackedChannel(guild, channelId) {
+  try {
+    return await guild.channels.fetch(channelId);
+  } catch (error) {
+    if (Number(error?.code) === 10003) return null; // Unknown Channel
+    console.error(`[VoiceSystem] Could not fetch tracked channel ${channelId}; preserving it for retry:`, error);
+    return undefined;
+  }
+}
       
 
 module.exports = (client) => {
@@ -108,8 +120,9 @@ module.exports = (client) => {
         const guild = client.guilds.cache.get(guildId);
         if (!guild) continue;
 
-        const channel = await guild.channels.fetch(channelId).catch(() => null);
-        if (!channel) {
+        const channel = await fetchTrackedChannel(guild, channelId);
+        if (channel === undefined) continue;
+        if (channel === null) {
           await deleteVoiceChannel(channelId).catch(err =>
             console.error(`[VoiceSystem] Failed removing stale channel record ${channelId}:`, err)
           );
@@ -206,8 +219,9 @@ module.exports = (client) => {
       const guild = clientInstance.guilds.cache.get(guildId);
       if (!guild) continue;
 
-      const channel = await guild.channels.fetch(channelId).catch(() => null);
-      if (!channel) {
+      const channel = await fetchTrackedChannel(guild, channelId);
+      if (channel === undefined) continue;
+      if (channel === null) {
         activeTempChannels.delete(channelId);
         await deleteVoiceChannel(channelId).catch(err =>
           console.error(`[VoiceSystem] Failed removing missing channel record ${channelId}:`, err)
@@ -370,9 +384,10 @@ module.exports = (client) => {
             // Let voice-state caches settle, then fetch fresh channel state from Discord.
             await new Promise(resolve => setTimeout(resolve, 1200));
             const guild = oldState.guild;
-            const leftChannel = await guild.channels.fetch(channelId).catch(() => null);
+            const leftChannel = await fetchTrackedChannel(guild, channelId);
+            if (leftChannel === undefined) return;
 
-            if (!leftChannel) {
+            if (leftChannel === null) {
               activeTempChannels.delete(channelId);
               await deleteVoiceChannel(channelId).catch(err =>
                 console.error(`[VoiceSystem] Failed removing missing channel record ${channelId}:`, err)
