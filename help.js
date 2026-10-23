@@ -284,6 +284,7 @@ function setupHelpCommand(client) {
 `<a:sparkles:1532986077651140620> **F.R.I.D.A.Y — COMMAND CENTER**
 
 > Your all-in-one assistant for moderation, security, server management, and more.
+> Each section below represents a separate module.
 
 <:Shield_2:1532989398642327594> **PREFIX & USAGE**
 **Prefix:** ${prefix}
@@ -291,33 +292,50 @@ function setupHelpCommand(client) {
 **Alternative:** Mention @F.R.I.D.A.Y and type help
 -# Your server's configured prefix is used automatically.
 
-<a:ban:1532989769766801511> **MODERATION & SAFETY**
-> Keep your community clean, controlled, and protected.
+<a:ban:1532989769766801511> **MODERATION**
+> Warnings, strikes, member actions, and message control.
 ${prefix}warn · ${prefix}wlist · ${prefix}wremove · ${prefix}wreset
 ${prefix}strike · ${prefix}strikes · ${prefix}unstrike
 ${prefix}mute · ${prefix}unmute · ${prefix}kick · ${prefix}ban · ${prefix}unban · ${prefix}nick
 ${prefix}lock · ${prefix}unlock · ${prefix}hide · ${prefix}unhide
-${prefix}purge · ${prefix}snipe · ${prefix}vcp
-${prefix}addbadword · ${prefix}removebadword · ${prefix}badwordslist
+${prefix}purge · ${prefix}snipe
 
-<a:settings:1532990547394957393> **SERVER MANAGEMENT**
-> Configure FRIDAY and manage your server's features.
-${prefix}config · ${prefix}prefix · ${prefix}setupverify · ${prefix}role
-${prefix}automod · ${prefix}antinuke
-${prefix}sticky · ${prefix}say · ${prefix}dm
+🛡️ **AUTOMOD**
+> Manage automatic moderation and bad-word filtering.
+${prefix}automod · ${prefix}addbadword · ${prefix}removebadword · ${prefix}badwordslist
+
+🔐 **ANTI-NUKE & ANTI-BOT**
+> Configure server protection and trusted access.
+${prefix}antinuke
+
+⚙️ **SERVER CONFIGURATION**
+> Set up FRIDAY and configure server features.
+${prefix}config · ${prefix}prefix · ${prefix}role · ${prefix}setupverify
+
+🎫 **MODMAIL & SUPPORT**
+> Manage support tickets and staff workflows.
+-# Use the configured ModMail panel and ticket buttons to handle tickets.
+
+✅ **VERIFICATION**
+> Configure the verification system for your server.
+${prefix}setupverify
+
+📊 **ACTIVE TIME**
+> Track and manage staff activity reports.
 ${prefix}atlogs · ${prefix}resetactivetime · ${prefix}removeuser · ${prefix}activetime
-
-<:terminal:1532991459005829264> **UTILITIES & INFORMATION**
-> Useful tools and quick information whenever you need them.
-${prefix}help · ${prefix}afk · ${prefix}ping · ${prefix}uptime · ${prefix}botinfo
-${prefix}av · ${prefix}ui · ${prefix}si · ${prefix}wiki · ${prefix}calculate · ${prefix}quote · ${prefix}ip
 
 🎙️ **TEMPORARY VOICE ROOMS**
 > Manage your own temporary voice channel.
 ${prefix}vclock · ${prefix}vcunlock · ${prefix}vchide · ${prefix}vcunhide
 ${prefix}vcname · ${prefix}vclimit · ${prefix}vcadd · ${prefix}vcremove
-${prefix}vckick · ${prefix}vcowner
+${prefix}vcp · ${prefix}vcowner
 -# Voice commands are for your own temporary room.
+
+🧰 **UTILITIES & INFORMATION**
+> Everyday tools and quick server information.
+${prefix}help · ${prefix}afk · ${prefix}ping · ${prefix}uptime · ${prefix}botinfo
+${prefix}av · ${prefix}ui · ${prefix}si · ${prefix}wiki · ${prefix}calculate · ${prefix}quote · ${prefix}ip
+${prefix}sticky · ${prefix}say · ${prefix}dm
 
 -# <:success_g:1561271843346714777> F.R.I.D.A.Y • Help Module`;
 
