@@ -279,41 +279,56 @@ function setupHelpCommand(client) {
             });
 
             const helpContent =
-`<a:sparkles:1532986077651140620> **Welcome to F.R.I.D.A.Y!**
+`<a:sparkles:1532986077651140620> **F.R.I.D.A.Y — COMMAND CENTER**
 
-Use the lists below to explore all available commands.
+> Your all-in-one assistant for moderation, security, server management, and more.
+> Explore the command categories below to get started.
 
-<:Shield_2:1532989398642327594> **Prefix**
-> Every command uses this server's prefix: \`${p}\`
-> You can also @mention me instead (e.g. \`@F.R.I.D.A.Y help\`).
+<:Shield_2:1532989398642327594> **PREFIX & USAGE**
+```yaml
+Prefix: ${p}
+Example: ${p}help
+Alternative: @F.R.I.D.A.Y help
+```
+-# Your server's configured prefix is used automatically.
 
-<a:ban:1532989769766801511> **Moderation Commands**
-\`\`\`
+<a:ban:1532989769766801511> **MODERATION & SAFETY**
+> Keep your community clean, controlled, and protected.
+```
 ${p}warn  ${p}wlist  ${p}wremove  ${p}wreset
 ${p}strike  ${p}strikes  ${p}unstrike
 ${p}mute  ${p}unmute  ${p}kick  ${p}ban  ${p}unban  ${p}nick
 ${p}lock  ${p}unlock  ${p}hide  ${p}unhide
 ${p}purge  ${p}snipe  ${p}vcp
 ${p}addbadword  ${p}removebadword  ${p}badwordslist
-\`\`\`
-<a:settings:1532990547394957393> **Management Commands**
-\`\`\`
+```
+
+<a:settings:1532990547394957393> **SERVER MANAGEMENT**
+> Configure FRIDAY and manage your server's features.
+```
 ${p}config  ${p}prefix  ${p}setupverify  ${p}role
 ${p}automod  ${p}antinuke
 ${p}sticky  ${p}say  ${p}dm
 ${p}atlogs  ${p}resetactivetime  ${p}removeuser  ${p}activetime
-\`\`\`
-<:terminal:1532991459005829264> **Utility Commands**
-\`\`\`
+```
+
+<:terminal:1532991459005829264> **UTILITIES & INFORMATION**
+> Useful tools and quick information whenever you need them.
+```
 ${p}help  ${p}afk  ${p}ping  ${p}uptime  ${p}botinfo
 ${p}av  ${p}ui  ${p}si  ${p}wiki  ${p}calculate  ${p}quote  ${p}ip
-\`\`\`
-🎙️ **Temporary Voice Room Commands** *(inside your own room)*
-\`\`\`
+```
+
+🎙️ **TEMPORARY VOICE ROOMS**
+> Manage your own temporary voice channel.
+```
 ${p}vclock  ${p}vcunlock  ${p}vchide  ${p}vcunhide
-${p}vcname  ${p}vclimit  ${p}vcadd  ${p}vcremove  ${p}vckick  ${p}vcowner
-\`\`\`
--# F.R.I.D.A.Y • Help Module`;
+${p}vcname  ${p}vclimit  ${p}vcadd  ${p}vcremove
+${p}vckick  ${p}vcowner
+```
+-# Voice commands are for your own temporary room.
+
+-# <:success_g:1561271843346714777> F.R.I.D.A.Y • Help Module`;
 
             const card = createCard({
                 color: COLORS.SKY_BLUE,
