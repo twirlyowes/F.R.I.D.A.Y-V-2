@@ -276,7 +276,7 @@ module.exports = (client) => {
     // Use the name fallback only when the configured ID is absent/unresolvable.
     // If the ID resolves, it is the sole protected Join-to-Create channel; this
     // avoids preserving unrelated empty rooms just because their name matches.
-    const useNameFallback = !createChannelId || (!createChannel && channelFetchSucceeded);
+    const useNameFallback = !createChannelId || !createChannel;
 
     for (const channel of channels.values()) {
       if (!channel || channel.type !== ChannelType.GuildVoice) continue;
