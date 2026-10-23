@@ -14,6 +14,9 @@ const {
 
 const guildConfig = require("./lib/guildConfig");
 const { parseCommand, getPrefix } = require("./lib/prefix");
+const { db } = require("./firebase");
+const { makeRecorder } = require("./lib/dashboardEvents");
+const dashboardEvents = makeRecorder(db);
 
 const pendingCaptchas = new Map(); // guildId:userId -> { answer, attempts, timeoutId }
 const cooldowns = new Map();       // guildId:userId -> timestamp expiration
@@ -431,6 +434,10 @@ module.exports = function(client) {
                         clearTimeout(userCaptcha.timeoutId);
                         pendingCaptchas.delete(userId);
                         cooldowns.set(userId, Date.now() + (5 * 60 * 1000));
+                        dashboardEvents.recordVerificationReview(interaction.guildId, interaction.user.id, {
+                            attempts: userCaptcha.attempts,
+                            reason: "Three invalid CAPTCHA input attempts"
+                        }).catch(err => console.error("[Verification Review] Could not record failed attempt:", err.message));
                         return interaction.editReply({ content: '<:error_g:1561271715164721245> Invalid input format. You have exhausted your 3 attempts and are temporarily locked out for **5 minutes**.' });
                     }
 
@@ -464,10 +471,28 @@ module.exports = function(client) {
                         return interaction.editReply({ content: '<:info_g:1561269600564281374> You are already verified in this server!' });
                     }
 
-                    await member.roles.add(verifiedRole).catch(err => console.error("Failed adding verified role:", err));
-                    if (unverifiedRole && member.roles.cache.has(unverifiedRole.id)) {
-                        await member.roles.remove(unverifiedRole).catch(err => console.error("Failed removing unverified role:", err));
+                    try {
+                        await member.roles.add(verifiedRole, "F.R.I.D.A.Y CAPTCHA verification passed");
+                        if (unverifiedRole && member.roles.cache.has(unverifiedRole.id)) {
+                            await member.roles.remove(unverifiedRole, "F.R.I.D.A.Y CAPTCHA verification passed");
+                        }
+                    } catch (roleError) {
+                        console.error("Failed applying verification roles:", roleError);
+                        return interaction.editReply({ content: '<:error_g:1561271715164721245> CAPTCHA was correct, but FRIDAY could not apply the verification roles. Please contact a server administrator.' });
                     }
+
+                    dashboardEvents.recordEvent(guild.id, {
+                        type: "verification.success",
+                        title: "Member verified",
+                        detail: "CAPTCHA completed and the configured Verified role was granted.",
+                        severity: "success",
+                        targetId: member.id,
+                        targetName: member.user.tag
+                    }).catch(err => console.error("[Verification Review] Could not record successful verification event:", err.message));
+                    db.collection("friday_verification_reviews").doc(guild.id).collection("items").doc(member.id).set({
+                        status: "approved", reviewedAt: Date.now(), reviewerName: "CAPTCHA verification",
+                        reason: "CAPTCHA verification completed successfully", userId: member.id
+                    }, { merge: true }).catch(err => console.error("[Verification Review] Could not resolve review record:", err.message));
 
                     await interaction.editReply({ content: '<:success_g:1561271843346714777> Correct! Verification successful. Server access granted.' });
 
@@ -490,6 +515,10 @@ module.exports = function(client) {
                         clearTimeout(userCaptcha.timeoutId);
                         pendingCaptchas.delete(userId);
                         cooldowns.set(userId, Date.now() + (5 * 60 * 1000));
+                        dashboardEvents.recordVerificationReview(interaction.guildId, interaction.user.id, {
+                            attempts: userCaptcha.attempts,
+                            reason: "Three incorrect CAPTCHA answers"
+                        }).catch(err => console.error("[Verification Review] Could not record failed attempt:", err.message));
 
                         {
                             const logChannel = await guildConfig.getLogChannel(interaction.guild);
