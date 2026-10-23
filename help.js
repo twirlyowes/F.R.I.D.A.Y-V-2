@@ -280,76 +280,199 @@ function setupHelpCommand(client) {
 
             const prefix = p || ".";
 
-            const helpContent =
-`<a:sparkles:1532986077651140620> **F.R.I.D.A.Y — COMMAND CENTER**
+            const modules = {
+                overview: {
+                    label: "Overview",
+                    description: "Prefix, usage, and available modules",
+                    emoji: "<a:sparkles:1532986077651140620>",
+                    content: `<a:sparkles:1532986077651140620> **F.R.I.D.A.Y — COMMAND CENTER**
 
-> Your all-in-one assistant for moderation, security, server management, and more.
-> Each section below represents a separate module.
+> Choose a module from the dropdown to see its commands.
 
-<:Shield_2:1532989398642327594> **PREFIX & USAGE**
 **Prefix:** ${prefix}
 **Example:** ${prefix}help
 **Alternative:** Mention @F.R.I.D.A.Y and type help
--# Your server's configured prefix is used automatically.
 
-<a:ban:1532989769766801511> **MODERATION**
-> Warnings, strikes, member actions, and message control.
+-# F.R.I.D.A.Y • Select a module below.`
+                },
+                moderation: {
+                    label: "Moderation",
+                    description: "Warnings, strikes, and member actions",
+                    emoji: "<a:ban:1532989769766801511>",
+                    content: `<a:ban:1532989769766801511> **MODERATION**
+
+> Keep your community safe with moderation tools.
+
 ${prefix}warn · ${prefix}wlist · ${prefix}wremove · ${prefix}wreset
 ${prefix}strike · ${prefix}strikes · ${prefix}unstrike
 ${prefix}mute · ${prefix}unmute · ${prefix}kick · ${prefix}ban · ${prefix}unban · ${prefix}nick
 ${prefix}lock · ${prefix}unlock · ${prefix}hide · ${prefix}unhide
-${prefix}purge · ${prefix}snipe
+${prefix}purge · ${prefix}snipe`
+                },
+                automod: {
+                    label: "AutoMod",
+                    description: "Automatic moderation and bad-word filters",
+                    emoji: "<:Shield_2:1532989398642327594>",
+                    content: `<:Shield_2:1532989398642327594> **AUTOMOD**
 
-🛡️ **AUTOMOD**
-> Manage automatic moderation and bad-word filtering.
-${prefix}automod · ${prefix}addbadword · ${prefix}removebadword · ${prefix}badwordslist
+> Configure automatic moderation and bad-word filtering.
 
-🔐 **ANTI-NUKE & ANTI-BOT**
-> Configure server protection and trusted access.
+${prefix}automod · ${prefix}addbadword · ${prefix}removebadword · ${prefix}badwordslist`
+                },
+                protection: {
+                    label: "Server Protection",
+                    description: "Anti-Nuke and Anti-Bot controls",
+                    emoji: "<:quarantine:1560000000000000000>",
+                    content: `<:Shield_2:1532989398642327594> **SERVER PROTECTION**
+
+> Configure protection against destructive actions and suspicious bots.
+
 ${prefix}antinuke
 
-⚙️ **SERVER CONFIGURATION**
-> Set up FRIDAY and configure server features.
-${prefix}config · ${prefix}prefix · ${prefix}role · ${prefix}setupverify
+-# Anti-Bot controls are managed through the configured protection panel where available.`
+                },
+                setup: {
+                    label: "Server Setup",
+                    description: "Configuration, roles, and verification",
+                    emoji: "<:settings:1532990547394957393>",
+                    content: `<:settings:1532990547394957393> **SERVER SETUP**
 
-🎫 **MODMAIL & SUPPORT**
-> Manage support tickets and staff workflows.
--# Use the configured ModMail panel and ticket buttons to handle tickets.
+> Configure FRIDAY for this server.
 
-✅ **VERIFICATION**
-> Configure the verification system for your server.
-${prefix}setupverify
+${prefix}config · ${prefix}prefix · ${prefix}role · ${prefix}setupverify`
+                },
+                modmail: {
+                    label: "ModMail & Tickets",
+                    description: "Support ticket system",
+                    emoji: "<:ticket:1560000000000000000>",
+                    content: `<:ticket:1560000000000000000> **MODMAIL & TICKETS**
 
-📊 **ACTIVE TIME**
-> Track and manage staff activity reports.
-${prefix}atlogs · ${prefix}resetactivetime · ${prefix}removeuser · ${prefix}activetime
+> Members can open a support ticket by messaging FRIDAY directly.
+> Staff manage tickets through the configured ticket channels and buttons.
 
-🎙️ **TEMPORARY VOICE ROOMS**
+-# There are no separate text commands for opening a ModMail ticket.`
+                },
+                verification: {
+                    label: "Verification",
+                    description: "Verification setup",
+                    emoji: "<:verified:1560000000000000000>",
+                    content: `<:verified:1560000000000000000> **VERIFICATION**
+
+> Set up the server's verification system.
+
+${prefix}setupverify`
+                },
+                activetime: {
+                    label: "Active Time",
+                    description: "Staff activity and reports",
+                    emoji: "<:info_g:1561269600564281374>",
+                    content: `<:info_g:1561269600564281374> **ACTIVE TIME**
+
+> Track staff activity and manage reports.
+
+${prefix}atlogs · ${prefix}resetactivetime · ${prefix}removeuser · ${prefix}activetime`
+                },
+                voice: {
+                    label: "Temporary Voice",
+                    description: "Manage your temporary voice room",
+                    emoji: "<:mute:1560000000000000000>",
+                    content: `<:mute:1560000000000000000> **TEMPORARY VOICE ROOMS**
+
 > Manage your own temporary voice channel.
+
 ${prefix}vclock · ${prefix}vcunlock · ${prefix}vchide · ${prefix}vcunhide
 ${prefix}vcname · ${prefix}vclimit · ${prefix}vcadd · ${prefix}vcremove
-${prefix}vcp · ${prefix}vcowner
--# Voice commands are for your own temporary room.
+${prefix}vcp · ${prefix}vcowner`
+                },
+                utilities: {
+                    label: "Utilities",
+                    description: "General tools and information",
+                    emoji: "<:info_g:1561269600564281374>",
+                    content: `<:info_g:1561269600564281374> **UTILITIES & INFORMATION**
 
-🧰 **UTILITIES & INFORMATION**
-> Everyday tools and quick server information.
+> Everyday tools and quick information.
+
 ${prefix}help · ${prefix}afk · ${prefix}ping · ${prefix}uptime · ${prefix}botinfo
 ${prefix}av · ${prefix}ui · ${prefix}si · ${prefix}wiki · ${prefix}calculate · ${prefix}quote · ${prefix}ip
-${prefix}sticky · ${prefix}say · ${prefix}dm
+${prefix}sticky · ${prefix}say · ${prefix}dm`
+                }
+            };
 
--# <:success_g:1561271843346714777> F.R.I.D.A.Y • Help Module`;
+            const buildModuleMenu = (selected = "overview") =>
+                new ActionRowBuilder().addComponents(
+                    new StringSelectMenuBuilder()
+                        .setCustomId("friday_help_module")
+                        .setPlaceholder("Choose a help category")
+                        .setMinValues(1)
+                        .setMaxValues(1)
+                        .addOptions(
+                            Object.entries(modules).map(([value, module]) => ({
+                                label: module.label,
+                                description: module.description,
+                                value,
+                                emoji: module.emoji
+                            }))
+                        )
+                );
 
+            const selectedModule = modules.overview;
             const card = createCard({
                 color: COLORS.SKY_BLUE,
-                content: helpContent,
+                content: selectedModule.content,
                 avatarURL,
                 avatarDescription: "F.R.I.D.A.Y avatar"
             });
 
             await message.reply({
-                components: [card],
+                components: [card, buildModuleMenu()],
                 flags: MessageFlags.IsComponentsV2
             });
+
+            if (!client.__fridayHelpMenuLoaded) {
+                client.__fridayHelpMenuLoaded = true;
+
+                client.on("interactionCreate", async (interaction) => {
+                    if (
+                        !interaction.isStringSelectMenu() ||
+                        interaction.customId !== "friday_help_module"
+                    ) return;
+
+                    try {
+                        const key = interaction.values[0];
+                        const module = modules[key];
+                        if (!module) {
+                            await interaction.reply({
+                                content: "<:error_g:1561271715164721245> Unknown help category.",
+                                ephemeral: true
+                            });
+                            return;
+                        }
+
+                        const updatedCard = createCard({
+                            color: COLORS.SKY_BLUE,
+                            content: module.content,
+                            avatarURL: client.user.displayAvatarURL({
+                                extension: "png",
+                                size: 128
+                            }),
+                            avatarDescription: "F.R.I.D.A.Y avatar"
+                        });
+
+                        await interaction.update({
+                            components: [updatedCard, buildModuleMenu(key)],
+                            flags: MessageFlags.IsComponentsV2
+                        });
+                    } catch (error) {
+                        console.error("Help menu interaction error:", error);
+                        if (!interaction.replied && !interaction.deferred) {
+                            await interaction.reply({
+                                content: "<:error_g:1561271715164721245> Couldn't load that help category.",
+                                ephemeral: true
+                            }).catch(() => {});
+                        }
+                    }
+                });
+            }
 
         } catch (error) {
             console.error("Help Command Error:", error);
