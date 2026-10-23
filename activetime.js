@@ -800,6 +800,23 @@ module.exports = (client) => {
                 );
             }
 
+            // Persist one compact, server-scoped daily snapshot before the 3:05 AM reset.
+            // The dashboard chart reads this collection; no user message contents are stored.
+            const dateParts = new Intl.DateTimeFormat("en-GB", {
+                timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit"
+            }).formatToParts(new Date());
+            const dateValue = Object.fromEntries(dateParts.filter(part => part.type !== "literal").map(part => [part.type, part.value]));
+            const dateKey = dateValue.year + "-" + dateValue.month + "-" + dateValue.day;
+            const dailyTotals = sortedStaff.reduce((totals, key) => ({
+                totalActiveTime: totals.totalActiveTime + (dailyActiveTimes.get(key) || 0),
+                totalVoiceTime: totals.totalVoiceTime + (dailyVoiceTimes.get(key) || 0),
+                totalMessages: totals.totalMessages + (dailyMessageCounts.get(key) || 0),
+                totalCommands: totals.totalCommands + (dailyCommandCounts.get(key) || 0)
+            }), { totalActiveTime: 0, totalVoiceTime: 0, totalMessages: 0, totalCommands: 0 });
+            await db.collection("activetime_history").doc(guild.id).collection("days").doc(dateKey).set({
+                date: dateKey, ...dailyTotals, staffCount: sortedStaff.length, updatedAt: Date.now()
+            }, { merge: true });
+
             console.log(
                 `<:success_g:1561271843346714777> [DailyReport] Sent successfully to #${channel.name || channel.id} (${chunks.length} card(s), ${sortedStaff.length} staff member(s)).`
             );
