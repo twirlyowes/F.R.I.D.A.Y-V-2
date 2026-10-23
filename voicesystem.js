@@ -91,45 +91,70 @@ async function deleteVoiceChannel(id) {
 
 module.exports = (client) => {
 
-  // 3. Safer startup cleanup: Only delete channels tracked in JSONBin storage
+  // 3. Restore and clean up tracked temporary channels using their recorded guildId.
+  // A guild being unavailable must not cause another guild's channel record to be deleted.
   client.once("ready", async () => {
     try {
-      console.log(`[VoiceSystem] Bot logged in as ${client.user.tag}. Running startup sweep and restoration...`);
-      const binData = await loadVoiceChannels();
-      if (!binData.channels) binData.channels = {};
+      console.log(`[VoiceSystem] Bot logged in as ${client.user.tag}. Restoring temporary voice channels...`);
+      const { channels: savedChannels = {} } = await loadVoiceChannels();
 
-      let dataChanged = false;  
-
-      for (const guild of client.guilds.cache.values()) {  
-        const channels = await guild.channels.fetch().catch(() => new Map());  
-
-        // Restore active temporary channels from JSONBin into Map with thorough checks  
-        for (const [channelId, channelData] of Object.entries(binData.channels)) {  
-          const targetChannel = channels.get(channelId);  
-
-          if (!targetChannel || targetChannel.type !== ChannelType.GuildVoice) {  
-            delete binData.channels[channelId];  
-            dataChanged = true;  
-            console.log(`[VoiceSystem] Removed non-existent channel from JSONBin record: ${channelId}`);
-          } else if (targetChannel.members.size === 0) {  
-            await targetChannel.delete().catch(() => {});  
-            delete binData.channels[channelId];  
-            dataChanged = true;  
-            console.log(`[VoiceSystem] Cleaned up tracked empty temp channel on startup: ${targetChannel.name}`);  
-          } else {  
-            activeTempChannels.set(channelId, channelData.owner);  
-            console.log(`[VoiceSystem] Restored ownership for channel ID ${channelId} -> Owner ID: ${channelData.owner}`);
-          }  
-        }  
-      }  
-
-      if (dataChanged) {  
-        for (const [id, data] of Object.entries(binData.channels)) {
-  await saveVoiceChannel(id, data);
+      for (const [channelId, channelData] of Object.entries(savedChannels)) {
+        const guildId = channelData.guildId;
+        if (!guildId) {
+          console.warn(`[VoiceSystem] Skipping legacy voice record without guildId: ${channelId}`);
+          continue;
         }
-      }  
-    } catch (err) {  
-      console.error("Error during startup voice channel cleanup sweep & JSONBin sync:", err);  
+
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) continue;
+
+        const channel = await guild.channels.fetch(channelId).catch(() => null);
+        if (!channel) {
+          await deleteVoiceChannel(channelId).catch(err =>
+            console.error(`[VoiceSystem] Failed removing stale channel record ${channelId}:`, err)
+          );
+          activeTempChannels.delete(channelId);
+          console.log(`[VoiceSystem] Removed stale temporary-channel record: ${channelId}`);
+          continue;
+        }
+
+        if (channel.type !== ChannelType.GuildVoice) {
+          console.warn(`[VoiceSystem] Saved temp channel ${channelId} is not a voice channel; removing its record.`);
+          await deleteVoiceChannel(channelId).catch(err =>
+            console.error(`[VoiceSystem] Failed removing invalid channel record ${channelId}:`, err)
+          );
+          continue;
+        }
+
+        if (channel.members.size === 0) {
+          try {
+            await channel.delete("FRIDAY startup cleanup: empty temporary voice channel");
+            await deleteVoiceChannel(channelId);
+            activeTempChannels.delete(channelId);
+            console.log(`[VoiceSystem] Deleted empty temporary channel on startup: ${channel.name} (${channelId})`);
+          } catch (err) {
+            activeTempChannels.set(channelId, channelData.owner);
+            console.error(`[VoiceSystem] Could not delete empty startup channel ${channelId}; will retry:`, err);
+          }
+          continue;
+        }
+
+        activeTempChannels.set(channelId, channelData.owner);
+        console.log(`[VoiceSystem] Restored temp channel ${channelId} -> owner ${channelData.owner}`);
+      }
+
+      // Retry missed events and transient Discord API failures once per minute.
+      if (!client.voiceTempCleanupInterval) {
+        client.voiceTempCleanupInterval = setInterval(() => {
+          cleanupTrackedEmptyChannels(client).catch(err =>
+            console.error("[VoiceSystem] Periodic cleanup sweep failed:", err)
+          );
+        }, 60_000);
+        client.voiceTempCleanupInterval.unref?.();
+      }
+      await cleanupTrackedEmptyChannels(client);
+    } catch (err) {
+      console.error("[VoiceSystem] Startup voice channel restoration failed:", err);
     }
   });
 
@@ -167,8 +192,45 @@ module.exports = (client) => {
     );
   }
 
-  // Track deletion actions to prevent duplicate deletion attempts
+  // Track deletion actions to prevent duplicate deletion attempts.
   const deletionTracker = new Set();
+
+  async function cleanupTrackedEmptyChannels(clientInstance) {
+    const { channels: savedChannels = {} } = await loadVoiceChannels();
+
+    for (const channelId of activeTempChannels.keys()) {
+      const channelData = savedChannels[channelId];
+      const guildId = channelData?.guildId;
+      if (!guildId) continue;
+
+      const guild = clientInstance.guilds.cache.get(guildId);
+      if (!guild) continue;
+
+      const channel = await guild.channels.fetch(channelId).catch(() => null);
+      if (!channel) {
+        activeTempChannels.delete(channelId);
+        await deleteVoiceChannel(channelId).catch(err =>
+          console.error(`[VoiceSystem] Failed removing missing channel record ${channelId}:`, err)
+        );
+        continue;
+      }
+
+      if (channel.type !== ChannelType.GuildVoice || channel.members.size > 0) continue;
+      if (deletionTracker.has(channelId)) continue;
+
+      deletionTracker.add(channelId);
+      try {
+        await channel.delete("FRIDAY cleanup sweep: empty temporary voice channel");
+        activeTempChannels.delete(channelId);
+        await deleteVoiceChannel(channelId);
+        console.log(`[VoiceSystem] Deleted empty temporary channel during sweep: ${channel.name} (${channelId})`);
+      } catch (err) {
+        console.error(`[VoiceSystem] Could not delete empty temporary channel ${channelId}; will retry on next sweep:`, err);
+      } finally {
+        deletionTracker.delete(channelId);
+      }
+    }
+  }
 
   // 1. Monitor Voice State Updates (Join to Create & Auto Delete)
   client.on("voiceStateUpdate", async (oldState, newState) => {
@@ -303,31 +365,32 @@ module.exports = (client) => {
 
         (async () => {
           try {
-            // SPEED: read straight from cache instead of polling with delays.
-            // Discord.js updates the guild's voice state cache synchronously
-            // before this event fires, so the member count here is current
-            // in the overwhelming majority of cases.
-            const leftChannel = oldState.guild.channels.cache.get(channelId);
+            if (!activeTempChannels.has(channelId)) return;
 
-            if (
-              !leftChannel ||
-              leftChannel.type !== ChannelType.GuildVoice ||
-              !activeTempChannels.has(channelId)
-            ) {
+            // Let voice-state caches settle, then fetch fresh channel state from Discord.
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            const guild = oldState.guild;
+            const leftChannel = await guild.channels.fetch(channelId).catch(() => null);
+
+            if (!leftChannel) {
+              activeTempChannels.delete(channelId);
+              await deleteVoiceChannel(channelId).catch(err =>
+                console.error(`[VoiceSystem] Failed removing missing channel record ${channelId}:`, err)
+              );
               return;
             }
 
-            if (leftChannel.members.size > 0) {
-              return;
+            if (leftChannel.type !== ChannelType.GuildVoice || leftChannel.members.size > 0) return;
+
+            try {
+              await leftChannel.delete("FRIDAY auto-cleanup: last member left temporary voice channel");
+              activeTempChannels.delete(channelId);
+              await deleteVoiceChannel(channelId);
+              console.log(`[VoiceSystem] Deleted empty temporary channel: ${leftChannel.name} (${channelId})`);
+            } catch (err) {
+              // Keep tracking the channel so the periodic sweep can retry.
+              console.error(`[VoiceSystem] Failed deleting empty temporary channel ${channelId}:`, err);
             }
-
-            await leftChannel.delete().catch(() => {});
-
-            activeTempChannels.delete(channelId);
-
-            await deleteVoiceChannel(channelId);
-
-            console.log(`[VoiceSystem] Deleted empty temporary channel: ${channelId}`);
 
           } catch (err) {
             console.error("[VoiceSystem] Auto delete error:", err);
