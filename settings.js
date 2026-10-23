@@ -15,6 +15,7 @@ const {
 
 const guildConfig = require("./lib/guildConfig");
 const quarantine = require("./lib/quarantine");
+const verificationRoles = require("./lib/verificationRoles");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
 const { clearSetting } = require("./lib/setupClear");
 
@@ -550,7 +551,12 @@ module.exports = client => {
           }
         }
 
-        await guildConfig.set(message.guild.id, key, value);
+        try {
+          const handled = await verificationRoles.saveVerificationSetting(message.guild, key, value);
+          if (!handled) await guildConfig.set(message.guild.id, key, value);
+        } catch (error) {
+          return reply(message, COLORS.RED, error.message);
+        }
 
         return reply(
           message,
