@@ -278,54 +278,45 @@ function setupHelpCommand(client) {
                 size: 128
             });
 
+            const prefix = p || ".";
+
             const helpContent =
 `<a:sparkles:1532986077651140620> **F.R.I.D.A.Y — COMMAND CENTER**
 
 > Your all-in-one assistant for moderation, security, server management, and more.
-> Explore the command categories below to get started.
 
 <:Shield_2:1532989398642327594> **PREFIX & USAGE**
-~~~yaml
-Prefix: ${p}
-Example: ${p}help
-Alternative: @F.R.I.D.A.Y help
-~~~
+**Prefix:** ${prefix}
+**Example:** ${prefix}help
+**Alternative:** Mention @F.R.I.D.A.Y and type help
 -# Your server's configured prefix is used automatically.
 
 <a:ban:1532989769766801511> **MODERATION & SAFETY**
 > Keep your community clean, controlled, and protected.
-~~~
-${p}warn  ${p}wlist  ${p}wremove  ${p}wreset
-${p}strike  ${p}strikes  ${p}unstrike
-${p}mute  ${p}unmute  ${p}kick  ${p}ban  ${p}unban  ${p}nick
-${p}lock  ${p}unlock  ${p}hide  ${p}unhide
-${p}purge  ${p}snipe  ${p}vcp
-${p}addbadword  ${p}removebadword  ${p}badwordslist
-~~~
+${prefix}warn · ${prefix}wlist · ${prefix}wremove · ${prefix}wreset
+${prefix}strike · ${prefix}strikes · ${prefix}unstrike
+${prefix}mute · ${prefix}unmute · ${prefix}kick · ${prefix}ban · ${prefix}unban · ${prefix}nick
+${prefix}lock · ${prefix}unlock · ${prefix}hide · ${prefix}unhide
+${prefix}purge · ${prefix}snipe · ${prefix}vcp
+${prefix}addbadword · ${prefix}removebadword · ${prefix}badwordslist
 
 <a:settings:1532990547394957393> **SERVER MANAGEMENT**
 > Configure FRIDAY and manage your server's features.
-~~~
-${p}config  ${p}prefix  ${p}setupverify  ${p}role
-${p}automod  ${p}antinuke
-${p}sticky  ${p}say  ${p}dm
-${p}atlogs  ${p}resetactivetime  ${p}removeuser  ${p}activetime
-~~~
+${prefix}config · ${prefix}prefix · ${prefix}setupverify · ${prefix}role
+${prefix}automod · ${prefix}antinuke
+${prefix}sticky · ${prefix}say · ${prefix}dm
+${prefix}atlogs · ${prefix}resetactivetime · ${prefix}removeuser · ${prefix}activetime
 
 <:terminal:1532991459005829264> **UTILITIES & INFORMATION**
 > Useful tools and quick information whenever you need them.
-~~~
-${p}help  ${p}afk  ${p}ping  ${p}uptime  ${p}botinfo
-${p}av  ${p}ui  ${p}si  ${p}wiki  ${p}calculate  ${p}quote  ${p}ip
-~~~
+${prefix}help · ${prefix}afk · ${prefix}ping · ${prefix}uptime · ${prefix}botinfo
+${prefix}av · ${prefix}ui · ${prefix}si · ${prefix}wiki · ${prefix}calculate · ${prefix}quote · ${prefix}ip
 
 🎙️ **TEMPORARY VOICE ROOMS**
 > Manage your own temporary voice channel.
-~~~
-${p}vclock  ${p}vcunlock  ${p}vchide  ${p}vcunhide
-${p}vcname  ${p}vclimit  ${p}vcadd  ${p}vcremove
-${p}vckick  ${p}vcowner
-~~~
+${prefix}vclock · ${prefix}vcunlock · ${prefix}vchide · ${prefix}vcunhide
+${prefix}vcname · ${prefix}vclimit · ${prefix}vcadd · ${prefix}vcremove
+${prefix}vckick · ${prefix}vcowner
 -# Voice commands are for your own temporary room.
 
 -# <:success_g:1561271843346714777> F.R.I.D.A.Y • Help Module`;
