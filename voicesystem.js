@@ -77,9 +77,11 @@ async function loadVoiceChannels() {
 }
 
 async function saveVoiceChannel(id, data) {
+  // Keep guildId/createdAt when ownership is transferred. Replacing the whole
+  // document here used to orphan the channel from startup restoration.
   await db.collection("voiceChannels")
     .doc(id)
-    .set(data);
+    .set(data, { merge: true });
 }
 
 async function deleteVoiceChannel(id) {
@@ -150,7 +152,7 @@ module.exports = (client) => {
           continue;
         }
 
-        if (channel.members.size === 0) {
+        if (!hasVoiceMembers(channel, guild)) {
           try {
             await channel.delete("FRIDAY startup cleanup: empty temporary voice channel");
             await deleteVoiceChannel(channelId);
@@ -219,54 +221,83 @@ module.exports = (client) => {
   // Track deletion actions to prevent duplicate deletion attempts.
   const deletionTracker = new Set();
 
+  function hasVoiceMembers(channel, guild) {
+    // channel.members is derived from cached GuildMembers. VoiceState cache also
+    // protects against deleting an occupied room when a member isn't in cache.
+    const hasVoiceState = guild.voiceStates?.cache?.some(state => state.channelId === channel.id) === true;
+    return channel.members.size > 0 || hasVoiceState;
+  }
+
   async function cleanupEmptyVoiceChannelsForGuild(guild) {
     const cfg = await guildConfig.get(guild.id);
-    const categoryId = cfg.voiceCategory;
-    const createChannelId = cfg.voiceCreate;
+    const createChannelId = cfg.voiceCreate || null;
 
-    // Without an explicitly configured category, never guess which channels are disposable.
-    if (!categoryId) return;
-
-    // Refresh the guild channel list so this also catches empty rooms that were
-    // created manually, left over from a previous bot session, or never tracked in Firestore.
+    // Fetch the current channel list so orphaned rooms created by an earlier
+    // bot process are cleaned even when they have no Firestore record.
     let channels;
+    let channelFetchSucceeded = false;
     try {
       channels = await guild.channels.fetch();
+      channelFetchSucceeded = true;
     } catch (error) {
       console.error(`[VoiceSystem] Could not refresh channels in guild ${guild.id}; using cache for cleanup:`, error);
       channels = guild.channels.cache;
     }
 
-    const category = channels.get(categoryId) || guild.channels.cache.get(categoryId);
+    // Prefer the explicitly configured category. If that setting is stale or
+    // missing, derive it from the configured Join-to-Create channel's parent.
+    let categoryId = cfg.voiceCategory || null;
+    let category = categoryId
+      ? (channels.get(categoryId) || guild.channels.cache.get(categoryId))
+      : null;
     if (!category || category.type !== ChannelType.GuildCategory) {
-      console.warn(`[VoiceSystem] Configured voice category ${categoryId} is missing/invalid in guild ${guild.id}; skipping cleanup.`);
+      const createChannel = createChannelId
+        ? (channels.get(createChannelId) || guild.channels.cache.get(createChannelId))
+        : null;
+      const fallbackCategoryId = createChannel?.parentId;
+      const fallbackCategory = fallbackCategoryId
+        ? (channels.get(fallbackCategoryId) || guild.channels.cache.get(fallbackCategoryId))
+        : null;
+      if (fallbackCategory?.type === ChannelType.GuildCategory) {
+        categoryId = fallbackCategoryId;
+        category = fallbackCategory;
+        console.warn(`[VoiceSystem] Using Join-to-Create parent category ${categoryId} as the voice cleanup category for guild ${guild.id}.`);
+      }
+    }
+
+    if (!category || category.type !== ChannelType.GuildCategory || !categoryId) {
+      console.warn(`[VoiceSystem] No valid configured/Join-to-Create parent category in guild ${guild.id}; skipping empty-channel cleanup safely.`);
       return;
     }
+
+    const createChannel = createChannelId
+      ? (channels.get(createChannelId) || guild.channels.cache.get(createChannelId))
+      : null;
+    // Use the name fallback only when the configured ID is absent/unresolvable.
+    // If the ID resolves, it is the sole protected Join-to-Create channel; this
+    // avoids preserving unrelated empty rooms just because their name matches.
+    const useNameFallback = !createChannelId || (!createChannel && channelFetchSucceeded);
 
     for (const channel of channels.values()) {
       if (!channel || channel.type !== ChannelType.GuildVoice) continue;
       if (channel.parentId !== categoryId) continue;
 
-      // The Join-to-Create entry point must never be deleted, even if it is
-      // inside the same category and currently has no members. Use the saved
-      // channel ID first, with a name fallback for servers whose old config is
-      // missing or stale.
       const looksLikeCreateChannel =
         /join[\s_-]*to[\s_-]*create|create[\s_-]*vc|create[\s_-]*voice(?:[\s_-]*channel)?/i.test(channel.name || "");
-      if (channel.id === createChannelId || looksLikeCreateChannel) {
+      if (channel.id === createChannelId || (useNameFallback && looksLikeCreateChannel)) {
         console.log(`[VoiceSystem] Preserving Join-to-Create channel: ${channel.name} (${channel.id}) in guild ${guild.id}`);
         continue;
       }
-      if (channel.members.size > 0 || deletionTracker.has(channel.id)) continue;
+      if (hasVoiceMembers(channel, guild) || deletionTracker.has(channel.id)) continue;
 
       deletionTracker.add(channel.id);
       try {
-        await channel.delete("FRIDAY cleanup: empty voice channel inside configured voice category");
+        await channel.delete("FRIDAY cleanup: empty voice channel inside the configured voice category");
         activeTempChannels.delete(channel.id);
         await deleteVoiceChannel(channel.id).catch(err =>
           console.error(`[VoiceSystem] Channel ${channel.id} was deleted but its Firestore record could not be removed:`, err)
         );
-        console.log(`[VoiceSystem] Deleted empty voice channel from configured category: ${channel.name} (${channel.id}) in guild ${guild.id}`);
+        console.log(`[VoiceSystem] Deleted empty voice channel from category: ${channel.name} (${channel.id}) in guild ${guild.id}`);
       } catch (err) {
         console.error(`[VoiceSystem] Could not delete empty voice channel ${channel.id} in guild ${guild.id}; will retry:`, err);
       } finally {
