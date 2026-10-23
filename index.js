@@ -35,6 +35,7 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildModeration,
     GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildWebhooks,
     GatewayIntentBits.DirectMessages
@@ -769,6 +770,8 @@ client.on(
 );
 
 require("./firebase");
+const { attachDashboardEvents } = require("./lib/dashboardEvents");
+attachDashboardEvents(client);
 
 // Newly created channels must not accidentally expose themselves to unverified members.
 client.on("channelCreate", async channel => {
@@ -794,6 +797,9 @@ require("./strike")(client);
 
 console.log("Loading verify...");
 require("./verify")(client);
+
+console.log("Loading ModMail...");
+require("./modmail")(client);
 
 console.log("Loading misc...");
 require("./misc")(client);
