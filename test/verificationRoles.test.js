@@ -8,7 +8,8 @@ const {
 const {
   configureUnverifiedRole,
   saveVerificationSetting,
-  applyToChannel
+  applyToChannel,
+  restoreUnverifiedRole
 } = require("../lib/verificationRoles");
 
 function fixture(options = {}) {
@@ -172,6 +173,25 @@ test("Unverified is locked across channels while the verification panel stays vi
   }
   assert.notEqual(f.general.permissionOverwrites.cache.get("unverified").allow.bitfield, originalGeneral.allow);
   assert.ok(f.cfg.__unverifiedRoleSnapshot);
+});
+
+test("clearing Unverified restores the original role permissions and overwrites", async () => {
+  const f = fixture();
+  const originalPermissions = f.unverified.permissions.bitfield;
+  const originalGeneral = f.general.permissionOverwrites.cache.get("unverified");
+  const originalAllow = originalGeneral.allow.bitfield;
+  const originalDeny = originalGeneral.deny.bitfield;
+
+  await configureUnverifiedRole(f.guild, f.unverified, f.verify.id, { guildConfig: f.guildConfig });
+  const restored = await restoreUnverifiedRole(f.guild, f.unverified.id, { guildConfig: f.guildConfig });
+
+  assert.equal(restored.restored, true);
+  assert.equal(f.unverified.permissions.bitfield, originalPermissions);
+  assert.equal(f.cfg.__unverifiedRoleSnapshot, null);
+  assert.equal(f.verify.permissionOverwrites.cache.has("unverified"), false);
+  const general = f.general.permissionOverwrites.cache.get("unverified");
+  assert.equal(general.allow.bitfield, originalAllow);
+  assert.equal(general.deny.bitfield, originalDeny);
 });
 
 test("Verified and Unverified cannot be configured as the same role", async () => {
