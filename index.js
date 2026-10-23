@@ -19,6 +19,8 @@ const guildConfig = require("./lib/guildConfig");
 const verificationRoles = require("./lib/verificationRoles");
 const { parseCommand } = require("./lib/prefix");
 const consoleLogger = require("./console");
+const { makeRecorder } = require("./lib/dashboardEvents");
+const dashboardEvents = makeRecorder();
 const { COLORS, createCard, getAvatarURL } = require("./lib/pixelVillaUI");
 
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -499,6 +501,15 @@ client.on(
           ms(time),
           reason
         );
+
+        dashboardEvents.recordCase(message.guild.id, {
+          action: "timeout",
+          targetId: user.id,
+          targetName: user.user.tag,
+          moderatorId: message.author.id,
+          moderatorName: message.author.tag,
+          reason
+        }).catch(error => console.error("[Dashboard Events] Timeout case could not be recorded:", error.message));
 
         const options =
           cardReply(
