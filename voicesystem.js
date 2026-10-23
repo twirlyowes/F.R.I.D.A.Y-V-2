@@ -139,6 +139,17 @@ module.exports = (client) => {
           continue;
         }
 
+        // Apply the same Create-VC safeguard during startup restoration too,
+        // before the older Firestore-tracked cleanup path can remove anything.
+        const savedGuildConfig = await guildConfig.get(guildId);
+        const looksLikeCreateChannel =
+          /join[\\s_-]*to[\\s_-]*create|create[\\s_-]*vc|create[\\s_-]*voice(?:[\\s_-]*channel)?/i.test(channel.name || "");
+        if (channelId === savedGuildConfig.voiceCreate || looksLikeCreateChannel) {
+          activeTempChannels.delete(channelId);
+          console.log(`[VoiceSystem] Preserving Join-to-Create channel during startup: ${channel.name} (${channelId}) in guild ${guildId}`);
+          continue;
+        }
+
         if (channel.members.size === 0) {
           try {
             await channel.delete("FRIDAY startup cleanup: empty temporary voice channel");
