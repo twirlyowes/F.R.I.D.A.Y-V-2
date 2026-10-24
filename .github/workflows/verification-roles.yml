@@ -1,0 +1,41 @@
+name: Verification Role Safeguards
+
+on:
+  push:
+    branches:
+      - fix/verification-role-permissions
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "lib/verificationRoles.js"
+      - "lib/guildConfig.js"
+      - "lib/setupClear.js"
+      - "setup.js"
+      - "settings.js"
+      - "index.js"
+      - "test/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/verification-roles.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Syntax-check changed runtime files
+        run: |
+          node --check lib/verificationRoles.js
+          node --check lib/guildConfig.js
+          node --check lib/setupClear.js
+          node --check setup.js
+          node --check settings.js
+          node --check index.js
+      - name: Test role permissions and rollback
+        run: npm test

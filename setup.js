@@ -15,6 +15,7 @@ const {
 
 const guildConfig = require("./lib/guildConfig");
 const quarantine = require("./lib/quarantine");
+const verificationRoles = require("./lib/verificationRoles");
 const { parseCommand } = require("./lib/prefix");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
 const { trackCreatedResource, trackSetupAllAssignment, clearSetting, clearAllSetupResources } = require("./lib/setupClear");
@@ -217,7 +218,9 @@ async function buildFeaturePanel(guild, userId, featureKey, index = 0, note = ""
   const current = resourceLabel(def, cfg[field.key]);
   const description = field.key === "quarantineRole"
     ? "This role will have no server-wide permissions, and its channel overwrites will deny access to server channels."
-    : def.description;
+    : field.key === "unverifiedRole"
+      ? "FRIDAY removes server-wide permissions, blocks this role from server channels, and allows it to view the verification panel only. The Verified role is left unchanged."
+      : def.description;
 
   const rows = [];
   if (def.type === "role") {
@@ -290,7 +293,10 @@ async function buildFeaturePanel(guild, userId, featureKey, index = 0, note = ""
 
 async function saveField(guild, field, value) {
   if (field.key === "quarantineRole") await quarantine.configureRole(guild, value);
-  await guildConfig.set(guild.id, field.key, typeof value === "string" ? value : value.id);
+  const handled = await verificationRoles.saveVerificationSetting(guild, field.key, value);
+  if (!handled) {
+    await guildConfig.set(guild.id, field.key, typeof value === "string" ? value : value.id);
+  }
 }
 
 async function createResource(guild, field, trackingOptions = {}) {
@@ -310,16 +316,13 @@ async function createResource(guild, field, trackingOptions = {}) {
       reason: "F.R.I.D.A.Y guided server setup"
     });
     try {
-      if (field.key === "quarantineRole") await quarantine.configureRole(guild, role);
-      await guildConfig.set(guild.id, field.key, role.id);
+      await saveField(guild, field, role);
       await trackCreatedResource(guild, field.key, role, trackingOptions).catch(error => {
         console.error("[Setup] Could not record created role for cleanup:", error);
       });
       return role;
     } catch (error) {
-      if (field.key === "quarantineRole") {
-        await role.delete("F.R.I.D.A.Y setup could not safely configure the Quarantine role").catch(() => {});
-      }
+      await role.delete("F.R.I.D.A.Y setup could not safely configure the role").catch(() => {});
       throw error;
     }
   }
@@ -370,10 +373,15 @@ async function createResource(guild, field, trackingOptions = {}) {
   const channel = await guild.channels.create(channelOptions);
 
   const cfg = await guildConfig.get(guild.id);
-  if (cfg.quarantineRole) {
-    await quarantine.applyToChannel(guild, channel, cfg.quarantineRole).catch(() => false);
+  try {
+    if (cfg.quarantineRole) {
+      await quarantine.applyToChannel(guild, channel, cfg.quarantineRole).catch(() => false);
+    }
+    await saveField(guild, field, channel);
+  } catch (error) {
+    await channel.delete("F.R.I.D.A.Y setup could not safely save the channel configuration").catch(() => {});
+    throw error;
   }
-  await guildConfig.set(guild.id, field.key, channel.id);
   await trackCreatedResource(guild, field.key, channel, trackingOptions).catch(error => {
     console.error("[Setup] Could not record created channel for cleanup:", error);
   });
@@ -443,6 +451,7 @@ module.exports = client => {
         const successes = [];
         const skipped = [];
         const errors = [];
+        let verificationRoleConfiguredThisRun = false;
         const cfg = await guildConfig.get(guild.id);
 
         for (const feature of Object.values(FEATURES)) {
@@ -469,10 +478,21 @@ module.exports = client => {
               const value = await createResource(guild, field, { scope: "setupAll" });
               cfg[field.key] = value.id;
               successes.push("<:success_g:1561271843346714777> **" + field.name + "** — created");
+              if (field.key === "unverifiedRole" || field.key === "verifyChannel") verificationRoleConfiguredThisRun = true;
             } catch (error) {
               errors.push("<:error_g:1561271715164721245> **" + field.name + "** — " +
                 String(error.message || "failed").slice(0, 180));
             }
+          }
+        }
+
+        const finalCfg = await guildConfig.get(guild.id);
+        if (finalCfg.unverifiedRole && finalCfg.verifyChannel && !verificationRoleConfiguredThisRun) {
+          try {
+            const secured = await verificationRoles.configureUnverifiedRole(guild, finalCfg.unverifiedRole, finalCfg.verifyChannel);
+            successes.push("<:success_g:1561271843346714777> **Unverified role permissions** — secured across " + secured.configuredChannels + " channels; verification remains accessible.");
+          } catch (error) {
+            errors.push("<:error_g:1561271715164721245> **Unverified role permissions** — " + String(error.message || "failed").slice(0, 180));
           }
         }
 

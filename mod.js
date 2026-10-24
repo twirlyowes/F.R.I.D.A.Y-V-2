@@ -1,5 +1,7 @@
 const { PermissionsBitField, MessageFlags } = require("discord.js");
 const guildConfig = require("./lib/guildConfig");
+const { makeRecorder } = require("./lib/dashboardEvents");
+const dashboardEvents = makeRecorder();
 const { parseCommand } = require("./lib/prefix");
 const { COLORS, createCard, getAvatarURL } = require("./lib/pixelVillaUI");
 
@@ -132,6 +134,10 @@ module.exports = (client) => {
         }
 
         await user.kick(auditReason(message, reason));
+        dashboardEvents.recordCase(message.guild.id, {
+          action: "kick", targetId: user.id, targetName: user.user.tag,
+          moderatorId: message.author.id, moderatorName: message.author.tag, reason
+        }).catch(error => console.error("[Dashboard Events] Kick case could not be recorded:", error.message));
 
         const options = cardReply(
           ORANGE,
@@ -194,6 +200,10 @@ module.exports = (client) => {
         await user.ban({
           reason: auditReason(message, reason)
         });
+        dashboardEvents.recordCase(message.guild.id, {
+          action: "ban", targetId: user.id, targetName: user.user.tag,
+          moderatorId: message.author.id, moderatorName: message.author.tag, reason
+        }).catch(error => console.error("[Dashboard Events] Ban case could not be recorded:", error.message));
 
         const options = cardReply(
           COLORS.RED,

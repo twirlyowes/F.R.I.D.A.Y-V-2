@@ -16,8 +16,11 @@ const {
 const fs = require("fs").promises;
 const path = require("path");
 const guildConfig = require("./lib/guildConfig");
+const verificationRoles = require("./lib/verificationRoles");
 const { parseCommand } = require("./lib/prefix");
 const consoleLogger = require("./console");
+const { makeRecorder } = require("./lib/dashboardEvents");
+const dashboardEvents = makeRecorder();
 const { COLORS, createCard, getAvatarURL } = require("./lib/pixelVillaUI");
 
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -34,6 +37,7 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildModeration,
     GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildWebhooks,
     GatewayIntentBits.DirectMessages
@@ -341,6 +345,19 @@ client.once(
     });
 
     await registerSlashCommands();
+
+    // Migrate and enforce existing Unverified configurations on startup.
+    for (const guild of client.guilds.cache.values()) {
+      try {
+        const cfg = await guildConfig.get(guild.id);
+        if (cfg.unverifiedRole && cfg.verifyChannel) {
+          const result = await verificationRoles.configureUnverifiedRole(guild, cfg.unverifiedRole, cfg.verifyChannel);
+          console.log("[Verification Roles] Secured Unverified in " + guild.name + " (" + result.configuredChannels + " channels).");
+        }
+      } catch (error) {
+        console.error("[Verification Roles] Could not secure Unverified in " + guild.id + ":", error.message);
+      }
+    }
   }
 );
 
@@ -484,6 +501,15 @@ client.on(
           ms(time),
           reason
         );
+
+        dashboardEvents.recordCase(message.guild.id, {
+          action: "timeout",
+          targetId: user.id,
+          targetName: user.user.tag,
+          moderatorId: message.author.id,
+          moderatorName: message.author.tag,
+          reason
+        }).catch(error => console.error("[Dashboard Events] Timeout case could not be recorded:", error.message));
 
         const options =
           cardReply(
@@ -755,6 +781,18 @@ client.on(
 );
 
 require("./firebase");
+const { attachDashboardEvents } = require("./lib/dashboardEvents");
+attachDashboardEvents(client);
+
+// Newly created channels must not accidentally expose themselves to unverified members.
+client.on("channelCreate", async channel => {
+  if (!channel.guild || channel.isThread?.()) return;
+  try {
+    await verificationRoles.applyToChannel(channel.guild, channel);
+  } catch (error) {
+    console.error("[Verification Roles] Could not secure new channel " + channel.id + ":", error.message);
+  }
+});
 
 console.log("Loading help...");
 require("./help")(client);
@@ -770,6 +808,9 @@ require("./strike")(client);
 
 console.log("Loading verify...");
 require("./verify")(client);
+
+console.log("Loading ModMail...");
+require("./modmail")(client);
 
 console.log("Loading misc...");
 require("./misc")(client);
