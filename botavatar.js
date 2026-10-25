@@ -15,6 +15,8 @@ const IMAGE_TYPES = new Set([
     "image/webp",
     "image/gif"
 ]);
+const IMAGE_EXTENSIONS = /\.(?:png|jpe?g|webp|gif)(?:$|\?)/i;
+const DISCORD_MESSAGE_URL = /^https?:\/\/(?:canary\.|ptb\.)?discord(?:app)?\.com\/channels\/(\d{17,20})\/(\d{17,20})\/(\d{17,20})\/?(?:\?.*)?$/i;
 
 const EMOJIS = {
     success: "<:success_g:1561271843346714777>",
@@ -57,7 +59,7 @@ function isSafeImageURL(value) {
 
 async function imageToDataURI(source) {
     if (!isSafeImageURL(source)) {
-        throw new Error("Use a valid public HTTPS image URL or attach an image.");
+        throw new Error("Use a valid public HTTPS image URL, a Discord message link, or attach an image.");
     }
 
     const response = await fetch(source, {
@@ -86,6 +88,8 @@ async function imageToDataURI(source) {
     const chunks = [];
     let size = 0;
 
+    if (!response.body) throw new Error("Could not read the image response.");
+
     for await (const chunk of response.body) {
         size += chunk.length;
         if (size > MAX_IMAGE_BYTES) {
@@ -100,15 +104,15 @@ async function imageToDataURI(source) {
     return `data:${contentType};base64,${buffer.toString("base64")}`;
 }
 
+function looksLikeImage(attachment) {
+    const contentType = (attachment.contentType || "").split(";")[0].trim().toLowerCase();
+    return IMAGE_TYPES.has(contentType) || IMAGE_EXTENSIONS.test(attachment.name || attachment.url || "");
+}
+
 async function attachmentToDataURI(attachment) {
     if (!attachment) return null;
 
-    const contentType = (attachment.contentType || "")
-        .split(";")[0]
-        .trim()
-        .toLowerCase();
-
-    if (!IMAGE_TYPES.has(contentType)) {
+    if (!looksLikeImage(attachment)) {
         throw new Error("Attach a PNG, JPG, WEBP, or GIF image.");
     }
 
@@ -117,6 +121,47 @@ async function attachmentToDataURI(attachment) {
     }
 
     return imageToDataURI(attachment.url);
+}
+
+async function resolveDiscordMessageImage(client, commandMessage, source) {
+    const match = source.match(DISCORD_MESSAGE_URL);
+    if (!match) return imageToDataURI(source);
+
+    const [, guildId, channelId, messageId] = match;
+
+    if (guildId !== commandMessage.guild.id) {
+        throw new Error("For safety, the message link must point to a message in this same server.");
+    }
+
+    let channel;
+    let referencedMessage;
+
+    try {
+        channel = await client.channels.fetch(channelId);
+        if (!channel || !channel.isTextBased() || !channel.messages?.fetch) {
+            throw new Error("That link does not point to a readable text channel.");
+        }
+
+        if (channel.guildId && channel.guildId !== commandMessage.guild.id) {
+            throw new Error("That message belongs to a different server.");
+        }
+
+        referencedMessage = await channel.messages.fetch(messageId);
+    } catch (error) {
+        if (error.message === "That link does not point to a readable text channel." ||
+            error.message === "That message belongs to a different server.") {
+            throw error;
+        }
+        throw new Error("I couldn't read that linked message. Make sure FRIDAY can view its channel and read message history.");
+    }
+
+    const attachment = referencedMessage.attachments.find(looksLikeImage);
+    if (attachment) return attachmentToDataURI(attachment);
+
+    const embeddedImage = referencedMessage.embeds.find(embed => embed.image?.url)?.image?.url;
+    if (embeddedImage) return imageToDataURI(embeddedImage);
+
+    throw new Error("That message has no image attachment or embedded image. Link a message containing the image itself.");
 }
 
 async function updateGuildProfile(client, guildId, field, value) {
@@ -152,11 +197,7 @@ module.exports = (client) => {
         const field = fieldByCommand[normalized] || resetCommand[normalized];
         if (!field) return;
 
-        if (
-            !message.member.permissions.has(
-                PermissionsBitField.Flags.ManageGuild
-            )
-        ) {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
             return message.reply(cardReply(
                 COLORS.RED,
                 `${EMOJIS.error} **Permission Denied**\nYou need **Manage Server** to customize FRIDAY's profile in this server.`
@@ -164,17 +205,15 @@ module.exports = (client) => {
         }
 
         const isReset = Boolean(resetCommand[normalized]);
-        const attachment = message.attachments.find(file =>
-            (file.contentType || "").startsWith("image/")
-        );
+        const attachment = message.attachments.find(looksLikeImage);
 
         if (!isReset && !attachment && !args[0]) {
             return message.reply(cardReply(
                 COLORS.ORANGE,
                 `${EMOJIS.info} **FRIDAY Server Profile**\n\n` +
-                `**Set avatar:** \`${prefix}setavatar <image URL>\`\n` +
-                `**Set banner:** \`${prefix}setbanner <image URL>\`\n` +
-                `You can also attach an image to either command.\n\n` +
+                `**Set avatar:** \`${prefix}setavatar <image URL or Discord message link>\`\n` +
+                `**Set banner:** \`${prefix}setbanner <image URL or Discord message link>\`\n` +
+                `You can also attach an image to either command, or link a message containing an image from this server.\n\n` +
                 `**Reset avatar:** \`${prefix}resetavatar\`\n` +
                 `**Reset banner:** \`${prefix}resetbanner\``
             ));
@@ -192,7 +231,7 @@ module.exports = (client) => {
                 ? null
                 : attachment
                     ? await attachmentToDataURI(attachment)
-                    : await imageToDataURI(imageURL);
+                    : await resolveDiscordMessageImage(client, message, imageURL);
 
             await updateGuildProfile(client, message.guild.id, field, dataURI);
 
