@@ -859,6 +859,9 @@ require("./afk")(client);
 console.log("Loading YouTube...");
 require("./YouTube")(client);
 
+console.log("Loading bot avatar and banner customization...");
+require("./botavatar")(client);
+
 console.log("About to login...");
 console.log(
   "Token exists:",
