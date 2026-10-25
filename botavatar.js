@@ -128,10 +128,6 @@ async function updateGuildProfile(client, guildId, field, value) {
 }
 
 module.exports = (client) => {
-    const rest = new REST({ version: "10" }).setToken(
-        process.env.DISCORD_TOKEN
-    );
-
     client.on("messageCreate", async (message) => {
         if (!message.guild || message.author.bot) return;
 
