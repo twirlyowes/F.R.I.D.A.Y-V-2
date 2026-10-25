@@ -1,8 +1,7 @@
 const {
     REST,
     Routes,
-    MessageFlags,
-    PermissionsBitField
+    MessageFlags
 } = require("discord.js");
 
 const { parseCommand } = require("./lib/prefix");
@@ -148,8 +147,10 @@ async function resolveDiscordMessageImage(client, commandMessage, source) {
 
         referencedMessage = await channel.messages.fetch(messageId);
     } catch (error) {
-        if (error.message === "That link does not point to a readable text channel." ||
-            error.message === "That message belongs to a different server.") {
+        if (
+            error.message === "That link does not point to a readable text channel." ||
+            error.message === "That message belongs to a different server."
+        ) {
             throw error;
         }
         throw new Error("I couldn't read that linked message. Make sure FRIDAY can view its channel and read message history.");
@@ -197,10 +198,19 @@ module.exports = (client) => {
         const field = fieldByCommand[normalized] || resetCommand[normalized];
         if (!field) return;
 
-        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        const ownerId = process.env.OWNER_ID?.trim();
+        if (!ownerId) {
+            console.error("[Bot Avatar] OWNER_ID is not configured; profile customization is disabled.");
             return message.reply(cardReply(
                 COLORS.RED,
-                `${EMOJIS.error} **Permission Denied**\nYou need **Manage Server** to customize FRIDAY's profile in this server.`
+                `${EMOJIS.error} **Owner Only**\nThis command is disabled because the \`OWNER_ID\` environment variable is not configured.`
+            ));
+        }
+
+        if (message.author.id !== ownerId) {
+            return message.reply(cardReply(
+                COLORS.RED,
+                `${EMOJIS.error} **Owner Only**\nOnly FRIDAY's configured owner can change the bot's server-specific avatar or banner.`
             ));
         }
 
@@ -237,7 +247,7 @@ module.exports = (client) => {
 
             await progress.edit(cardReply(
                 COLORS.GREEN,
-                `${EMOJIS.success} **Profile ${isReset ? "Reset" : "Updated"}**\nFRIDAY's server-specific ${field} was ${action === "reset" ? "reset to its default" : "updated"} in **${message.guild.name}**.\n\n${EMOJIS.info} This does not change FRIDAY's global profile.`
+                `${EMOJIS.success} **Profile ${isReset ? "Reset" : "Updated"}**\nFRIDAY's server-specific ${field} was ${action === "reset" ? "reset to its default" : "updated"} in **${message.guild.name}**.`
             ));
         } catch (error) {
             console.error(`[Bot Avatar] Failed to ${action} guild ${field} for ${message.guild.id}:`, error);
