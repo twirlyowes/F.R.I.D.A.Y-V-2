@@ -222,7 +222,7 @@ module.exports = (client) => {
 
         if (arg) {
           const mentionedUser = message.mentions.users.first();
-          const cleanedId = (mentionedUser?.id || arg).replace(/<@!?(\\d+)>/, "$1");
+          const cleanedId = (mentionedUser?.id || arg).replace(/<@!?(\d+)>/, "$1");
 
           if (!/^\d{17,20}$/.test(cleanedId)) {
             return message.reply(cardReply(
