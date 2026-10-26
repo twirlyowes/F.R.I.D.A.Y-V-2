@@ -621,66 +621,72 @@ client.on(
         );
       }
 
-      if (
-        ["purge", "c"].includes(
-          command
-        )
-      ) {
-        if (
-          !message.member.permissions.has(
-            PermissionsBitField.Flags.ManageMessages
-          )
-        ) {
-          return message.reply(
-            cardReply(
-              COLORS.RED,
-              "You need the **Manage Messages** permission."
-            )
-          );
+      if (["purge", "c"].includes(command)) {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) return message.reply(cardReply(COLORS.RED, "You need the **Manage Messages** permission."));
+        if (!message.guild.members.me?.permissionsIn(message.channel).has(PermissionsBitField.Flags.ManageMessages)) return message.reply(cardReply(COLORS.RED, "I need the **Manage Messages** permission in this channel."));
+        const validTypes = new Set(["bots", "humans", "links", "attachments", "mentions", "emojis", "stickers", "user", "contains", "number"]);
+        const type = String(args[0] || "").toLowerCase();
+        if (!validTypes.has(type)) return message.reply(cardReply(COLORS.RED, "**Usage:** " + PREFIX + command + " <type> [amount] [content]\n\n**Types:** bots, humans, links, attachments, mentions, emojis, stickers, user, contains, number\n**Default amount:** 20 (maximum 100)\n**Examples:** " + PREFIX + "c bots, " + PREFIX + "c links 30, " + PREFIX + "c user 10 @user, " + PREFIX + "c contains 15 spam, " + PREFIX + "c number 50"));
+        let rest = args.slice(1);
+        let amount = 20;
+        if (rest.length && /^\d+$/.test(rest[0])) amount = Number(rest.shift());
+        if (!Number.isInteger(amount) || amount < 1 || amount > 100) return message.reply(cardReply(COLORS.RED, "Amount must be a whole number between 1 and 100."));
+        let targetId = null;
+        let textFilter = "";
+        if (type === "user") {
+          const mention = (rest[0] || "").match(/^<@!?(\d+)>$/);
+          targetId = mention ? mention[1] : (rest[0] && /^\d{17,20}$/.test(rest[0]) ? rest[0] : null);
+          if (!targetId) return message.reply(cardReply(COLORS.RED, "**Usage:** " + PREFIX + command + " user [amount] @user (or user ID)"));
         }
-
-        const amount =
-          Number(args[0]);
-
-        if (
-          !amount ||
-          amount < 1 ||
-          amount > 100
-        ) {
-          return message.reply(
-            cardReply(
-              COLORS.RED,
-              "Please enter a valid amount between 1 and 100. (e.g., `purge 50`)"
-            )
-          );
+        if (type === "contains") {
+          textFilter = rest.join(" ").trim();
+          if (!textFilter) return message.reply(cardReply(COLORS.RED, "**Usage:** " + PREFIX + command + " contains [amount] <text>"));
         }
-
-        await message.delete()
-          .catch(() => {});
-
-        await message.channel.bulkDelete(
-          amount,
-          true
-        );
-
-        const options =
-          cardReply(
-            COLORS.GREEN,
-            `Successfully deleted **${amount}** messages.\n\n**Moderator:** ${message.author.tag}`
-          );
-
-        const successMsg =
-          await message.channel.send(
-            options
-          );
-
-        setTimeout(
-          () =>
-            successMsg
-              .delete()
-              .catch(() => {}),
-          4000
-        );
+        const linkRegex = /(?:https?:\/\/|www\.)\S+|\b[\w.-]+\.(?:com|net|org|gg|io|co|me|dev|app|xyz|info|biz|tv|ly)(?:\/\S*)?/i;
+        const emojiRegex = /<a?:[A-Za-z0-9_]+:\d{17,20}>|[\p{Extended_Pictographic}\p{Regional_Indicator}]/u;
+        const matches = (msg) => {
+          switch (type) {
+            case "bots": return msg.author.bot;
+            case "humans": return !msg.author.bot;
+            case "links": return linkRegex.test(msg.content);
+            case "attachments": return msg.attachments.size > 0;
+            case "mentions": return msg.mentions.users.size > 0 || msg.mentions.roles.size > 0 || msg.mentions.everyone;
+            case "emojis": return emojiRegex.test(msg.content);
+            case "stickers": return msg.stickers.size > 0;
+            case "user": return msg.author.id === targetId;
+            case "contains": return msg.content.toLowerCase().includes(textFilter.toLowerCase());
+            default: return true;
+          }
+        };
+        const selected = [];
+        let before;
+        let reachedEnd = false;
+        while (selected.length < amount && !reachedEnd) {
+          const page = await message.channel.messages.fetch({ limit: 100, ...(before ? { before } : {}) });
+          if (!page.size) break;
+          const ordered = [...page.values()].sort((x, y) => y.createdTimestamp - x.createdTimestamp);
+          for (const msg of ordered) {
+            if (msg.id !== message.id && (type === "number" || matches(msg))) selected.push(msg);
+            if (selected.length >= amount) break;
+          }
+          before = ordered[ordered.length - 1].id;
+          if (page.size < 100) reachedEnd = true;
+        }
+        await message.delete().catch(() => {});
+        let deleted = 0;
+        for (let i = 0; i < selected.length; i += 100) {
+          const batch = selected.slice(i, i + 100);
+          const fresh = batch.filter(msg => Date.now() - msg.createdTimestamp < 14 * 24 * 60 * 60 * 1000);
+          for (let j = 0; j < fresh.length; j += 100) {
+            const part = fresh.slice(j, j + 100);
+            if (part.length === 1) { if (await part[0].delete().then(() => true).catch(() => false)) deleted++; }
+            else if (part.length > 1) { const result = await message.channel.bulkDelete(part, true); deleted += result.size; }
+          }
+        }
+        const skipped = selected.length - deleted;
+        const resultText = selected.length ? "Deleted **" + deleted + "** message(s) matching **" + type + "**.\n\n**Moderator:** " + message.author.tag + (skipped ? "\n**Skipped:** " + skipped + " (including messages older than 14 days)." : "") : "No messages matched the **" + type + "** filter.";
+        const reply = await message.channel.send(cardReply(deleted ? COLORS.GREEN : COLORS.RED, resultText));
+        setTimeout(() => reply.delete().catch(() => {}), 4000);
       }
 
       if (command === "vcp") {
