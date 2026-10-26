@@ -270,6 +270,40 @@ test("cached collection queries keep working after quota fallback activates", as
   assert.equal(result.docs[0].data().score, 7);
 });
 
+test("uncached reads still use Firestore after a write quota triggers fallback", async () => {
+  const nativeDb = new FakeFirestore();
+  nativeDb.docs.set("profiles/untouched", { team: "purple" });
+  const db = resilient(nativeDb);
+
+  nativeDb.failWrites = true;
+  await db.collection("settings").doc("trigger").set({ enabled: true });
+
+  const result = await db.collection("profiles").doc("untouched").get();
+  assert.equal(db.getResilienceStatus().mode, "fallback");
+  assert.equal(db.getResilienceStatus().readQuotaExhausted, false);
+  assert.equal(result.data().team, "purple");
+});
+
+test("cached reads keep working after read quota is exhausted", async () => {
+  const nativeDb = new FakeFirestore();
+  nativeDb.docs.set("profiles/cached", { team: "orange" });
+  const db = resilient(nativeDb);
+  await db.collection("profiles").doc("cached").get();
+
+  nativeDb.failWrites = true;
+  await db.collection("settings").doc("trigger").set({ enabled: true });
+  nativeDb.failReads = true;
+
+  const result = await db.collection("profiles").doc("cached").get();
+  assert.equal(result.data().team, "orange");
+  assert.equal(db.getResilienceStatus().readQuotaExhausted, true);
+
+  await assert.rejects(
+    db.collection("profiles").doc("never-cached").get(),
+    /no cached document/
+  );
+});
+
 test("an update to an uncached existing document queues for recovery without fabricating a complete read", async () => {
   const nativeDb = new FakeFirestore();
   nativeDb.docs.set("preferences/user-1", { theme: "dark", count: 1 });
