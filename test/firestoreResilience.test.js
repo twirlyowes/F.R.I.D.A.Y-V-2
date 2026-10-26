@@ -313,10 +313,12 @@ test("an update to an uncached existing document queues for recovery without fab
   await db.collection("preferences").doc("user-1").update({ count: 2 });
 
   assert.equal(db.getResilienceStatus().pendingOperations, 1);
-  await assert.rejects(
-    db.collection("preferences").doc("user-1").get(),
-    /partial cached data/
-  );
+
+  // Reads still work after a write quota failure. The fallback overlays the
+  // queued mutation on the server snapshot instead of returning stale fields.
+  const optimistic = await db.collection("preferences").doc("user-1").get();
+  assert.equal(optimistic.data().count, 2);
+  assert.equal(db.getResilienceStatus().readQuotaExhausted, false);
 
   nativeDb.failWrites = false;
   await db.runRecoveryCheck();
@@ -325,6 +327,28 @@ test("an update to an uncached existing document queues for recovery without fab
   assert.equal(db.getResilienceStatus().pendingOperations, 0);
   const recovered = await db.collection("preferences").doc("user-1").get();
   assert.equal(recovered.data().count, 2);
+});
+
+test("an uncached partial document is not fabricated when reads are also quota-blocked", async () => {
+  const nativeDb = new FakeFirestore();
+  nativeDb.docs.set("preferences/user-2", { theme: "light", count: 4 });
+  const db = resilient(nativeDb);
+
+  nativeDb.failWrites = true;
+  await db.collection("preferences").doc("user-2").update({ count: 5 });
+  nativeDb.failReads = true;
+
+  await assert.rejects(
+    db.collection("preferences").doc("user-2").get(),
+    /partial cached data/
+  );
+  assert.equal(db.getResilienceStatus().readQuotaExhausted, true);
+
+  nativeDb.failReads = false;
+  nativeDb.failWrites = false;
+  await db.runRecoveryCheck();
+  const recovered = await db.collection("preferences").doc("user-2").get();
+  assert.equal(recovered.data().count, 5);
 });
 
 test("a permanently invalid queued update does not block later valid writes from recovering", async () => {
