@@ -814,6 +814,7 @@ require("./modmail")(client);
 
 console.log("Loading misc...");
 require("./misc")(client);
+require("./utilities")(client);
 
 console.log("Loading voicesystem...");
 require("./voicesystem")(client);
