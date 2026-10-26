@@ -311,16 +311,23 @@ test("a permanently invalid queued update does not block later valid writes from
   assert.equal(recovered.data().count, 3);
 });
 
-test("a queued atomic group is rejected rather than split above Firestore's 500-write limit", async () => {
+test("a fallback transaction above Firestore's 500-write limit is rejected atomically", async () => {
   const nativeDb = new FakeFirestore();
   const db = resilient(nativeDb);
+
   nativeDb.failWrites = true;
+  await db.collection("settings").doc("trigger").set({ fallback: true });
+  assert.equal(db.getResilienceStatus().mode, "fallback");
+  assert.equal(db.getResilienceStatus().pendingOperations, 1);
 
-  const batch = db.batch();
-  for (let index = 0; index < 501; index += 1) {
-    batch.set(db.collection("items").doc("item-" + index), { index });
-  }
+  await assert.rejects(
+    db.runTransaction(async transaction => {
+      for (let index = 0; index < 501; index += 1) {
+        transaction.set(db.collection("items").doc("item-" + index), { index });
+      }
+    }),
+    /cannot queue more than 500 writes/
+  );
 
-  await assert.rejects(batch.commit(), /larger than 500 writes/);
-  assert.equal(db.getResilienceStatus().pendingOperations, 0);
+  assert.equal(db.getResilienceStatus().pendingOperations, 1);
 });
