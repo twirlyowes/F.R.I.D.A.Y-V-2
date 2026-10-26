@@ -351,6 +351,28 @@ test("an uncached partial document is not fabricated when reads are also quota-b
   assert.equal(recovered.data().count, 5);
 });
 
+test("an uncached partial document is not fabricated when reads are also quota-blocked", async () => {
+  const nativeDb = new FakeFirestore();
+  nativeDb.docs.set("preferences/user-2", { theme: "light", count: 4 });
+  const db = resilient(nativeDb);
+
+  nativeDb.failWrites = true;
+  await db.collection("preferences").doc("user-2").update({ count: 5 });
+  nativeDb.failReads = true;
+
+  await assert.rejects(
+    db.collection("preferences").doc("user-2").get(),
+    /partial cached data/
+  );
+  assert.equal(db.getResilienceStatus().readQuotaExhausted, true);
+
+  nativeDb.failReads = false;
+  nativeDb.failWrites = false;
+  await db.runRecoveryCheck();
+  const recovered = await db.collection("preferences").doc("user-2").get();
+  assert.equal(recovered.data().count, 5);
+});
+
 test("a permanently invalid queued update does not block later valid writes from recovering", async () => {
   const nativeDb = new FakeFirestore();
   const db = resilient(nativeDb);
