@@ -19,9 +19,11 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-const db = admin.firestore();
+const nativeDb = admin.firestore();
+const { createResilientFirestore } = require("./lib/firestoreResilience");
+const db = createResilientFirestore(nativeDb, admin);
 
 console.log("✅ Firebase connected");
 
+// The resilience proxy also exposes a compatible `.db` property for destructuring imports.
 module.exports = db;
-module.exports.db = db;
