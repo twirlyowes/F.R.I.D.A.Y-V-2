@@ -44,7 +44,83 @@ module.exports = (client) => {
     const { command, args, prefix } = parsed;
 
     try {
-      if (command === "ri" || command === "roleicon") {
+      if (command === "ri" || command === "roleinfo") {
+        const mentionedRole = message.mentions.roles.first();
+        const rawArg = args.join(" ").trim();
+        const cleanedId = (mentionedRole?.id || rawArg.replace(/[<@&>]/g, "")).trim();
+        let role = null;
+
+        if (/^\\d{17,20}$/.test(cleanedId)) {
+          role = message.guild.roles.cache.get(cleanedId) ||
+            await message.guild.roles.fetch(cleanedId).catch(() => null);
+        } else if (rawArg) {
+          role = message.guild.roles.cache.find(
+            candidate => candidate.name.toLowerCase() === rawArg.toLowerCase()
+          ) || null;
+        }
+
+        if (!role) {
+          return message.reply(cardReply(
+            WARNING_YELLOW,
+            "Please mention a role, provide its ID, or use its exact name. Example: " +
+              prefix + "ri @Role.",
+            message.author.displayAvatarURL({ extension: "png", size: 128 }),
+            message.author.tag + "'s avatar"
+          ));
+        }
+
+        const permissions = role.permissions.toArray();
+        const permissionText = permissions.length
+          ? permissions.slice(0, 12).map(permission =>
+              "`" + permission.replace(/([A-Z])/g, " $1").trim() + "`"
+            ).join(", ") + (permissions.length > 12 ? " +" + (permissions.length - 12) + " more" : "")
+          : "No permissions";
+
+        const createdAt = Math.floor(role.createdTimestamp / 1000);
+        const roleIconURL = role.iconURL({ size: 256 });
+        const details =
+          "# Role Information: " + role.name +
+          "\\n\\n**Role:** <@&" + role.id + ">" +
+          "\\n**Role ID:** `" + role.id + "`" +
+          "\\n**Color:** " + (role.hexColor === "#000000" ? "Default" : role.hexColor) +
+          "\\n**Position:** " + role.position +
+          "\\n**Members with role (cached):** " + role.members.size +
+          "\\n**Mentionable:** " + (role.mentionable ? "Yes" : "No") +
+          "\\n**Displayed separately:** " + (role.hoist ? "Yes" : "No") +
+          "\\n**Managed by integration/bot:** " + (role.managed ? "Yes" : "No") +
+          "\\n**Created:** <t:" + createdAt + ":F> (<t:" + createdAt + ":R>)" +
+          "\\n\\n**Permissions**\\n" + permissionText +
+          "\\n\\n-# Member count is based on members currently cached by Discord.js. Requested by " +
+          message.author.tag;
+
+        if (roleIconURL) {
+          const container = new ContainerBuilder()
+            .setAccentColor(BLURPLE)
+            .addSectionComponents(
+              new SectionBuilder()
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(details))
+                .setThumbnailAccessory(
+                  new ThumbnailBuilder()
+                    .setURL(roleIconURL)
+                    .setDescription(role.name + " role icon")
+                )
+            );
+          return message.reply({
+            components: [container],
+            flags: MessageFlags.IsComponentsV2,
+            allowedMentions: { parse: [] }
+          });
+        }
+
+        return message.reply(cardReply(
+          BLURPLE,
+          details,
+          message.author.displayAvatarURL({ extension: "png", size: 128 }),
+          message.author.tag + "'s avatar"
+        ));
+      }
+
+      if (command === "roleicon") {
         const mentionedRole = message.mentions.roles.first();
         const rawArg = args.join(" ").trim();
         const cleanedId = (mentionedRole?.id || rawArg.replace(/[<@&>]/g, "")).trim();
