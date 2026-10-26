@@ -48,6 +48,9 @@ const client = new Client({
   ]
 });
 
+// Let Firestore resilience alerts DM the configured OWNER_ID when quota fallback starts.
+require("./firebase").attachClient(client);
+
 // Many feature modules each listen for messages; raise the default cap of 10.
 client.setMaxListeners(50);
 
