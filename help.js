@@ -388,7 +388,7 @@ ${prefix}vcp · ${prefix}vcowner`
 > Everyday tools and quick information.
 
 ${prefix}help · ${prefix}afk · ${prefix}ping · ${prefix}uptime · ${prefix}botinfo
-${prefix}av · ${prefix}banner · ${prefix}ui · ${prefix}si · ${prefix}ri · ${prefix}ci · ${prefix}mc
+${prefix}av · ${prefix}banner · ${prefix}ui · ${prefix}si · ${prefix}ri (roleinfo) · ${prefix}roleicon · ${prefix}ci · ${prefix}mc
 ${prefix}wiki · ${prefix}calculate · ${prefix}quote · ${prefix}ip
 ${prefix}sticky · ${prefix}say · ${prefix}dm`
                 }
