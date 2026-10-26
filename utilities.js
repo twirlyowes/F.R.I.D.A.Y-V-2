@@ -50,7 +50,7 @@ module.exports = (client) => {
         const cleanedId = (mentionedRole?.id || rawArg.replace(/[<@&>]/g, "")).trim();
         let role = null;
 
-        if (/^\\d{17,20}$/.test(cleanedId)) {
+        if (/^\d{17,20}$/.test(cleanedId)) {
           role = message.guild.roles.cache.get(cleanedId) ||
             await message.guild.roles.fetch(cleanedId).catch(() => null);
         } else if (rawArg) {
@@ -80,17 +80,17 @@ module.exports = (client) => {
         const roleIconURL = role.iconURL({ size: 256 });
         const details =
           "# Role Information: " + role.name +
-          "\\n\\n**Role:** <@&" + role.id + ">" +
-          "\\n**Role ID:** `" + role.id + "`" +
-          "\\n**Color:** " + (role.hexColor === "#000000" ? "Default" : role.hexColor) +
-          "\\n**Position:** " + role.position +
-          "\\n**Members with role (cached):** " + role.members.size +
-          "\\n**Mentionable:** " + (role.mentionable ? "Yes" : "No") +
-          "\\n**Displayed separately:** " + (role.hoist ? "Yes" : "No") +
-          "\\n**Managed by integration/bot:** " + (role.managed ? "Yes" : "No") +
-          "\\n**Created:** <t:" + createdAt + ":F> (<t:" + createdAt + ":R>)" +
-          "\\n\\n**Permissions**\\n" + permissionText +
-          "\\n\\n-# Member count is based on members currently cached by Discord.js. Requested by " +
+          "\n\n**Role:** <@&" + role.id + ">" +
+          "\n**Role ID:** `" + role.id + "`" +
+          "\n**Color:** " + (role.hexColor === "#000000" ? "Default" : role.hexColor) +
+          "\n**Position:** " + role.position +
+          "\n**Members with role (cached):** " + role.members.size +
+          "\n**Mentionable:** " + (role.mentionable ? "Yes" : "No") +
+          "\n**Displayed separately:** " + (role.hoist ? "Yes" : "No") +
+          "\n**Managed by integration/bot:** " + (role.managed ? "Yes" : "No") +
+          "\n**Created:** <t:" + createdAt + ":F> (<t:" + createdAt + ":R>)" +
+          "\n\n**Permissions**\n" + permissionText +
+          "\n\n-# Member count is based on members currently cached by Discord.js. Requested by " +
           message.author.tag;
 
         if (roleIconURL) {
