@@ -262,6 +262,7 @@ test("cached collection queries keep working after quota fallback activates", as
   await db.collection("profiles").get(); // warm a complete collection snapshot
   nativeDb.failWrites = true;
   await db.collection("settings").doc("guild-1").set({ enabled: true });
+  nativeDb.failReads = true;
 
   const result = await db.collection("profiles").where("team", "==", "orange").get();
   assert.equal(db.getResilienceStatus().mode, "fallback");
