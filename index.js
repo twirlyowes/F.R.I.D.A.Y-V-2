@@ -820,8 +820,7 @@ require("./strike")(client);
 console.log("Loading verify...");
 require("./verify")(client);
 
-console.log("Loading ModMail...");
-require("./modmail")(client);
+// ModMail is already registered by help.js. Loading a second DM handler sent duplicate ticket selectors.
 
 console.log("Loading misc...");
 require("./misc")(client);
