@@ -12,6 +12,7 @@ const {
 
 const guildConfig = require("./lib/guildConfig");
 const { parseCommand } = require("./lib/prefix");
+const { setMetricValue, snapshotMetrics, matchesSnapshot } = require("./lib/activeTimeDirtyTracking");
 
 // All tracking maps are keyed "guildId:userId" so servers never mix stats.
 const trackKey = (guildId, userId) => `${guildId}:${userId}`;
@@ -28,6 +29,27 @@ let dailyActiveTimes = new Map();
 let dailyVoiceTimes = new Map();
 let dailyMessageCounts = new Map();
 let dailyCommandCounts = new Map();
+
+const dirtyActiveTimeUsers = new Set();
+let savedTimesLoaded = false;
+const activeTimeMetricMaps = {
+    activeTime: dailyActiveTimes,
+    voiceTime: dailyVoiceTimes,
+    messages: dailyMessageCounts,
+    commands: dailyCommandCounts
+};
+
+function setTrackedMetric(map, userId, value) {
+    return setMetricValue(map, userId, value, dirtyActiveTimeUsers);
+}
+
+function getMetricSnapshot(userId) {
+    return snapshotMetrics(userId, activeTimeMetricMaps);
+}
+
+function metricSnapshotIsCurrent(userId, snapshot) {
+    return matchesSnapshot(userId, snapshot, activeTimeMetricMaps);
+}
 
 let isSaving = false;
 let savePending = false;
@@ -82,6 +104,7 @@ async function loadSavedTimes() {
             );
         });
 
+        savedTimesLoaded = true;
         console.log("<:success_g:1561271843346714777> Active times loaded from Firebase");
     } catch (error) {
         console.error(
@@ -164,45 +187,35 @@ async function saveLastReportDate(dateStr) {
 }
 
 async function executeSaveWithRetry() {
+    const userIds = [...dirtyActiveTimeUsers];
+    if (!userIds.length) return true;
+
     try {
         const batch = db.batch();
+        const snapshots = new Map();
 
-        const users = new Set([
-            ...dailyActiveTimes.keys(),
-            ...dailyVoiceTimes.keys(),
-            ...dailyMessageCounts.keys(),
-            ...dailyCommandCounts.keys()
-        ]);
+        for (const userId of userIds) {
+            const snapshot = getMetricSnapshot(userId);
+            snapshots.set(userId, snapshot);
 
-        for (const userId of users) {
             const ref = db
                 .collection("activetime")
                 .doc(userId);
 
-            batch.set(
-                ref,
-                {
-                    activeTime:
-                        dailyActiveTimes.get(userId) || 0,
-
-                    voiceTime:
-                        dailyVoiceTimes.get(userId) || 0,
-
-                    messages:
-                        dailyMessageCounts.get(userId) || 0,
-
-                    commands:
-                        dailyCommandCounts.get(userId) || 0,
-
-                    updatedAt: new Date()
-                },
-                {
-                    merge: true
-                }
-            );
+            batch.set(ref, {
+                ...snapshot,
+                updatedAt: new Date()
+            }, { merge: true });
         }
 
         await batch.commit();
+
+        // Only acknowledge a saved snapshot if no newer activity arrived mid-commit.
+        for (const [userId, snapshot] of snapshots) {
+            if (metricSnapshotIsCurrent(userId, snapshot)) {
+                dirtyActiveTimeUsers.delete(userId);
+            }
+        }
 
         return true;
     } catch (error) {
@@ -210,7 +223,7 @@ async function executeSaveWithRetry() {
             "<:error_g:1561271715164721245> Firebase save error:",
             error
         );
-
+        // Leave the user IDs dirty so the next checkpoint retries them.
         return false;
     }
 }
@@ -253,49 +266,58 @@ async function performDailyReset(guildId = null) {
         }
 
         const batch = db.batch();
+        const resetSnapshots = new Map();
+        let resetWriteCount = 0;
 
         for (const userId of allKnownIds) {
+            const snapshot = getMetricSnapshot(userId);
+            resetSnapshots.set(userId, snapshot);
+            const hasRecordedActivity = Object.values(snapshot).some(value => (Number(value) || 0) !== 0);
+
+            // If the initial read failed, preserve the previous conservative reset behavior.
+            // Otherwise, a known all-zero record does not need another write just to update updatedAt.
+            if (savedTimesLoaded && !hasRecordedActivity) continue;
+
             const ref = db
                 .collection("activetime")
                 .doc(userId);
 
-            batch.set(
-                ref,
-                {
-                    activeTime: 0,
-                    voiceTime: 0,
-                    messages: 0,
-                    commands: 0,
-                    updatedAt: new Date()
-                },
-                {
-                    merge: true
-                }
-            );
+            batch.set(ref, {
+                activeTime: 0,
+                voiceTime: 0,
+                messages: 0,
+                commands: 0,
+                updatedAt: new Date()
+            }, { merge: true });
+            resetWriteCount++;
         }
 
-        await batch.commit();
+        if (resetWriteCount) await batch.commit();
 
         const freshNow = Date.now();
 
         for (const userId of allKnownIds) {
-            dailyActiveTimes.set(userId, 0);
-            dailyVoiceTimes.set(userId, 0);
-            dailyMessageCounts.set(userId, 0);
-            dailyCommandCounts.set(userId, 0);
+            const before = resetSnapshots.get(userId) || getMetricSnapshot(userId);
+            const after = getMetricSnapshot(userId);
+            let newActivityArrived = false;
+
+            // Events can run while Firestore commits. Carry their positive deltas over
+            // the reset so activity collected after the reset began is not discarded.
+            for (const [field, map] of Object.entries(activeTimeMetricMaps)) {
+                const delta = Math.max(0, (Number(after[field]) || 0) - (Number(before[field]) || 0));
+                map.set(userId, delta);
+                if (delta > 0) newActivityArrived = true;
+            }
+
+            if (newActivityArrived) dirtyActiveTimeUsers.add(userId);
+            else dirtyActiveTimeUsers.delete(userId);
 
             if (activeSessions.has(userId)) {
-                activeSessions.set(
-                    userId,
-                    freshNow
-                );
+                activeSessions.set(userId, freshNow);
             }
 
             if (voiceSessions.has(userId)) {
-                voiceSessions.set(
-                    userId,
-                    freshNow
-                );
+                voiceSessions.set(userId, freshNow);
             }
         }
 
@@ -332,6 +354,7 @@ async function removeUserRecord(guildId, rawUserId) {
     dailyVoiceTimes.delete(userId);
     dailyMessageCounts.delete(userId);
     dailyCommandCounts.delete(userId);
+    dirtyActiveTimeUsers.delete(userId);
 
     activeSessions.delete(userId);
     voiceSessions.delete(userId);
@@ -407,7 +430,7 @@ module.exports = (client) => {
                         currentTimestamp -
                         startTime;
 
-                    dailyActiveTimes.set(
+                    setTrackedMetric(dailyActiveTimes,
                         userId,
                         (
                             dailyActiveTimes.get(
@@ -432,7 +455,7 @@ module.exports = (client) => {
                         currentTimestamp -
                         startTime;
 
-                    dailyVoiceTimes.set(
+                    setTrackedMetric(dailyVoiceTimes,
                         userId,
                         (
                             dailyVoiceTimes.get(
@@ -601,7 +624,7 @@ module.exports = (client) => {
                     startTime
                 ] of activeSessions.entries()
             ) {
-                dailyActiveTimes.set(
+                setTrackedMetric(dailyActiveTimes,
                     userId,
                     (
                         dailyActiveTimes.get(
@@ -626,7 +649,7 @@ module.exports = (client) => {
                     startTime
                 ] of voiceSessions.entries()
             ) {
-                dailyVoiceTimes.set(
+                setTrackedMetric(dailyVoiceTimes,
                     userId,
                     (
                         dailyVoiceTimes.get(
@@ -900,7 +923,7 @@ module.exports = (client) => {
                             userId
                         );
 
-                    dailyActiveTimes.set(
+                    setTrackedMetric(dailyActiveTimes,
                         userId,
                         (
                             dailyActiveTimes.get(
@@ -972,7 +995,7 @@ module.exports = (client) => {
                             userId
                         );
 
-                    dailyVoiceTimes.set(
+                    setTrackedMetric(dailyVoiceTimes,
                         userId,
                         (
                             dailyVoiceTimes.get(
@@ -1008,7 +1031,7 @@ module.exports = (client) => {
             ) {
                 const userId = trackKey(member.guild.id, member.id);
 
-                dailyMessageCounts.set(
+                setTrackedMetric(dailyMessageCounts,
                     userId,
                     (
                         dailyMessageCounts.get(
@@ -1051,7 +1074,7 @@ module.exports = (client) => {
             ) {
                 const userId = trackKey(member.guild.id, member.id);
 
-                dailyCommandCounts.set(
+                setTrackedMetric(dailyCommandCounts,
                     userId,
                     (
                         dailyCommandCounts.get(
