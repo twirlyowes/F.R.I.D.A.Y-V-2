@@ -625,11 +625,13 @@ client.on(
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) return message.reply(cardReply(COLORS.RED, "You need the **Manage Messages** permission."));
         if (!message.guild.members.me?.permissionsIn(message.channel).has(PermissionsBitField.Flags.ManageMessages)) return message.reply(cardReply(COLORS.RED, "I need the **Manage Messages** permission in this channel."));
         const validTypes = new Set(["bots", "humans", "links", "attachments", "mentions", "emojis", "stickers", "user", "contains", "number"]);
-        const type = String(args[0] || "").toLowerCase();
-        if (!validTypes.has(type)) return message.reply(cardReply(COLORS.RED, "**Usage:** " + PREFIX + command + " <type> [amount] [content]\n\n**Types:** bots, humans, links, attachments, mentions, emojis, stickers, user, contains, number\n**Default amount:** 20 (maximum 100)\n**Examples:** " + PREFIX + "c bots, " + PREFIX + "c links 30, " + PREFIX + "c user 10 @user, " + PREFIX + "c contains 15 spam, " + PREFIX + "c number 50"));
+        const firstArg = String(args[0] || "").toLowerCase();
+        const amountOnly = /^\d+$/.test(firstArg);
+        const type = amountOnly ? "number" : firstArg;
+        if (!validTypes.has(type)) return message.reply(cardReply(COLORS.RED, "**Usage:** " + PREFIX + command + " [type] [amount] [content]\n\n**Types:** bots, humans, links, attachments, mentions, emojis, stickers, user, contains, number\n**Default amount:** 20 (maximum 100)\n**Examples:** " + PREFIX + "c 100, " + PREFIX + "c bots, " + PREFIX + "c links 30, " + PREFIX + "c user 10 @user, " + PREFIX + "c contains 15 spam, " + PREFIX + "c number 50"));
         let rest = args.slice(1);
-        let amount = 20;
-        if (rest.length && /^\d+$/.test(rest[0])) amount = Number(rest.shift());
+        let amount = amountOnly ? Number(firstArg) : 20;
+        if (!amountOnly && rest.length && /^\d+$/.test(rest[0])) amount = Number(rest.shift());
         if (!Number.isInteger(amount) || amount < 1 || amount > 100) return message.reply(cardReply(COLORS.RED, "Amount must be a whole number between 1 and 100."));
         let targetId = null;
         let textFilter = "";
