@@ -81,8 +81,13 @@ function setup() {
     { guild, channelId: null },
     { guild, channelId: CHANNEL_ID }
   );
-  return { channel, guild, update, writes, deletes, state };
+  return { client, channel, guild, update, writes, deletes, state };
 }
+
+test("only voice-state sync is attached; live audit-log listeners are disabled", () => {
+  const { client } = setup();
+  assert.deepEqual(client.eventNames(), ["voiceStateUpdate"]);
+});
 
 test("voice room state is not rewritten when its member list is unchanged", async () => {
   const { update, writes } = setup();
