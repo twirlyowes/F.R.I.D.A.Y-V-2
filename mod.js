@@ -143,6 +143,9 @@ module.exports = (client) => {
         }
 
         if (command === "q") {
+          if (target.roles.cache.has(quarantineRole.id)) {
+            return message.reply(cardReply(WARNING_YELLOW, "That member is already quarantined.", message.author));
+          }
           if (quarantineRole.id === message.guild.id || quarantineRole.managed) {
             return message.reply(cardReply(COLORS.RED, "The configured Quarantine role is invalid.", message.author));
           }
