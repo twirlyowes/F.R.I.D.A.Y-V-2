@@ -402,6 +402,37 @@ module.exports = client => {
       });
     }
 
+    const subcommand = String(parsed.args?.[0] || "").toLowerCase();
+    if (subcommand === "clear") {
+      let progressMessage;
+      try {
+        progressMessage = await message.reply(statusPage(
+          message.guild,
+          "progress",
+          "Setup Clear • In Progress",
+          "Undoing resources and configuration assignments created by Setup All. Manually selected resources will be preserved."
+        ));
+        const result = await clearAllSetupResources(message.guild);
+        const title = result.retained ? "Setup Clear • Completed with Items Kept" : "Setup Clear • Completed";
+        return progressMessage.edit(statusPage(
+          message.guild,
+          result.retained ? "error" : "completed",
+          title,
+          result.message
+        ));
+      } catch (error) {
+        console.error("[Setup] .setup clear failed:", error);
+        const payload = statusPage(
+          message.guild,
+          "error",
+          "Setup Clear • Error",
+          String(error.message || "Could not undo Setup All resources.").slice(0, 900)
+        );
+        if (progressMessage) return progressMessage.edit(payload).catch(() => null);
+        return message.reply(payload);
+      }
+    }
+
     try {
       return message.reply(await buildMainPanel(message.guild, message.author.id));
     } catch (error) {
