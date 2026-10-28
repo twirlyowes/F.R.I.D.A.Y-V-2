@@ -158,7 +158,6 @@ module.exports = (client) => {
             return message.reply(cardReply(COLORS.RED, "I couldn't safely save this member's role snapshot, so no quarantine action was taken. Please try again shortly.", message.author));
           }
 
-          quarantineActions.expectRoleChange(message.guild.id, target.id);
           const result = await quarantine.quarantineMember(message.guild, target.id, quarantineRole.id);
           const refreshed = await message.guild.members.fetch(target.id).catch(() => null);
           if (!refreshed?.roles.cache.has(quarantineRole.id)) {
