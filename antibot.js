@@ -73,7 +73,7 @@ function card(guild, color, content) {
 async function buildPanel(guild, userId) {
   const cfg = await getConfig(guild.id);
   const panel = card(guild, cfg.enabled ? COLORS.GREEN : COLORS.SKY_BLUE,
-    `# AntiBot\n\n` +
+    `# <:FRIDAY:1564865373583581266> AntiBot\n\n` +
     `**Status:** ${cfg.enabled ? "🟢 ON" : "🔴 OFF"}\n\n` +
     `Blocks bots added by untrusted users. Server owner, bot owner, owners delegated in this server and Anti-Nuke trusted users are allowed.\n` +
     `If the inviter cannot be verified, FRIDAY logs it without kicking the bot.\n\n` +

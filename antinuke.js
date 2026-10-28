@@ -610,7 +610,7 @@ async function buildPanel(guild, userId, note = null) {
   const card = createCard({
     color: cfg.enabled ? COLORS.GREEN : COLORS.SKY_BLUE,
     content:
-      `# Anti-Nuke\n\n${note ? `${note}\n\n` : ""}` +
+      `# <:FRIDAY:1564865373583581266> Anti-Nuke\n\n${note ? `${note}\n\n` : ""}` +
       `**Status:** ${cfg.enabled ? "🟢 ON" : "🔴 OFF"}\n` +
       `**Quarantine:** ${quarantineLine}\n` +
       `**Punishment:** ${PUNISHMENT_TEXT[cfg.punishment]}\n` +

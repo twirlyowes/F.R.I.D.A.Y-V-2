@@ -285,7 +285,7 @@ function setupHelpCommand(client) {
                     label: "Overview",
                     description: "Prefix, usage, and available modules",
                     emoji: "<a:sparkles:1532986077651140620>",
-                    content: `<a:sparkles:1532986077651140620> **F.R.I.D.A.Y — COMMAND CENTER**
+                    content: `<:FRIDAY:1564865373583581266> **F.R.I.D.A.Y — COMMAND CENTER**
 
 > Choose a module from the dropdown to see its commands.
 
@@ -322,7 +322,7 @@ ${prefix}automod · ${prefix}addbadword · ${prefix}removebadword · ${prefix}ba
                 protection: {
                     label: "Server Protection",
                     description: "Anti-Nuke and Anti-Bot controls",
-                    content: `<:Shield_2:1532989398642327594> **SERVER PROTECTION**
+                    content: `<:FRIDAY:1564865373583581266> **SERVER PROTECTION**
 
 > Configure protection against destructive actions and suspicious bots.
 
@@ -333,7 +333,7 @@ ${prefix}antinuke
                 setup: {
                     label: "Server Setup",
                     description: "Configuration, roles, and verification",
-                    content: `**SERVER SETUP**
+                    content: `<:FRIDAY:1564865373583581266> **SERVER SETUP**
 
 > Configure FRIDAY for this server.
 
