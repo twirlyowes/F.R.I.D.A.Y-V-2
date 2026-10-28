@@ -190,7 +190,9 @@ module.exports = (client) => {
           return message.reply(cardReply(COLORS.RED, "I couldn't retrieve the saved role snapshot, so I left the member quarantined. Please try again shortly.", message.author));
         }
 
-        quarantineActions.expectRoleChange(message.guild.id, target.id);
+        quarantineActions.expectUnquarantine(
+          message.guild.id, target.id, quarantineRole.id, savedRoleIds || []
+        );
         await target.roles.remove(quarantineRole, auditText);
         let restored = 0;
         let skipped = 0;
