@@ -1001,6 +1001,16 @@ async function watchdogTick(client) {
     const serverCfg = guildConfig.peek(guild.id);
     if (!cfg || !serverCfg) continue;
 
+    // The watchdog is part of Anti-Nuke's optional monitoring. When the
+    // server's master Anti-Nuke switch is OFF, suppress periodic health alerts
+    // and clear the remembered signature so re-enabling it can report current
+    // issues afresh. The independent quarantine-tampering guard remains wired
+    // separately and continues protecting quarantined members.
+    if (!cfg.enabled) {
+      watchdogAlertState.delete(guild.id);
+      continue;
+    }
+
     const report = evaluateSecurityHealth(guild, cfg, serverCfg, false);
     const signature = report.issues.slice().sort().join("|");
     const previous = watchdogAlertState.get(guild.id);
