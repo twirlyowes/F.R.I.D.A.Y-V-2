@@ -370,14 +370,14 @@ async function guardQuarantineRole(oldMember, newMember) {
   await sendLog(
     guild,
     COLORS.RED,
-    "# Anti-Nuke: Quarantine tampering detected\\n\\n" +
-      "**Target:** " + who(newMember.user) + "\\n" +
-      attribution + "\\n" +
-      "**Attempt:** " + (quarantineRemoved ? "Quarantine role removed" : "Role assigned to a quarantined member") + "\\n\\n" +
-      targetText + "\\n" + actorText + "\\n\\n" +
-      "**Target result:** " + targetResult.text + "\\n" +
-      (actor ? "**Actor result:** " + actorResult.text + "\\n" : "") +
-      "\\n-# F.R.I.D.A.Y • Automatic Quarantine Guard"
+    "# Anti-Nuke: Quarantine tampering detected\n\n" +
+      "**Target:** " + who(newMember.user) + "\n" +
+      attribution + "\n" +
+      "**Attempt:** " + (quarantineRemoved ? "Quarantine role removed" : "Role assigned to a quarantined member") + "\n\n" +
+      targetText + "\n" + actorText + "\n\n" +
+      "**Target result:** " + targetResult.text + "\n" +
+      (actor ? "**Actor result:** " + actorResult.text + "\n" : "") +
+      "\n-# F.R.I.D.A.Y • Automatic Quarantine Guard"
   );
 
   if (!actor || !targetResult.ok || (actor && !actorResult.ok)) {
