@@ -88,6 +88,7 @@ const hits = new Map(); // "guild:user:kind" -> [timestamps]
 const book = new Map(); // "guild:user" -> what they deleted / created recently
 const lastPunished = new Map(); // "guild:user" -> time
 const seenEntries = new Set(); // audit entries already handled (webhooks)
+const handledQuarantineAuditEntries = new Map(); // audit entry ID -> handling timestamp
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -112,6 +113,9 @@ function cleanup() {
   }
 
   for (const [key, ts] of lastPunished) if (now - ts > PUNISH_COOLDOWN_MS * 5) lastPunished.delete(key);
+  for (const [id, ts] of handledQuarantineAuditEntries) {
+    if (now - ts > 60 * 1000) handledQuarantineAuditEntries.delete(id);
+  }
   if (seenEntries.size > 500) seenEntries.clear();
 }
 
@@ -236,6 +240,156 @@ function snapshotRole(role) {
     mentionable: role.mentionable,
     permissions: role.permissions.bitfield
   };
+}
+
+// ---------------------------------------------------------------------------
+// Quarantine anti-tampering guard
+// ---------------------------------------------------------------------------
+
+/**
+ * Find the exact audit-log event behind a member role change. We require the
+ * target and changed role IDs to match; guessing an executor can punish the
+ * wrong person when several admins are changing roles at once.
+ */
+async function findMemberRoleAuditEntry(guild, targetId, addedRoleIds, quarantineRemoved, quarantineRoleId) {
+  const expectedAdds = new Set(addedRoleIds);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const logs = await guild.fetchAuditLogs({
+        type: AuditLogEvent.MemberRoleUpdate,
+        limit: 10
+      });
+      const candidates = [...logs.entries.values()]
+        .filter(entry =>
+          (entry.targetId ?? entry.target?.id) === targetId &&
+          Date.now() - entry.createdTimestamp < AUDIT_AGE_MS
+        )
+        .sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+
+      for (const entry of candidates) {
+        const roleIdsFor = key => {
+          const change = (entry.changes || []).find(item => item.key === key);
+          if (!change) return [];
+          const values = [change.new, change.old]
+            .flatMap(value => Array.isArray(value) ? value : value == null ? [] : [value]);
+          return values.map(value => value?.id).filter(Boolean);
+        };
+
+        const addedInLog = roleIdsFor("$add");
+        const removedInLog = roleIdsFor("$remove");
+        const matchingAdd = addedInLog.some(id => expectedAdds.has(id));
+        const matchingQuarantineRemoval =
+          quarantineRemoved && removedInLog.includes(quarantineRoleId);
+
+        if (matchingAdd || matchingQuarantineRemoval) return entry;
+      }
+    } catch (error) {
+      console.warn("[AntiNuke] Could not read member-role audit logs:", error.message);
+      return null;
+    }
+
+    if (attempt === 0) await sleep(AUDIT_RETRY_MS);
+  }
+
+  return null;
+}
+
+/**
+ * The Quarantine role is a security boundary, not just a visual role. Once a
+ * member is quarantined, adding any other role or removing Quarantine is treated
+ * as tampering. If attribution is unavailable, FRIDAY restores containment but
+ * never guesses who to punish.
+ */
+async function guardQuarantineRole(oldMember, newMember) {
+  const guild = newMember.guild;
+  if (!guild || oldMember.id !== newMember.id) return;
+
+  const serverCfg = await guildConfig.get(guild.id);
+  const quarantineRoleId = serverCfg.quarantineRole;
+  if (!quarantineRoleId) return;
+
+  const previouslyQuarantined = oldMember.roles.cache.has(quarantineRoleId);
+  const currentlyQuarantined = newMember.roles.cache.has(quarantineRoleId);
+  const quarantineRemoved = previouslyQuarantined && !currentlyQuarantined;
+  const addedRoleIds = [...newMember.roles.cache.keys()].filter(
+    id => id !== guild.id &&
+      id !== quarantineRoleId &&
+      !oldMember.roles.cache.has(id)
+  );
+
+  const tamperingDetected = quarantineRemoved ||
+    ((previouslyQuarantined || currentlyQuarantined) && addedRoleIds.length > 0);
+  if (!tamperingDetected) return;
+
+  const entry = await findMemberRoleAuditEntry(
+    guild,
+    newMember.id,
+    addedRoleIds,
+    quarantineRemoved,
+    quarantineRoleId
+  );
+
+  if (entry?.id && handledQuarantineAuditEntries.has(entry.id)) return;
+
+  const cfg = await protection.getAntinuke(guild.id);
+  const actor = entry?.executor || null;
+
+  // Trusted security administrators may deliberately release or update a
+  // quarantined member. Never punish them for a legitimate change.
+  if (actor && await isTrusted(guild, cfg, actor.id)) {
+    if (entry?.id) handledQuarantineAuditEntries.set(entry.id, Date.now());
+    return;
+  }
+
+  if (entry?.id) handledQuarantineAuditEntries.set(entry.id, Date.now());
+
+  // Fail closed: the full quarantine routine removes other manageable roles and
+  // verifies whether dangerous managed/integration permissions remain.
+  const targetResult = await quarantine.quarantineMember(guild, newMember.id, quarantineRoleId);
+  let actorResult = {
+    ok: false,
+    text: actor ? "Not attempted." : "Not attempted because the audit-log actor could not be verified."
+  };
+
+  if (actor) {
+    actorResult = await quarantine.quarantineMember(guild, actor.id, quarantineRoleId);
+  }
+
+  const attribution = actor
+    ? "**Actor:** " + who(actor)
+    : "**Actor:** Unknown — audit-log attribution was unavailable or did not match the changed role IDs.";
+  const targetText = targetResult.ok
+    ? "<:success_g:1561271843346714777> Target containment verified."
+    : "<:warning_g:1561271566233501797> Target quarantine incomplete: " + targetResult.text;
+  const actorText = actor
+    ? (actorResult.ok
+      ? "<:success_g:1561271843346714777> The unauthorized actor was quarantined."
+      : "<:warning_g:1561271566233501797> Actor quarantine failed: " + actorResult.text)
+    : "<:warning_g:1561271566233501797> No one was punished because FRIDAY could not safely identify the actor.";
+
+  await sendLog(
+    guild,
+    COLORS.RED,
+    "# Anti-Nuke: Quarantine tampering detected\\n\\n" +
+      "**Target:** " + who(newMember.user) + "\\n" +
+      attribution + "\\n" +
+      "**Attempt:** " + (quarantineRemoved ? "Quarantine role removed" : "Role assigned to a quarantined member") + "\\n\\n" +
+      targetText + "\\n" + actorText + "\\n\\n" +
+      "**Target result:** " + targetResult.text + "\\n" +
+      (actor ? "**Actor result:** " + actorResult.text + "\\n" : "") +
+      "\\n-# F.R.I.D.A.Y • Automatic Quarantine Guard"
+  );
+
+  if (!actor || !targetResult.ok || (actor && !actorResult.ok)) {
+    await dmOwner(
+      guild,
+      "[FRIDAY Anti-Nuke] Quarantine tampering in " + guild.name + " (" + guild.id + "). " +
+      "Target: " + newMember.user.tag + " (" + newMember.id + "). " +
+      "Actor: " + (actor ? (actor.tag || actor.username) + " (" + actor.id + ")" : "unknown; audit log did not provide a safe match") + ". " +
+      "Target result: " + targetResult.text + ". Actor result: " + actorResult.text + ". " +
+      "Check FRIDAY's View Audit Log, Manage Roles, and role hierarchy permissions."
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -906,6 +1060,17 @@ module.exports = client => {
           .reply({ content: "Something went wrong. Please run the antinuke command again.", flags: MessageFlags.Ephemeral })
           .catch(() => {});
       }
+    }
+  });
+
+  // ----- quarantine role guard -----
+  // This invariant stays active whenever a Quarantine role is configured,
+  // even if the Anti-Nuke master switch is off.
+  client.on("guildMemberUpdate", async (oldMember, newMember) => {
+    try {
+      await guardQuarantineRole(oldMember, newMember);
+    } catch (error) {
+      console.error("[AntiNuke] Quarantine tampering guard:", error);
     }
   });
 
