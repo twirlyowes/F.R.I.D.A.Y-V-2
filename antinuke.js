@@ -491,6 +491,76 @@ async function guardDangerousRoleAssignment(oldMember, newMember) {
 }
 
 /**
+ * A role created with Administrator/other dangerous permissions is an
+ * escalation attempt even before it is assigned. Remove only the dangerous
+ * bits, verify the result, and contain a non-trusted creator when attributable.
+ */
+async function guardDangerousRoleCreation(role) {
+  const guild = role.guild;
+  if (!guild || role.managed) return;
+
+  const cfg = await enabledFor(guild, "rolePerms");
+  if (!cfg || !hasDangerousPermissions(role)) return;
+
+  const entry = await findAuditEntry(guild, AuditLogEvent.RoleCreate, role.id);
+  const actor = entry?.executor || null;
+  if (actor && await isTrusted(guild, cfg, actor.id)) return;
+
+  let rollbackError = null;
+  try {
+    await role.setPermissions(
+      role.permissions.remove(...DANGEROUS),
+      REASON + ": remove dangerous permissions from a newly created role"
+    );
+  } catch (error) {
+    rollbackError = error;
+  }
+
+  const verifiedRole = await guild.roles.fetch(role.id, { force: true }).catch(() => null);
+  const permissionEscalationRemains = hasDangerousPermissions(verifiedRole);
+  let actorResult = {
+    ok: false,
+    text: actor ? "Not attempted." : "Not attempted because the audit-log actor could not be verified."
+  };
+
+  if (actor) {
+    const serverCfg = await guildConfig.get(guild.id);
+    if (serverCfg.quarantineRole) {
+      actorResult = await quarantine.quarantineMember(guild, actor.id, serverCfg.quarantineRole);
+    } else {
+      actorResult = await punish(guild, actor, cfg);
+    }
+  }
+
+  const roleResult = permissionEscalationRemains
+    ? "<:warning_g:1561271566233501797> Dangerous permissions remain on the new role."
+    : "<:success_g:1561271843346714777> Dangerous permissions were removed from the new role.";
+
+  await sendLog(
+    guild,
+    permissionEscalationRemains || !actor ? COLORS.RED : COLORS.GREEN,
+    "# Anti-Nuke: Dangerous role creation\n\n" +
+      "**Role:** " + role.name + " (" + role.id + ")\n" +
+      "**Creator:** " + (actor ? who(actor) : "Unknown — audit-log attribution unavailable") + "\n" +
+      roleResult +
+      (rollbackError ? "\n**Rollback error:** " + rollbackError.message : "") +
+      (actor ? "\n**Creator containment:** " + actorResult.text : "") +
+      "\n\n-# F.R.I.D.A.Y • Permission Escalation Guard"
+  );
+
+  if (!actor || permissionEscalationRemains || !actorResult.ok) {
+    await dmOwner(
+      guild,
+      "[FRIDAY Anti-Nuke] Dangerous role creation in " + guild.name + " (" + guild.id + "). " +
+      "Role: " + role.name + " (" + role.id + "). Creator: " +
+      (actor ? (actor.tag || actor.username) + " (" + actor.id + ")" : "unknown") + ". " +
+      roleResult + (rollbackError ? " Rollback error: " + rollbackError.message : "") +
+      (actor ? " Creator containment: " + actorResult.text : "")
+    );
+  }
+}
+
+/**
  * If someone changes the configured Quarantine role, force it back to zero
  * permissions and FRIDAY's role hierarchy position. The guard remains active
  * even when the Anti-Nuke master switch is off.
@@ -1738,14 +1808,6 @@ module.exports = client => {
     }
   });
 
-  client.on("roleUpdate", async (oldRole, newRole) => {
-    try {
-      await guardQuarantineRoleUpdate(oldRole, newRole);
-    } catch (error) {
-      console.error("[AntiNuke] Quarantine role configuration guard:", error);
-    }
-  });
-
   client.on("channelUpdate", async (_oldChannel, newChannel) => {
     try {
       await guardQuarantineChannel(newChannel);
@@ -1825,6 +1887,11 @@ module.exports = client => {
     try {
       const guild = role.guild;
       if (role.managed) return; // bots/integrations get a managed role automatically
+      try {
+        await guardDangerousRoleCreation(role);
+      } catch (error) {
+        console.error("[AntiNuke] Dangerous role creation guard:", error);
+      }
 
       const cfg = await enabledFor(guild, "roleCreate");
       if (!cfg) return;
@@ -1852,7 +1919,8 @@ module.exports = client => {
       if (!gained.length) return;
 
       const entry = await findAuditEntry(guild, AuditLogEvent.RoleUpdate, newRole.id);
-      if (!entry?.executor || await isTrusted(guild, cfg, entry.executor.id)) return;
+      const actor = entry?.executor || null;
+      if (actor && await isTrusted(guild, cfg, actor.id)) return;
 
       let reverted = true;
 
@@ -1875,13 +1943,20 @@ module.exports = client => {
         guild,
         COLORS.RED,
         `# 🛡️ Anti-Nuke: role permissions\n\n` +
-          `**Who:** ${who(entry.executor)}\n` +
+          `**Who:** ${actor ? who(actor) : "Unknown — audit-log attribution unavailable"}\n` +
           `**Role:** ${newRole.name}\n` +
           `**Result:** ${reverted ? "<:success_g:1561271843346714777> Dangerous permissions were removed again" : "<:warning_g:1561271566233501797> Could not revert (my role is too low)"}\n\n` +
           `-# F.R.I.D.A.Y • Anti-Nuke`
       );
 
-      await registerHit(guild, cfg, entry.executor, "rolePerms");
+      if (actor) {
+        await registerHit(guild, cfg, actor, "rolePerms");
+      } else {
+        await dmOwner(guild,
+          "[FRIDAY Anti-Nuke] A role gained dangerous permissions in " + guild.name + " (" + guild.id +
+          "), but audit-log attribution was unavailable. Rollback " + (reverted ? "succeeded." : "FAILED; immediate review is required.")
+        );
+      }
     } catch (error) {
       console.error("[AntiNuke] roleUpdate:", error);
     }
