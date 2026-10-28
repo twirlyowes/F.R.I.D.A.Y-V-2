@@ -33,6 +33,13 @@ const owners = require("./lib/owners");
 const serverOwners = require("./lib/serverOwners");
 const { parseCommand } = require("./lib/prefix");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
+const {
+  DANGEROUS_MEMBER_ROLE_PERMISSIONS: DANGEROUS,
+  addedRoleIds: getAddedRoleIds,
+  hasDangerousPermissions,
+  isPermissionlessRole,
+  missingQuarantineDenies
+} = require("./lib/antinukeSecurity");
 
 // ---------------------------------------------------------------------------
 // Definitions
@@ -46,23 +53,13 @@ const FEATURES = {
   kick: { label: "Kicks" },
   webhook: { label: "Webhooks" },
   botAdd: { label: "Bot add" },
-  rolePerms: { label: "Role perms" }
+  rolePerms: { label: "Role perms" },
+  roleAssign: { label: "Role escalation" }
 };
 
 const PUNISHMENTS = ["strip", "kick", "ban"];
 const PUNISHMENT_TEXT = { strip: "Strip roles", kick: "Kick", ban: "Ban" };
 const THRESHOLDS = [3, 5, 10];
-
-// Permissions that make a role "dangerous" to hand out or keep
-const DANGEROUS = [
-  PermissionFlagsBits.Administrator,
-  PermissionFlagsBits.ManageGuild,
-  PermissionFlagsBits.ManageRoles,
-  PermissionFlagsBits.ManageChannels,
-  PermissionFlagsBits.BanMembers,
-  PermissionFlagsBits.KickMembers,
-  PermissionFlagsBits.ManageWebhooks
-];
 
 const ROLE_PERMS_LIMIT = 2; // permission grabs in the window before punishment
 const PUNISH_COOLDOWN_MS = 60 * 1000;
@@ -71,6 +68,7 @@ const BOOK_MAX = 200;
 const AUDIT_AGE_MS = 15 * 1000;
 const AUDIT_RETRY_MS = Number(process.env.ANTINUKE_AUDIT_RETRY_MS) || 1200;
 const REASON = "F.R.I.D.A.Y Anti-Nuke";
+const WATCHDOG_INTERVAL_MS = Math.max(60_000, Number(process.env.ANTINUKE_WATCHDOG_INTERVAL_MS) || 5 * 60 * 1000);
 
 const BOT_PERMISSIONS = [
   ["ViewAuditLog", "View Audit Log"],
@@ -88,6 +86,11 @@ const hits = new Map(); // "guild:user:kind" -> [timestamps]
 const book = new Map(); // "guild:user" -> what they deleted / created recently
 const lastPunished = new Map(); // "guild:user" -> time
 const seenEntries = new Set(); // audit entries already handled (webhooks)
+const handledQuarantineAuditEntries = new Map(); // audit entry ID -> handling timestamp
+const quarantineRoleRepairInFlight = new Set();
+const quarantineChannelRepairInFlight = new Set();
+const lastQuarantineChannelRepair = new Map();
+const watchdogAlertState = new Map(); // guild ID -> last issue signature
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -112,6 +115,12 @@ function cleanup() {
   }
 
   for (const [key, ts] of lastPunished) if (now - ts > PUNISH_COOLDOWN_MS * 5) lastPunished.delete(key);
+  for (const [id, ts] of handledQuarantineAuditEntries) {
+    if (now - ts > 60 * 1000) handledQuarantineAuditEntries.delete(id);
+  }
+  for (const [key, ts] of lastQuarantineChannelRepair) {
+    if (now - ts > 60 * 1000) lastQuarantineChannelRepair.delete(key);
+  }
   if (seenEntries.size > 500) seenEntries.clear();
 }
 
@@ -239,6 +248,819 @@ function snapshotRole(role) {
 }
 
 // ---------------------------------------------------------------------------
+// Quarantine guard, permission escalation, configuration repair, and health
+// ---------------------------------------------------------------------------
+
+/**
+ * Match the exact member-role audit entry to the changed role IDs. The target
+ * and role IDs must agree; we never guess an actor from a recent unrelated edit.
+ */
+async function findMemberRoleAuditEntry(guild, targetId, addedIds, quarantineRemoved, quarantineRoleId) {
+  const expectedAdds = new Set(addedIds);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const logs = await guild.fetchAuditLogs({
+        type: AuditLogEvent.MemberRoleUpdate,
+        limit: 10
+      });
+      const candidates = [...logs.entries.values()]
+        .filter(entry =>
+          (entry.targetId ?? entry.target?.id) === targetId &&
+          Date.now() - entry.createdTimestamp < AUDIT_AGE_MS
+        )
+        .sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+
+      for (const entry of candidates) {
+        const roleIdsFor = key => {
+          const change = (entry.changes || []).find(item => item.key === key);
+          if (!change) return [];
+          const values = [change.new, change.old]
+            .flatMap(value => Array.isArray(value) ? value : value == null ? [] : [value]);
+          return values.map(value => value?.id).filter(Boolean);
+        };
+
+        const addedInLog = roleIdsFor("$add");
+        const removedInLog = roleIdsFor("$remove");
+        const matchingAdd = addedInLog.some(id => expectedAdds.has(id));
+        const matchingQuarantineRemoval =
+          quarantineRemoved && removedInLog.includes(quarantineRoleId);
+
+        if (matchingAdd || matchingQuarantineRemoval) return entry;
+      }
+    } catch (error) {
+      console.warn("[AntiNuke] Could not read member-role audit logs:", error.message);
+      return null;
+    }
+
+    if (attempt === 0) await sleep(AUDIT_RETRY_MS);
+  }
+
+  return null;
+}
+
+/**
+ * A quarantined member cannot be given any other role or released without
+ * checking the exact actor. If attribution is unavailable, containment is
+ * restored, but FRIDAY does not punish an unidentified person.
+ */
+async function guardQuarantineRole(oldMember, newMember) {
+  const guild = newMember.guild;
+  if (!guild || oldMember.id !== newMember.id) return false;
+
+  const serverCfg = await guildConfig.get(guild.id);
+  const quarantineRoleId = serverCfg.quarantineRole;
+  if (!quarantineRoleId) return false;
+
+  const previouslyQuarantined = oldMember.roles.cache.has(quarantineRoleId);
+  const currentlyQuarantined = newMember.roles.cache.has(quarantineRoleId);
+  const quarantineRemoved = previouslyQuarantined && !currentlyQuarantined;
+  const addedIds = getAddedRoleIds(
+    oldMember.roles.cache.keys(),
+    newMember.roles.cache.keys(),
+    [guild.id, quarantineRoleId]
+  );
+
+  const tamperingDetected = quarantineRemoved ||
+    ((previouslyQuarantined || currentlyQuarantined) && addedIds.length > 0);
+  if (!tamperingDetected) return false;
+
+  const entry = await findMemberRoleAuditEntry(
+    guild,
+    newMember.id,
+    addedIds,
+    quarantineRemoved,
+    quarantineRoleId
+  );
+
+  if (entry?.id && handledQuarantineAuditEntries.has(entry.id)) return true;
+
+  const cfg = await protection.getAntinuke(guild.id);
+  const actor = entry?.executor || null;
+
+  if (actor && await isTrusted(guild, cfg, actor.id)) {
+    if (entry?.id) handledQuarantineAuditEntries.set(entry.id, Date.now());
+    return true;
+  }
+
+  if (entry?.id) handledQuarantineAuditEntries.set(entry.id, Date.now());
+
+  const targetResult = await quarantine.quarantineMember(guild, newMember.id, quarantineRoleId);
+  let actorResult = {
+    ok: false,
+    text: actor ? "Not attempted." : "Not attempted because the audit-log actor could not be verified."
+  };
+
+  if (actor) {
+    actorResult = await quarantine.quarantineMember(guild, actor.id, quarantineRoleId);
+  }
+
+  const attribution = actor
+    ? "**Actor:** " + who(actor)
+    : "**Actor:** Unknown — audit-log attribution was unavailable or did not match the changed role IDs.";
+  const targetText = targetResult.ok
+    ? "<:success_g:1561271843346714777> Target containment verified."
+    : "<:warning_g:1561271566233501797> Target quarantine incomplete: " + targetResult.text;
+  const actorText = actor
+    ? (actorResult.ok
+      ? "<:success_g:1561271843346714777> The unauthorized actor was quarantined."
+      : "<:warning_g:1561271566233501797> Actor quarantine failed: " + actorResult.text)
+    : "<:warning_g:1561271566233501797> No one was punished because FRIDAY could not safely identify the actor.";
+
+  await sendLog(
+    guild,
+    COLORS.RED,
+    "# Anti-Nuke: Quarantine tampering detected\n\n" +
+      "**Target:** " + who(newMember.user) + "\n" +
+      attribution + "\n" +
+      "**Attempt:** " + (quarantineRemoved ? "Quarantine role removed" : "Role assigned to a quarantined member") + "\n\n" +
+      targetText + "\n" + actorText + "\n\n" +
+      "**Target result:** " + targetResult.text + "\n" +
+      (actor ? "**Actor result:** " + actorResult.text + "\n" : "") +
+      "\n-# F.R.I.D.A.Y • Automatic Quarantine Guard"
+  );
+
+  if (!actor || !targetResult.ok || (actor && !actorResult.ok)) {
+    await dmOwner(
+      guild,
+      "[FRIDAY Anti-Nuke] Quarantine tampering in " + guild.name + " (" + guild.id + "). " +
+      "Target: " + newMember.user.tag + " (" + newMember.id + "). " +
+      "Actor: " + (actor ? (actor.tag || actor.username) + " (" + actor.id + ")" : "unknown; audit log did not provide a safe match") + ". " +
+      "Target result: " + targetResult.text + ". Actor result: " + actorResult.text + ". " +
+      "Check FRIDAY's View Audit Log, Manage Roles, and role hierarchy permissions."
+    );
+  }
+
+  return true;
+}
+
+/**
+ * Immediate containment for a newly assigned role that grants dangerous
+ * permissions. The dangerous assignment is removed even when audit attribution
+ * is unavailable; an unknown actor is never punished based on a guess.
+ */
+async function guardDangerousRoleAssignment(oldMember, newMember) {
+  const guild = newMember.guild;
+  if (!guild || oldMember.id !== newMember.id) return;
+
+  const serverCfg = await guildConfig.get(guild.id);
+  const quarantineRoleId = serverCfg.quarantineRole;
+  if (quarantineRoleId &&
+      (oldMember.roles.cache.has(quarantineRoleId) || newMember.roles.cache.has(quarantineRoleId))) {
+    return; // the stronger quarantine guard handles all role changes for these members
+  }
+
+  const cfg = await enabledFor(guild, "roleAssign");
+  if (!cfg) return;
+
+  const addedIds = getAddedRoleIds(
+    oldMember.roles.cache.keys(),
+    newMember.roles.cache.keys(),
+    [guild.id]
+  );
+  const dangerousRoles = addedIds
+    .map(id => guild.roles.cache.get(id))
+    .filter(role => role && hasDangerousPermissions(role));
+  if (!dangerousRoles.length) return;
+
+  const entry = await findMemberRoleAuditEntry(
+    guild,
+    newMember.id,
+    dangerousRoles.map(role => role.id),
+    false,
+    quarantineRoleId
+  );
+  const actor = entry?.executor || null;
+  if (actor && await isTrusted(guild, cfg, actor.id)) return;
+
+  let removalError = null;
+  try {
+    await newMember.roles.remove(
+      dangerousRoles.map(role => role.id),
+      REASON + ": reverse a dangerous role assignment by an untrusted or unattributed actor"
+    );
+  } catch (error) {
+    removalError = error;
+  }
+
+  const refreshedTarget = await guild.members.fetch({ user: newMember.id, force: true }).catch(() => newMember);
+  const remaining = dangerousRoles.filter(role => refreshedTarget.roles.cache.has(role.id));
+  const removedText = remaining.length
+    ? "<:warning_g:1561271566233501797> " + remaining.length + " dangerous role assignment(s) could not be removed."
+    : "<:success_g:1561271843346714777> The dangerous role assignment was removed.";
+
+  let actorResult = {
+    ok: false,
+    text: actor ? "Not attempted." : "Not attempted because the audit-log actor could not be verified."
+  };
+
+  if (actor) {
+    if (serverCfg.quarantineRole) {
+      actorResult = await quarantine.quarantineMember(guild, actor.id, serverCfg.quarantineRole);
+    } else {
+      actorResult = await punish(guild, actor, cfg);
+    }
+  }
+
+  await sendLog(
+    guild,
+    remaining.length || !actor ? COLORS.RED : COLORS.GREEN,
+    "# Anti-Nuke: Permission escalation detected\n\n" +
+      "**Target:** " + who(newMember.user) + "\n" +
+      "**New dangerous role(s):** " + dangerousRoles.map(role => role.name).join(", ") + "\n" +
+      "**Actor:** " + (actor ? who(actor) : "Unknown — no exact audit-log match") + "\n\n" +
+      removedText + "\n" +
+      (actor
+        ? (actorResult.ok
+          ? "<:success_g:1561271843346714777> Actor containment: " + actorResult.text
+          : "<:warning_g:1561271566233501797> Actor containment incomplete: " + actorResult.text)
+        : "<:warning_g:1561271566233501797> No actor was punished because attribution was unavailable.") +
+      (removalError ? "\n**API detail:** " + removalError.message : "") +
+      "\n\n-# F.R.I.D.A.Y • Permission Escalation Guard"
+  );
+
+  if (!actor || remaining.length || !actorResult.ok) {
+    await dmOwner(
+      guild,
+      "[FRIDAY Anti-Nuke] Permission escalation in " + guild.name + " (" + guild.id + "). " +
+      "Target: " + newMember.user.tag + " (" + newMember.id + "). " +
+      "New roles: " + dangerousRoles.map(role => role.name).join(", ") + ". " +
+      "Actor: " + (actor ? (actor.tag || actor.username) + " (" + actor.id + ")" : "unknown") + ". " +
+      removedText + " Actor result: " + actorResult.text
+    );
+  }
+}
+
+/**
+ * A role created with Administrator/other dangerous permissions is an
+ * escalation attempt even before it is assigned. Remove only the dangerous
+ * bits, verify the result, and contain a non-trusted creator when attributable.
+ */
+async function guardDangerousRoleCreation(role) {
+  const guild = role.guild;
+  if (!guild || role.managed) return;
+
+  const cfg = await enabledFor(guild, "rolePerms");
+  if (!cfg || !hasDangerousPermissions(role)) return;
+
+  const entry = await findAuditEntry(guild, AuditLogEvent.RoleCreate, role.id);
+  const actor = entry?.executor || null;
+  if (actor && await isTrusted(guild, cfg, actor.id)) return;
+
+  let rollbackError = null;
+  try {
+    await role.setPermissions(
+      role.permissions.remove(...DANGEROUS),
+      REASON + ": remove dangerous permissions from a newly created role"
+    );
+  } catch (error) {
+    rollbackError = error;
+  }
+
+  const verifiedRole = await guild.roles.fetch(role.id, { force: true }).catch(() => null);
+  const permissionEscalationRemains = hasDangerousPermissions(verifiedRole);
+  let actorResult = {
+    ok: false,
+    text: actor ? "Not attempted." : "Not attempted because the audit-log actor could not be verified."
+  };
+
+  if (actor) {
+    const serverCfg = await guildConfig.get(guild.id);
+    if (serverCfg.quarantineRole) {
+      actorResult = await quarantine.quarantineMember(guild, actor.id, serverCfg.quarantineRole);
+    } else {
+      actorResult = await punish(guild, actor, cfg);
+    }
+  }
+
+  const roleResult = permissionEscalationRemains
+    ? "<:warning_g:1561271566233501797> Dangerous permissions remain on the new role."
+    : "<:success_g:1561271843346714777> Dangerous permissions were removed from the new role.";
+
+  await sendLog(
+    guild,
+    permissionEscalationRemains || !actor ? COLORS.RED : COLORS.GREEN,
+    "# Anti-Nuke: Dangerous role creation\n\n" +
+      "**Role:** " + role.name + " (" + role.id + ")\n" +
+      "**Creator:** " + (actor ? who(actor) : "Unknown — audit-log attribution unavailable") + "\n" +
+      roleResult +
+      (rollbackError ? "\n**Rollback error:** " + rollbackError.message : "") +
+      (actor ? "\n**Creator containment:** " + actorResult.text : "") +
+      "\n\n-# F.R.I.D.A.Y • Permission Escalation Guard"
+  );
+
+  if (!actor || permissionEscalationRemains || !actorResult.ok) {
+    await dmOwner(
+      guild,
+      "[FRIDAY Anti-Nuke] Dangerous role creation in " + guild.name + " (" + guild.id + "). " +
+      "Role: " + role.name + " (" + role.id + "). Creator: " +
+      (actor ? (actor.tag || actor.username) + " (" + actor.id + ")" : "unknown") + ". " +
+      roleResult + (rollbackError ? " Rollback error: " + rollbackError.message : "") +
+      (actor ? " Creator containment: " + actorResult.text : "")
+    );
+  }
+}
+
+/**
+ * If someone changes the configured Quarantine role, force it back to zero
+ * permissions and FRIDAY's role hierarchy position. The guard remains active
+ * even when the Anti-Nuke master switch is off.
+ */
+async function guardQuarantineRoleUpdate(oldRole, newRole) {
+  const guild = newRole.guild;
+  const serverCfg = await guildConfig.get(guild.id);
+  if (!serverCfg.quarantineRole || serverCfg.quarantineRole !== newRole.id) return false;
+
+  const me = guild.members.me;
+  const targetPosition = me?.roles.highest?.position - 1;
+  const unsafePermissions = !isPermissionlessRole(newRole);
+  const unsafePosition = Number.isInteger(targetPosition) &&
+    targetPosition >= 1 && newRole.position !== targetPosition;
+  if (!unsafePermissions && !unsafePosition) return false;
+
+  const repairKey = guild.id + ":" + newRole.id;
+  if (quarantineRoleRepairInFlight.has(repairKey)) return true;
+  quarantineRoleRepairInFlight.add(repairKey);
+
+  try {
+    const entry = await findAuditEntry(guild, AuditLogEvent.RoleUpdate, newRole.id);
+    const cfg = await protection.getAntinuke(guild.id);
+    const actor = entry?.executor || null;
+    const actorTrusted = actor ? await isTrusted(guild, cfg, actor.id) : false;
+    const failures = [];
+
+    let currentRole = await guild.roles.fetch(newRole.id, { force: true }).catch(() => newRole);
+    let currentBot = guild.members.me || await guild.members.fetchMe().catch(() => null);
+
+    if (!currentBot?.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      failures.push("FRIDAY is missing Manage Roles.");
+    } else if (!currentRole.editable) {
+      failures.push("The Quarantine role is at or above FRIDAY's highest role and cannot be repaired.");
+    } else {
+      if (!isPermissionlessRole(currentRole)) {
+        try {
+          await currentRole.setPermissions(0n, REASON + ": restore the Quarantine role's zero-permission preset");
+        } catch (error) {
+          failures.push("Could not remove Quarantine role permissions: " + error.message);
+        }
+      }
+
+      currentRole = await guild.roles.fetch(newRole.id, { force: true }).catch(() => currentRole);
+      currentBot = guild.members.me || await guild.members.fetchMe().catch(() => currentBot);
+      const requiredPosition = currentBot?.roles.highest?.position - 1;
+
+      if (!Number.isInteger(requiredPosition) || requiredPosition < 1) {
+        failures.push("FRIDAY does not have a valid role position for Quarantine.");
+      } else if (currentRole.position !== requiredPosition) {
+        if (!currentRole.editable) {
+          failures.push("Quarantine cannot be moved below FRIDAY because its hierarchy is too high.");
+        } else {
+          try {
+            await currentRole.setPosition(requiredPosition, {
+              reason: REASON + ": restore the Quarantine role's protected hierarchy position"
+            });
+          } catch (error) {
+            failures.push("Could not restore the Quarantine role's position: " + error.message);
+          }
+        }
+      }
+    }
+
+    const verifiedRole = await guild.roles.fetch(newRole.id, { force: true }).catch(() => null);
+    currentBot = guild.members.me || await guild.members.fetchMe().catch(() => null);
+    if (!isPermissionlessRole(verifiedRole)) failures.push("Verification failed: Quarantine still has server permissions.");
+    if (verifiedRole && currentBot && verifiedRole.position >= currentBot.roles.highest.position) {
+      failures.push("Verification failed: Quarantine is not below FRIDAY's highest role.");
+    }
+
+    let actorResult = null;
+    if (actor && !actorTrusted) {
+      if (isPermissionlessRole(verifiedRole) && verifiedRole?.editable) {
+        actorResult = await quarantine.quarantineMember(guild, actor.id, verifiedRole.id);
+      } else {
+        actorResult = await punish(guild, actor, cfg);
+      }
+    }
+
+    const resultText = failures.length
+      ? "<:warning_g:1561271566233501797> Repair incomplete: " + failures.join(" ")
+      : "<:success_g:1561271843346714777> Quarantine role security settings were restored and verified.";
+
+    await sendLog(
+      guild,
+      failures.length ? COLORS.RED : COLORS.GREEN,
+      "# Anti-Nuke: Quarantine configuration guard\n\n" +
+        "**Role:** <@&" + newRole.id + ">\n" +
+        "**Change actor:** " + (actor ? who(actor) : "Unknown — audit-log attribution unavailable") + "\n" +
+        resultText +
+        (actorResult ? "\n**Actor containment:** " + actorResult.text : "") +
+        "\n\n-# F.R.I.D.A.Y • Security Configuration Guard"
+    );
+
+    if (!actor || failures.length || (actorResult && !actorResult.ok)) {
+      await dmOwner(
+        guild,
+        "[FRIDAY Anti-Nuke] Quarantine-role configuration change in " + guild.name + " (" + guild.id + "). " +
+        "Actor: " + (actor ? (actor.tag || actor.username) + " (" + actor.id + ")" : "unknown") + ". " +
+        resultText + (actorResult ? " Actor containment: " + actorResult.text : "")
+      );
+    }
+  } catch (error) {
+    console.error("[AntiNuke] Quarantine role security repair failed:", error);
+    await dmOwner(guild, "[FRIDAY Anti-Nuke] Could not verify the Quarantine role after a configuration change in " +
+      guild.name + " (" + guild.id + "): " + error.message);
+  } finally {
+    quarantineRoleRepairInFlight.delete(repairKey);
+  }
+
+  return true;
+}
+
+/**
+ * Restore a deleted configured Quarantine role even when mass-action protection
+ * is disabled. The new role receives zero permissions and fresh channel denies.
+ */
+async function restoreDeletedQuarantineRole(deletedRole) {
+  const guild = deletedRole.guild;
+  const serverCfg = await guildConfig.get(guild.id);
+  if (!serverCfg.quarantineRole || serverCfg.quarantineRole !== deletedRole.id) return false;
+
+  const entry = await findAuditEntry(guild, AuditLogEvent.RoleDelete, deletedRole.id);
+  const actor = entry?.executor || null;
+  const cfg = await protection.getAntinuke(guild.id);
+  const actorTrusted = actor ? await isTrusted(guild, cfg, actor.id) : false;
+  let restoredRole = null;
+  let recoveryText = "";
+
+  try {
+    restoredRole = await guild.roles.create({
+      name: deletedRole.name === "Quarantine" ? "Quarantine" : deletedRole.name,
+      color: deletedRole.color,
+      hoist: deletedRole.hoist,
+      mentionable: false,
+      permissions: 0n,
+      reason: REASON + ": restore the configured Quarantine role after deletion"
+    });
+    await guildConfig.set(guild.id, "quarantineRole", restoredRole.id);
+    const configured = await quarantine.configureRole(guild, restoredRole);
+    recoveryText = "Recreated <@&" + configured.role.id + "> with zero permissions and " +
+      configured.configuredChannels + " channel restriction(s).";
+  } catch (error) {
+    recoveryText = "Role restoration/configuration failed: " + error.message;
+  }
+
+  let actorResult = null;
+  if (actor && !actorTrusted) {
+    if (restoredRole && restoredRole.editable) {
+      actorResult = await quarantine.quarantineMember(guild, actor.id, restoredRole.id);
+    } else {
+      actorResult = await punish(guild, actor, cfg);
+    }
+  }
+
+  await sendLog(
+    guild,
+    restoredRole ? COLORS.GREEN : COLORS.RED,
+    "# Anti-Nuke: Quarantine role recovery\n\n" +
+      "**Deleted role:** " + deletedRole.name + " (" + deletedRole.id + ")\n" +
+      "**Actor:** " + (actor ? who(actor) : "Unknown — audit-log attribution unavailable") + "\n" +
+      recoveryText +
+      (actorResult ? "\n**Actor containment:** " + actorResult.text : "") +
+      "\n\n-# F.R.I.D.A.Y • Automatic Recovery"
+  );
+
+  if (!restoredRole || !actor || (actorResult && !actorResult.ok)) {
+    await dmOwner(
+      guild,
+      "[FRIDAY Anti-Nuke] Quarantine-role deletion/recovery in " + guild.name + " (" + guild.id + "). " +
+      "Actor: " + (actor ? (actor.tag || actor.username) + " (" + actor.id + ")" : "unknown") + ". " +
+      recoveryText + (actorResult ? " Actor containment: " + actorResult.text : "")
+    );
+  }
+
+  return true;
+}
+
+/**
+ * Repair the configured Quarantine overwrite if someone removes its channel
+ * denies. This only calls Discord on a channel event; the watchdog is read-only.
+ */
+async function guardQuarantineChannel(channel) {
+  const guild = channel.guild;
+  if (!guild || channel.isThread?.() || !channel.permissionOverwrites?.cache) return;
+
+  const serverCfg = await guildConfig.get(guild.id);
+  const roleId = serverCfg.quarantineRole;
+  if (!roleId) return;
+
+  const missing = missingQuarantineDenies(channel, roleId);
+  if (!missing.length) return;
+
+  const repairKey = guild.id + ":" + channel.id;
+  if (quarantineChannelRepairInFlight.has(repairKey)) return;
+  const last = lastQuarantineChannelRepair.get(repairKey) || 0;
+  if (Date.now() - last < 5000) return;
+
+  quarantineChannelRepairInFlight.add(repairKey);
+  lastQuarantineChannelRepair.set(repairKey, Date.now());
+  try {
+    let repairError = null;
+    try {
+      const applied = await quarantine.applyToChannel(guild, channel, roleId);
+      if (!applied) repairError = new Error("The configured Quarantine role or an editable channel was unavailable.");
+    } catch (error) {
+      repairError = error;
+    }
+
+    const freshChannel = await guild.channels.fetch(channel.id, { force: true }).catch(() => channel);
+    const stillMissing = missingQuarantineDenies(freshChannel, roleId);
+    const ok = !repairError && stillMissing.length === 0;
+
+    await sendLog(
+      guild,
+      ok ? COLORS.GREEN : COLORS.RED,
+      "# Anti-Nuke: Quarantine channel guard\n\n" +
+        "**Channel:** <#" + channel.id + ">\n" +
+        (ok
+          ? "<:success_g:1561271843346714777> Quarantine access-deny overwrites were restored."
+          : "<:warning_g:1561271566233501797> Could not restore all quarantine denies (" +
+            stillMissing.length + " permission overwrite(s) remain missing)." +
+            (repairError ? "\n**Error:** " + repairError.message : "")) +
+        "\n\n-# F.R.I.D.A.Y • Security Configuration Guard"
+    );
+
+    if (!ok) {
+      await dmOwner(
+        guild,
+        "[FRIDAY Anti-Nuke] Quarantine overwrite repair failed in " + guild.name + " (" + guild.id + "), channel " +
+        channel.name + " (" + channel.id + "). Check Manage Channels and channel/category permissions."
+      );
+    }
+  } catch (error) {
+    console.error("[AntiNuke] Quarantine channel guard failed:", error);
+  } finally {
+    quarantineChannelRepairInFlight.delete(repairKey);
+  }
+}
+
+function evaluateSecurityHealth(guild, cfg, serverCfg, probeAudit = false) {
+  const issues = [];
+  const rows = [];
+  const me = guild.members.me;
+  const required = new Map();
+
+  const requirePermission = (key, reason) => {
+    if (!required.has(key)) required.set(key, []);
+    required.get(key).push(reason);
+  };
+
+  if (cfg.enabled) {
+    requirePermission("ViewAuditLog", "identify the actor in audit logs");
+    if (cfg.protections.roleDelete || cfg.protections.roleCreate ||
+        cfg.protections.rolePerms || cfg.protections.roleAssign) {
+      requirePermission("ManageRoles", "reverse role and permission escalation");
+    }
+    if (cfg.restore && (cfg.protections.channelDelete || cfg.protections.channelCreate)) {
+      requirePermission("ManageChannels", "recover channel changes and secure new channels");
+    }
+    if (cfg.protections.webhook) requirePermission("ManageWebhooks", "remove unauthorized webhooks");
+    if (cfg.punishment === "kick") requirePermission("KickMembers", "apply the configured kick response");
+    if (cfg.punishment === "ban") requirePermission("BanMembers", "apply the configured ban response");
+    if (cfg.punishment === "strip") requirePermission("KickMembers", "fallback when dangerous roles cannot be stripped");
+  }
+
+  if (serverCfg.quarantineRole) {
+    requirePermission("ManageRoles", "assign and restore the Quarantine role");
+    requirePermission("ManageChannels", "restore Quarantine channel denies");
+    requirePermission("ViewAuditLog", "identify who tampers with Quarantine");
+  } else if (cfg.enabled) {
+    issues.push("No Quarantine role is configured; Anti-Nuke must rely on its fallback punishment.");
+  }
+
+  for (const [key, reasons] of required) {
+    const ok = Boolean(me?.permissions.has(PermissionFlagsBits[key]));
+    rows.push({
+      ok,
+      label: key,
+      detail: ok ? "available" : "missing — required to " + reasons.join(", ")
+    });
+    if (!ok) issues.push("Missing bot permission " + key + " (" + reasons.join(", ") + ").");
+  }
+
+  rows.push({
+    ok: cfg.enabled,
+    label: "Anti-Nuke master switch",
+    detail: cfg.enabled ? "enabled" : "disabled",
+    critical: false
+  });
+
+  if (serverCfg.quarantineRole) {
+    const role = guild.roles.cache.get(serverCfg.quarantineRole);
+    if (!role) {
+      rows.push({ ok: false, label: "Quarantine role", detail: "configured role is missing" });
+      issues.push("The configured Quarantine role is missing.");
+    } else {
+      const safe = isPermissionlessRole(role);
+      rows.push({
+        ok: safe,
+        label: "Quarantine permissions",
+        detail: safe ? "zero server-wide permissions" : "UNSAFE — the role has server-wide permissions"
+      });
+      if (!safe) issues.push("The Quarantine role has server-wide permissions.");
+
+      const targetPosition = me?.roles.highest?.position - 1;
+      const positioned = Number.isInteger(targetPosition) && targetPosition >= 1 &&
+        role.position === targetPosition && role.position < (me?.roles.highest?.position || 0);
+      rows.push({
+        ok: positioned,
+        label: "Quarantine hierarchy",
+        detail: positioned
+          ? "directly below FRIDAY's highest role"
+          : "not in the required position below FRIDAY's highest role"
+      });
+      if (!positioned) issues.push("The Quarantine role is not directly below FRIDAY's highest role.");
+
+      let missingOverwriteCount = 0;
+      let checkedChannels = 0;
+      for (const channel of guild.channels.cache.values()) {
+        if (channel.isThread?.() || !channel.permissionOverwrites?.cache) continue;
+        checkedChannels++;
+        if (missingQuarantineDenies(channel, role.id).length) missingOverwriteCount++;
+      }
+      const overwritesSafe = missingOverwriteCount === 0;
+      rows.push({
+        ok: overwritesSafe,
+        label: "Quarantine channel denies",
+        detail: overwritesSafe
+          ? "configured on " + checkedChannels + " cached channel(s)"
+          : missingOverwriteCount + " of " + checkedChannels + " cached channel(s) need repair"
+      });
+      if (!overwritesSafe) issues.push(missingOverwriteCount + " cached channel(s) lack required Quarantine deny overwrites.");
+    }
+  }
+
+  if (probeAudit) {
+    if (!me?.permissions.has(PermissionFlagsBits.ViewAuditLog)) {
+      rows.push({ ok: false, label: "Audit-log probe", detail: "not attempted because View Audit Log is missing" });
+    } else {
+      rows.push({ ok: true, label: "Audit-log probe", detail: "permission is present; fetching a recent page..." });
+    }
+  }
+
+  return { issues: [...new Set(issues)], rows };
+}
+
+async function runSecurityCheck(guild, options = {}) {
+  const cfg = options.cfg || await protection.getAntinuke(guild.id);
+  const serverCfg = options.serverCfg || await guildConfig.get(guild.id);
+  const report = evaluateSecurityHealth(guild, cfg, serverCfg, Boolean(options.probeAudit));
+
+  if (options.probeAudit && guild.members.me?.permissions.has(PermissionFlagsBits.ViewAuditLog)) {
+    try {
+      await guild.fetchAuditLogs({ limit: 1 });
+    } catch (error) {
+      report.rows.push({ ok: false, label: "Audit-log probe", detail: "Discord denied the request: " + error.message });
+      report.issues.push("Discord rejected the audit-log request.");
+    }
+  }
+
+  if (options.simulation) {
+    report.rows.push({
+      ok: cfg.enabled && cfg.protections.rolePerms,
+      label: "Simulated permission escalation",
+      detail: cfg.enabled && cfg.protections.rolePerms
+        ? "would roll back newly granted dangerous role permissions and count the incident"
+        : "would not run because Anti-Nuke or role-permission protection is off",
+      critical: false
+    });
+    report.rows.push({
+      ok: cfg.enabled && cfg.protections.roleAssign,
+      label: "Simulated dangerous role assignment",
+      detail: cfg.enabled && cfg.protections.roleAssign
+        ? "would remove a newly assigned dangerous role; quarantine an identified untrusted actor"
+        : "would not run because Anti-Nuke or role-escalation protection is off",
+      critical: false
+    });
+    report.rows.push({
+      ok: Boolean(serverCfg.quarantineRole),
+      label: "Simulated Quarantine tampering",
+      detail: serverCfg.quarantineRole
+        ? "the member guard would restore containment; an exact untrusted actor would also be quarantined"
+        : "no Quarantine role is configured, so this guard cannot contain the target",
+      critical: false
+    });
+    report.rows.push({
+      ok: cfg.restore,
+      label: "Simulated recovery",
+      detail: cfg.restore
+        ? "recent in-memory channel/role snapshots can be restored; created attack resources can be removed"
+        : "automatic channel/role recovery is switched off",
+      critical: false
+    });
+    report.rows.push({
+      ok: true,
+      label: "Simulation safety",
+      detail: "dry run only — no roles, members, channels, settings, or punishments were changed"
+    });
+  }
+
+  return { ...report, cfg, serverCfg };
+}
+
+function formatSecurityCheck(guild, report, simulation = false) {
+  const lines = report.rows.map(row =>
+    (row.ok ? "<:success_g:1561271843346714777>" : "<:warning_g:1561271566233501797>") +
+    " **" + row.label + ":** " + row.detail
+  );
+
+  const issueSummary = report.issues.length
+    ? "\n\n**Issues needing attention:**\n" + report.issues.slice(0, 8).map(item => "• " + item).join("\n")
+    : "\n\n<:success_g:1561271843346714777> No blocking configuration issues were found in the checks performed.";
+
+  const header = simulation ? "# Anti-Nuke Attack Simulation (Dry Run)" : "# Anti-Nuke Watchdog Report";
+  const safetyNote = simulation
+    ? "\n\n**Simulation only:** FRIDAY did not perform a real attack, remove roles, quarantine anyone, or alter server settings."
+    : "";
+  return header + "\n\n" +
+    "**Server:** " + guild.name + "\n" +
+    "**Anti-Nuke:** " + (report.cfg.enabled ? "ON" : "OFF") + "\n\n" +
+    lines.join("\n") + issueSummary + safetyNote +
+    "\n\n-# F.R.I.D.A.Y • Security Diagnostics";
+}
+
+async function watchdogTick(client) {
+  for (const guild of client.guilds.cache.values()) {
+    const cfg = protection.peekAntinuke(guild.id);
+    const serverCfg = guildConfig.peek(guild.id);
+    if (!cfg || !serverCfg) continue;
+
+    const report = evaluateSecurityHealth(guild, cfg, serverCfg, false);
+    const signature = report.issues.slice().sort().join("|");
+    const previous = watchdogAlertState.get(guild.id);
+    watchdogAlertState.set(guild.id, signature);
+
+    if (!signature || signature === previous) continue;
+
+    const content = "# Anti-Nuke Watchdog Alert\n\n" +
+      "**Server:** " + guild.name + "\n" +
+      report.issues.slice(0, 8).map(item => "• " + item).join("\n") +
+      "\n\nThe watchdog is checking cached configuration and Discord state; it does not poll Firestore.\n\n" +
+      "-# F.R.I.D.A.Y • Security Watchdog";
+    await sendLog(guild, COLORS.RED, content);
+    await dmOwner(guild, "[FRIDAY Anti-Nuke Watchdog] Security issue(s) in " + guild.name +
+      " (" + guild.id + "): " + report.issues.join(" "));
+  }
+}
+
+async function recoverMissingQuarantineRole(guild, serverCfg) {
+  const roleId = serverCfg?.quarantineRole;
+  if (!roleId || guild.roles.cache.has(roleId)) return false;
+
+  let errorCode = null;
+  try {
+    const fetched = await guild.roles.fetch(roleId);
+    if (fetched) return false;
+  } catch (error) {
+    errorCode = error.code ?? error.rawError?.code ?? null;
+    // Only recreate when Discord explicitly says the stored role ID no longer exists.
+    if (String(errorCode) !== "10011") {
+      console.warn("[AntiNuke] Could not verify configured Quarantine role:", error.message);
+      return false;
+    }
+  }
+
+  let created = null;
+  try {
+    created = await guild.roles.create({
+      name: "Quarantine",
+      permissions: 0n,
+      reason: REASON + ": restore a missing configured Quarantine role"
+    });
+    await guildConfig.set(guild.id, "quarantineRole", created.id);
+    const configured = await quarantine.configureRole(guild, created);
+    await sendLog(
+      guild,
+      COLORS.GREEN,
+      "# Anti-Nuke: missing Quarantine role restored\n\n" +
+        "FRIDAY recreated <@&" + configured.role.id + "> with zero permissions and restored channel restrictions.\n\n" +
+        "-# F.R.I.D.A.Y • Automatic Recovery"
+    );
+    await dmOwner(guild, "[FRIDAY Anti-Nuke] The configured Quarantine role was missing in " +
+      guild.name + " (" + guild.id + "). FRIDAY recreated it and reapplied its safe preset.");
+    return true;
+  } catch (error) {
+    await sendLog(
+      guild,
+      COLORS.RED,
+      "# Anti-Nuke: Quarantine recovery failed\n\n" +
+        "The stored Quarantine role is missing and could not be recreated: " + error.message + "\n\n" +
+        "-# F.R.I.D.A.Y • Automatic Recovery"
+    );
+    await dmOwner(guild, "[FRIDAY Anti-Nuke] Could not recreate the missing Quarantine role in " +
+      guild.name + " (" + guild.id + "): " + error.message);
+    return false;
+  }
+}
+
 // Alerts
 // ---------------------------------------------------------------------------
 async function sendLog(guild, color, content) {
@@ -610,7 +1432,7 @@ async function buildPanel(guild, userId, note = null) {
   const card = createCard({
     color: cfg.enabled ? COLORS.GREEN : COLORS.SKY_BLUE,
     content:
-      `# Anti-Nuke\n\n${note ? `${note}\n\n` : ""}` +
+      `# <:FRIDAY:1564865373583581266> Anti-Nuke\n\n${note ? `${note}\n\n` : ""}` +
       `**Status:** ${cfg.enabled ? "🟢 ON" : "🔴 OFF"}\n` +
       `**Quarantine:** ${quarantineLine}\n` +
       `**Punishment:** ${PUNISHMENT_TEXT[cfg.punishment]}\n` +
@@ -629,16 +1451,11 @@ async function buildPanel(guild, userId, note = null) {
   const toggle = key => toggleButton(`an:tog:${key}:${userId}`, FEATURES[key].label, cfg.protections[key]);
 
   const row1 = new ActionRowBuilder().addComponents(
-    ["channelDelete", "channelCreate", "roleDelete", "roleCreate", "ban"].map(toggle)
+    ["channelDelete", "channelCreate", "roleDelete", "roleCreate", "roleAssign"].map(toggle)
   );
 
   const row2 = new ActionRowBuilder().addComponents(
-    ...["kick", "webhook", "botAdd", "rolePerms"].map(toggle),
-    new ButtonBuilder()
-      .setCustomId(`an:untrust:${userId}`)
-      .setLabel("Clear trusted")
-      .setStyle(ButtonStyle.Danger)
-      .setDisabled(!cfg.trusted.length)
+    ["ban", "kick", "webhook", "botAdd", "rolePerms"].map(toggle)
   );
 
   const row3 = new ActionRowBuilder().addComponents(
@@ -664,6 +1481,22 @@ async function buildPanel(guild, userId, note = null) {
       .setStyle(ButtonStyle.Success)
   );
 
+  const row4 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`an:untrust:${userId}`)
+      .setLabel("Clear trusted")
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(!cfg.trusted.length),
+    new ButtonBuilder()
+      .setCustomId(`an:sim:${userId}`)
+      .setLabel("Attack simulation")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`an:check:${userId}`)
+      .setLabel("Run watchdog check")
+      .setStyle(ButtonStyle.Secondary)
+  );
+
   const trustMenu = new UserSelectMenuBuilder()
     .setCustomId(`an:trust:${userId}`)
     .setPlaceholder("Add trusted users or bots (they are never punished)")
@@ -671,7 +1504,7 @@ async function buildPanel(guild, userId, note = null) {
     .setMaxValues(10);
 
   return {
-    components: [card, row1, row2, row3, new ActionRowBuilder().addComponents(trustMenu)],
+    components: [card, row1, row2, row3, row4, new ActionRowBuilder().addComponents(trustMenu)],
     flags: MessageFlags.IsComponentsV2,
     allowedMentions: { parse: [] }
   };
@@ -702,6 +1535,16 @@ async function handlePanel(interaction) {
 
   const guild = interaction.guild;
   const refresh = async note => interaction.update(await buildPanel(guild, userId, note));
+
+  if (action === "sim" && interaction.isButton()) {
+    const report = await runSecurityCheck(guild, { probeAudit: true, simulation: true });
+    return refresh(formatSecurityCheck(guild, report, true));
+  }
+
+  if (action === "check" && interaction.isButton()) {
+    const report = await runSecurityCheck(guild, { probeAudit: true });
+    return refresh(formatSecurityCheck(guild, report, false));
+  }
 
   if (action === "tog" && interaction.isButton()) {
     const kind = parts[2];
@@ -790,6 +1633,21 @@ async function handlePanel(interaction) {
 // ---------------------------------------------------------------------------
 module.exports = client => {
   setInterval(cleanup, 5 * 60 * 1000).unref();
+  setInterval(() => watchdogTick(client).catch(error => console.error("[AntiNuke] Watchdog tick failed:", error)), WATCHDOG_INTERVAL_MS).unref();
+  client.once("clientReady", async () => {
+    // Warm the per-guild config cache once; periodic watchdog checks use only
+    // cached config and Discord gateway state, never a Firestore polling loop.
+    for (const guild of client.guilds.cache.values()) {
+      try {
+        await protection.getAntinuke(guild.id);
+        const serverCfg = await guildConfig.get(guild.id);
+        if (serverCfg.quarantineRole) await recoverMissingQuarantineRole(guild, serverCfg);
+      } catch (error) {
+        console.warn("[AntiNuke] Watchdog startup check failed for " + guild.id + ":", error.message);
+      }
+    }
+    await watchdogTick(client).catch(error => console.error("[AntiNuke] Initial watchdog check failed:", error));
+  });
 
   // ----- command -----
   client.on("messageCreate", async message => {
@@ -804,6 +1662,36 @@ module.exports = client => {
       if (!(await canManage(guild, message.author.id))) {
         return message.reply({
           content: "Only the server owner, bot owner, or an extra owner can manage Anti-Nuke.",
+          allowedMentions: { parse: [] }
+        });
+      }
+
+      const subcommand = (parsed.args[0] || "").toLowerCase();
+
+      if (["simulate", "simulation", "test"].includes(subcommand)) {
+        const report = await runSecurityCheck(guild, { probeAudit: true, simulation: true });
+        return message.reply({
+          components: [createCard({
+            color: report.issues.length ? COLORS.RED : COLORS.GREEN,
+            content: formatSecurityCheck(guild, report, true),
+            avatarURL: avatarOf(client),
+            avatarDescription: "F.R.I.D.A.Y"
+          })],
+          flags: MessageFlags.IsComponentsV2,
+          allowedMentions: { parse: [] }
+        });
+      }
+
+      if (["watchdog", "check", "status"].includes(subcommand)) {
+        const report = await runSecurityCheck(guild, { probeAudit: true });
+        return message.reply({
+          components: [createCard({
+            color: report.issues.length ? COLORS.RED : COLORS.GREEN,
+            content: formatSecurityCheck(guild, report, false),
+            avatarURL: avatarOf(client),
+            avatarDescription: "F.R.I.D.A.Y"
+          })],
+          flags: MessageFlags.IsComponentsV2,
           allowedMentions: { parse: [] }
         });
       }
@@ -909,6 +1797,25 @@ module.exports = client => {
     }
   });
 
+  // ----- quarantine role guard -----
+  // The containment guard is independent from the Anti-Nuke master switch.
+  client.on("guildMemberUpdate", async (oldMember, newMember) => {
+    try {
+      const quarantineGuardHandled = await guardQuarantineRole(oldMember, newMember);
+      if (!quarantineGuardHandled) await guardDangerousRoleAssignment(oldMember, newMember);
+    } catch (error) {
+      console.error("[AntiNuke] Member security guard:", error);
+    }
+  });
+
+  client.on("channelUpdate", async (_oldChannel, newChannel) => {
+    try {
+      await guardQuarantineChannel(newChannel);
+    } catch (error) {
+      console.error("[AntiNuke] Quarantine channel overwrite guard:", error);
+    }
+  });
+
   // ----- channels -----
   client.on("channelDelete", async channel => {
     try {
@@ -960,6 +1867,7 @@ module.exports = client => {
     try {
       const guild = role.guild;
       if (role.managed) return;
+      if (await restoreDeletedQuarantineRole(role)) return;
 
       const cfg = await enabledFor(guild, "roleDelete");
       if (!cfg) return;
@@ -979,6 +1887,11 @@ module.exports = client => {
     try {
       const guild = role.guild;
       if (role.managed) return; // bots/integrations get a managed role automatically
+      try {
+        await guardDangerousRoleCreation(role);
+      } catch (error) {
+        console.error("[AntiNuke] Dangerous role creation guard:", error);
+      }
 
       const cfg = await enabledFor(guild, "roleCreate");
       if (!cfg) return;
@@ -996,6 +1909,8 @@ module.exports = client => {
   client.on("roleUpdate", async (oldRole, newRole) => {
     try {
       const guild = newRole.guild;
+      const quarantineConfigHandled = await guardQuarantineRoleUpdate(oldRole, newRole);
+      if (quarantineConfigHandled) return;
 
       const cfg = await enabledFor(guild, "rolePerms");
       if (!cfg) return;
@@ -1004,7 +1919,8 @@ module.exports = client => {
       if (!gained.length) return;
 
       const entry = await findAuditEntry(guild, AuditLogEvent.RoleUpdate, newRole.id);
-      if (!entry?.executor || await isTrusted(guild, cfg, entry.executor.id)) return;
+      const actor = entry?.executor || null;
+      if (actor && await isTrusted(guild, cfg, actor.id)) return;
 
       let reverted = true;
 
@@ -1027,13 +1943,20 @@ module.exports = client => {
         guild,
         COLORS.RED,
         `# 🛡️ Anti-Nuke: role permissions\n\n` +
-          `**Who:** ${who(entry.executor)}\n` +
+          `**Who:** ${actor ? who(actor) : "Unknown — audit-log attribution unavailable"}\n` +
           `**Role:** ${newRole.name}\n` +
           `**Result:** ${reverted ? "<:success_g:1561271843346714777> Dangerous permissions were removed again" : "<:warning_g:1561271566233501797> Could not revert (my role is too low)"}\n\n` +
           `-# F.R.I.D.A.Y • Anti-Nuke`
       );
 
-      await registerHit(guild, cfg, entry.executor, "rolePerms");
+      if (actor) {
+        await registerHit(guild, cfg, actor, "rolePerms");
+      } else {
+        await dmOwner(guild,
+          "[FRIDAY Anti-Nuke] A role gained dangerous permissions in " + guild.name + " (" + guild.id +
+          "), but audit-log attribution was unavailable. Rollback " + (reverted ? "succeeded." : "FAILED; immediate review is required.")
+        );
+      }
     } catch (error) {
       console.error("[AntiNuke] roleUpdate:", error);
     }

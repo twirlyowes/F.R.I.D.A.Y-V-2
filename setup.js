@@ -157,7 +157,7 @@ async function buildMainPanel(guild, userId, note = "") {
   return {
     components: [
       card(guild, COLORS.SKY_BLUE,
-        "# F.R.I.D.A.Y Setup Wizard\n\n" + (note ? note + "\n\n" : "") +
+        "# <:FRIDAY:1564865373583581266> F.R.I.D.A.Y Setup Wizard\n\n" + (note ? note + "\n\n" : "") +
         lines.join("\n") + "\n\n" +
         "Select a feature to configure or replace settings. Use Setup All to create missing resources.\n\n-# F.R.I.D.A.Y • Guided Setup"),
       new ActionRowBuilder().addComponents(menu),

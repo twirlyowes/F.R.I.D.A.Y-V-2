@@ -4,6 +4,12 @@ const { makeRecorder } = require("./lib/dashboardEvents");
 const dashboardEvents = makeRecorder();
 const { parseCommand } = require("./lib/prefix");
 const { COLORS, createCard, getAvatarURL } = require("./lib/pixelVillaUI");
+const serverOwners = require("./lib/serverOwners");
+const quarantine = require("./lib/quarantine");
+
+// In-memory only: avoids extra Firestore reads/writes for role snapshots.
+// Snapshots are lost if the bot process restarts or redeploys.
+const quarantineRoleSnapshots = new Map();
 
 const WARNING_YELLOW = 0xFEE75C;
 const ORANGE = 0xF39C12;
@@ -85,6 +91,121 @@ module.exports = (client) => {
     const { command, args, prefix: PREFIX } = parsed;
 
     try {
+      // =========================================================
+      // MANUAL QUARANTINE / UNQUARANTINE
+      // =========================================================
+      if (command === "q" || command === "uq") {
+        let authorized = message.author.id === message.guild.ownerId;
+        try {
+          if (!authorized) authorized = await serverOwners.isOwner(message.guild.id, message.author.id);
+        } catch (error) {
+          console.error("[Quarantine Commands] Could not verify delegated-owner access:", error.message);
+          return message.reply(cardReply(COLORS.RED, "I couldn't verify your server-owner permissions right now. Please try again shortly.", message.author));
+        }
+
+        if (!authorized) {
+          return message.reply(cardReply(COLORS.RED, "Only the server owner and delegated server owners can use this command.", message.author));
+        }
+
+        const target = getExplicitMentionedMember(message, args);
+        if (!target) {
+          return message.reply(cardReply(WARNING_YELLOW, `**Usage:** \`${PREFIX}${command} @user [reason]\``, message.author));
+        }
+
+        if (target.id === message.guild.ownerId) {
+          return message.reply(cardReply(COLORS.RED, "The server owner is protected from quarantine actions.", message.author));
+        }
+
+        let targetIsDelegatedOwner;
+        try {
+          targetIsDelegatedOwner = await serverOwners.isOwner(message.guild.id, target.id);
+        } catch (error) {
+          console.error("[Quarantine Commands] Could not verify target owner status:", error.message);
+          return message.reply(cardReply(COLORS.RED, "I couldn't verify the target's server-owner status right now. No action was taken.", message.author));
+        }
+        if (targetIsDelegatedOwner) {
+          return message.reply(cardReply(COLORS.RED, "Delegated server owners are protected from quarantine actions.", message.author));
+        }
+
+        const reason = args.slice(1).join(" ").trim() || "No reason provided";
+        const auditText = `${reason} | Action by: ${message.author.tag} (${message.author.id})`.slice(0, 512);
+        const cfg = await guildConfig.get(message.guild.id);
+        const quarantineRole = cfg.quarantineRole
+          ? (message.guild.roles.cache.get(cfg.quarantineRole) || await message.guild.roles.fetch(cfg.quarantineRole).catch(() => null))
+          : null;
+
+        if (!quarantineRole) {
+          return message.reply(cardReply(COLORS.RED, "No valid Quarantine role is configured for this server.", message.author));
+        }
+
+        const me = message.guild.members.me || await message.guild.members.fetchMe().catch(() => null);
+        if (!me?.permissions.has(PermissionsBitField.Flags.ManageRoles) || !quarantineRole.editable) {
+          return message.reply(cardReply(COLORS.RED, "I need **Manage Roles**, and my highest role must be above the Quarantine role.", message.author));
+        }
+
+        if (command === "q") {
+          if (quarantineRole.id === message.guild.id || quarantineRole.managed) {
+            return message.reply(cardReply(COLORS.RED, "The configured Quarantine role is invalid.", message.author));
+          }
+          const snapshotKey = `${message.guild.id}:${target.id}`;
+          const originalRoles = target.roles.cache
+            .filter(role => role.id !== message.guild.id && role.id !== quarantineRole.id && !role.managed)
+            .map(role => role.id);
+
+          const result = await quarantine.quarantineMember(message.guild, target.id, quarantineRole.id);
+          const refreshed = await message.guild.members.fetch(target.id).catch(() => null);
+          if (refreshed?.roles.cache.has(quarantineRole.id)) {
+            quarantineRoleSnapshots.set(snapshotKey, originalRoles);
+          }
+          const response = cardReply(
+            result.ok ? COLORS.GREEN : COLORS.RED,
+            `${result.ok ? "Member quarantined." : "Quarantine completed with a warning:"} <@!${target.id}>\n**Reason:** ${reason}\n${result.text}`,
+            message.author
+          );
+          await message.reply(response);
+          await sendLog(message.guild, response);
+          return;
+        }
+
+        if (!target.roles.cache.has(quarantineRole.id)) {
+          return message.reply(cardReply(WARNING_YELLOW, "That member does not currently have the Quarantine role.", message.author));
+        }
+        if (!target.manageable) {
+          return message.reply(cardReply(COLORS.RED, "I cannot manage this member because their highest role is at or above mine.", message.author));
+        }
+
+        const snapshotKey = `${message.guild.id}:${target.id}`;
+        const savedRoleIds = quarantineRoleSnapshots.get(snapshotKey);
+        await target.roles.remove(quarantineRole, auditText);
+        let restored = 0;
+        let skipped = 0;
+        if (savedRoleIds) {
+          for (const roleId of savedRoleIds) {
+            const role = message.guild.roles.cache.get(roleId) || await message.guild.roles.fetch(roleId).catch(() => null);
+            if (!role || role.managed || !role.editable) {
+              skipped++;
+              continue;
+            }
+            try {
+              await target.roles.add(role, auditText);
+              restored++;
+            } catch (error) {
+              skipped++;
+              console.warn("[Quarantine Commands] Could not restore role " + roleId + ":", error.message);
+            }
+          }
+          quarantineRoleSnapshots.delete(snapshotKey);
+        }
+
+        const restoreText = savedRoleIds
+          ? `Restored ${restored} role(s)${skipped ? `; skipped ${skipped} role(s) that were missing or unmanageable` : ""}.`
+          : "Removed the Quarantine role. No saved role snapshot was available, so previous roles could not be restored.";
+        const response = cardReply(COLORS.GREEN, `Member unquarantined: <@!${target.id}>\n**Reason:** ${reason}\n${restoreText}`, message.author);
+        await message.reply(response);
+        await sendLog(message.guild, response);
+        return;
+      }
+
       // =========================================================
       // KICK
       // =========================================================

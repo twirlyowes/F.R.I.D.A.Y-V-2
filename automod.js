@@ -367,7 +367,7 @@ async function buildPanel(guild, userId, note = null) {
   const card = createCard({
     color: cfg.enabled ? COLORS.GREEN : COLORS.SKY_BLUE,
     content:
-      `# AutoMod\n\n${note ? `${note}\n\n` : ""}` +
+      `# <:FRIDAY:1564865373583581266> AutoMod\n\n${note ? `${note}\n\n` : ""}` +
       `**Master switch:** ${cfg.enabled ? "🟢 ON" : "🔴 OFF"}\n` +
       `**Action:** ${ACTION_TEXT[cfg.action]}${cfg.action === "timeout" ? ` (${cfg.timeoutMinutes} min)` : ""}\n` +
       `> ${ACTION_HELP[cfg.action]}\n${logWarning}\n` +
