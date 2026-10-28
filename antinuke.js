@@ -276,7 +276,9 @@ async function findMemberRoleAuditEntry(guild, targetId, addedIds, quarantineRem
           if (!change) return [];
           const values = [change.new, change.old]
             .flatMap(value => Array.isArray(value) ? value : value == null ? [] : [value]);
-          return values.map(value => value?.id).filter(Boolean);
+          return values
+            .map(value => typeof value === "string" ? value : value?.id)
+            .filter(id => typeof id === "string" && /^\d{17,20}$/.test(id));
         };
 
         const addedInLog = roleIdsFor("$add");
@@ -310,6 +312,12 @@ async function guardQuarantineRole(oldMember, newMember) {
   const serverCfg = await guildConfig.get(guild.id);
   const quarantineRoleId = serverCfg.quarantineRole;
   if (!quarantineRoleId) return false;
+
+  // Suppress only role deltas explicitly expected from .uq; unexpected role
+  // assignments during release still pass through the Anti-Nuke guard.
+  if (require("./lib/quarantineActions").isExpectedRoleChange(
+    guild.id, newMember.id, oldMember, newMember, quarantineRoleId
+  )) return true;
 
   const previouslyQuarantined = oldMember.roles.cache.has(quarantineRoleId);
   const currentlyQuarantined = newMember.roles.cache.has(quarantineRoleId);

@@ -7,9 +7,8 @@ const { COLORS, createCard, getAvatarURL } = require("./lib/pixelVillaUI");
 const serverOwners = require("./lib/serverOwners");
 const quarantine = require("./lib/quarantine");
 
-// In-memory only: avoids extra Firestore reads/writes for role snapshots.
-// Snapshots are lost if the bot process restarts or redeploys.
-const quarantineRoleSnapshots = new Map();
+const quarantineSnapshots = require("./lib/quarantineSnapshots");
+const quarantineActions = require("./lib/quarantineActions");
 
 const WARNING_YELLOW = 0xFEE75C;
 const ORANGE = 0xF39C12;
@@ -144,18 +143,29 @@ module.exports = (client) => {
         }
 
         if (command === "q") {
+          if (target.roles.cache.has(quarantineRole.id)) {
+            return message.reply(cardReply(WARNING_YELLOW, "That member is already quarantined.", message.author));
+          }
           if (quarantineRole.id === message.guild.id || quarantineRole.managed) {
             return message.reply(cardReply(COLORS.RED, "The configured Quarantine role is invalid.", message.author));
           }
-          const snapshotKey = `${message.guild.id}:${target.id}`;
           const originalRoles = target.roles.cache
             .filter(role => role.id !== message.guild.id && role.id !== quarantineRole.id && !role.managed)
             .map(role => role.id);
 
+          // Persist the snapshot before changing roles so redeploys cannot erase it.
+          try {
+            await quarantineSnapshots.save(message.guild.id, target.id, originalRoles);
+          } catch (error) {
+            console.error("[Quarantine Commands] Could not save role snapshot:", error.message);
+            return message.reply(cardReply(COLORS.RED, "I couldn't safely save this member's role snapshot, so no quarantine action was taken. Please try again shortly.", message.author));
+          }
+
           const result = await quarantine.quarantineMember(message.guild, target.id, quarantineRole.id);
           const refreshed = await message.guild.members.fetch(target.id).catch(() => null);
-          if (refreshed?.roles.cache.has(quarantineRole.id)) {
-            quarantineRoleSnapshots.set(snapshotKey, originalRoles);
+          if (!refreshed?.roles.cache.has(quarantineRole.id)) {
+            // Do not leave a snapshot that suggests quarantine succeeded when it did not.
+            await quarantineSnapshots.remove(message.guild.id, target.id).catch(() => {});
           }
           const response = cardReply(
             result.ok ? COLORS.GREEN : COLORS.RED,
@@ -174,8 +184,17 @@ module.exports = (client) => {
           return message.reply(cardReply(COLORS.RED, "I cannot manage this member because their highest role is at or above mine.", message.author));
         }
 
-        const snapshotKey = `${message.guild.id}:${target.id}`;
-        const savedRoleIds = quarantineRoleSnapshots.get(snapshotKey);
+        let savedRoleIds = null;
+        try {
+          savedRoleIds = await quarantineSnapshots.load(message.guild.id, target.id);
+        } catch (error) {
+          console.error("[Quarantine Commands] Could not load role snapshot:", error.message);
+          return message.reply(cardReply(COLORS.RED, "I couldn't retrieve the saved role snapshot, so I left the member quarantined. Please try again shortly.", message.author));
+        }
+
+        quarantineActions.expectUnquarantine(
+          message.guild.id, target.id, quarantineRole.id, savedRoleIds || []
+        );
         await target.roles.remove(quarantineRole, auditText);
         let restored = 0;
         let skipped = 0;
@@ -194,7 +213,7 @@ module.exports = (client) => {
               console.warn("[Quarantine Commands] Could not restore role " + roleId + ":", error.message);
             }
           }
-          quarantineRoleSnapshots.delete(snapshotKey);
+          await quarantineSnapshots.remove(message.guild.id, target.id);
         }
 
         const restoreText = savedRoleIds
