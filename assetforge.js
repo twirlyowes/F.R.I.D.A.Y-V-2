@@ -28,7 +28,7 @@ function formatOf(buffer, mime = "") {
 function animated(buffer, format) {
   return format === "gif" ||
     (format === "png" && buffer.includes(Buffer.from("acTL"))) ||
-    (format === "webp" && (buffer.includes(Buffer.from("ANIM")) || buffer.includes(Buffer.from("ANMF")));
+    (format === "webp" && (buffer.includes(Buffer.from("ANIM")) || buffer.includes(Buffer.from("ANMF"))));
 }
 
 function parseLimit(raw) {
