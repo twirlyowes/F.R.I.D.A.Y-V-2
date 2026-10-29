@@ -117,16 +117,16 @@ module.exports = client => {
     if (!parsed || parsed.command !== "antibot") return;
 
     if (!canManage(message.guild, message.author.id)) {
-      return message.reply({
+      return await message.reply({
         content: "Only the server owner or main bot owner can manage AntiBot.",
         allowedMentions: { parse: [] }
       });
     }
     try {
-      return message.reply(await buildPanel(message.guild, message.author.id));
+      return await message.reply(await buildPanel(message.guild, message.author.id));
     } catch (error) {
       console.error("[AntiBot] Panel error:", error);
-      return message.reply({ content: "Could not open AntiBot settings.", allowedMentions: { parse: [] } });
+      return await message.reply({ content: "Could not open AntiBot settings.", allowedMentions: { parse: [] } });
     }
   });
 
@@ -135,10 +135,10 @@ module.exports = client => {
     try {
       const [, action, panelOwnerId] = interaction.customId.split(":");
       if (!interaction.guild || interaction.user.id !== panelOwnerId) {
-        return interaction.reply({ content: "This AntiBot panel belongs to someone else.", flags: MessageFlags.Ephemeral });
+        return await interaction.reply({ content: "This AntiBot panel belongs to someone else.", flags: MessageFlags.Ephemeral });
       }
       if (!canManage(interaction.guild, interaction.user.id)) {
-        return interaction.reply({ content: "Only the server owner or main bot owner can manage AntiBot.", flags: MessageFlags.Ephemeral });
+        return await interaction.reply({ content: "Only the server owner or main bot owner can manage AntiBot.", flags: MessageFlags.Ephemeral });
       }
       if (action !== "toggle" || !interaction.isButton()) return interaction.deferUpdate();
       const current = await getConfig(interaction.guild.id);
@@ -147,7 +147,7 @@ module.exports = client => {
     } catch (error) {
       console.error("[AntiBot] Button error:", error);
       if (!interaction.replied && !interaction.deferred) {
-        return interaction.reply({ content: "AntiBot could not process that button.", flags: MessageFlags.Ephemeral }).catch(() => {});
+        return await interaction.reply({ content: "AntiBot could not process that button.", flags: MessageFlags.Ephemeral }).catch(() => {});
       }
     }
   });

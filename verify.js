@@ -173,13 +173,13 @@ module.exports = function(client) {
 
             if (command === "snipe") {
                 if (!message.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
-                    return message.reply({ content: "<:error_g:1561271715164721245> You do not have permission to use this command (Requires **Manage Messages**).", allowedMentions: { repliedUser: false } }).catch(() => {});
+                    return await message.reply({ content: "<:error_g:1561271715164721245> You do not have permission to use this command (Requires **Manage Messages**).", allowedMentions: { repliedUser: false } }).catch(() => {});
                 }
 
                 const channelSnipes = deletedMessages.get(message.channel.id);
 
                 if (!channelSnipes || channelSnipes.length === 0) {
-                    return message.reply("There are no recently deleted messages to snipe in this channel.").catch(() => {});
+                    return await message.reply("There are no recently deleted messages to snipe in this channel.").catch(() => {});
                 }
 
                 let startIndex = 0;
@@ -247,14 +247,14 @@ module.exports = function(client) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
                         .setDescription("<:error_g:1561271715164721245> You lack the **Manage Roles** permission required to execute this command.");
-                    return message.reply({ embeds: [embed] });
+                    return await message.reply({ embeds: [embed] });
                 }
 
                 if (!message.guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
                         .setDescription("<:error_g:1561271715164721245> I lack the **Manage Roles** permission required to modify roles in this server.");
-                    return message.reply({ embeds: [embed] });
+                    return await message.reply({ embeds: [embed] });
                 }
 
                 const member = message.mentions.members.first();
@@ -262,7 +262,7 @@ module.exports = function(client) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
                         .setDescription("<:error_g:1561271715164721245> Please mention a valid server member. Example: `role @username Members`");
-                    return message.reply({ embeds: [embed] });
+                    return await message.reply({ embeds: [embed] });
                 }
 
                 const roleQuery = args
@@ -274,7 +274,7 @@ module.exports = function(client) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
                         .setDescription("<:error_g:1561271715164721245> Please specify a target role name, ID, or mention. Example: `role @username Members`");
-                    return message.reply({ embeds: [embed] });
+                    return await message.reply({ embeds: [embed] });
                 }
 
                 const cleanedQuery = roleQuery.toLowerCase();
@@ -289,28 +289,28 @@ module.exports = function(client) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
                         .setDescription(`<:error_g:1561271715164721245> Could not locate any matching role for \`${roleQuery}\`.`);
-                    return message.reply({ embeds: [embed] });
+                    return await message.reply({ embeds: [embed] });
                 }
 
                 if (member.permissions.has(PermissionFlagsBits.Administrator) && message.guild.ownerId !== message.author.id) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
                         .setDescription("<:error_g:1561271715164721245> You cannot modify roles for server administrators unless you are the server owner.");
-                    return message.reply({ embeds: [embed] });
+                    return await message.reply({ embeds: [embed] });
                 }
 
                 if (role.position >= message.guild.members.me.roles.highest.position) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
                         .setDescription("<:error_g:1561271715164721245> I cannot manage this role because it is positioned higher than or equal to my highest role.");
-                    return message.reply({ embeds: [embed] });
+                    return await message.reply({ embeds: [embed] });
                 }
 
                 if (role.position >= message.member.roles.highest.position && message.guild.ownerId !== message.author.id) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
                         .setDescription("<:error_g:1561271715164721245> You cannot manage this role because it is positioned higher than or equal to your own highest role.");
-                    return message.reply({ embeds: [embed] });
+                    return await message.reply({ embeds: [embed] });
                 }
 
                 if (member.roles.cache.has(role.id)) {
@@ -319,20 +319,20 @@ module.exports = function(client) {
                         .setColor(0xe74c3c)
                         .setDescription(`➖ **Role Removed:** Successfully revoked **${role.name}** from ${member}.`)
                         .setTimestamp();
-                    return message.reply({ embeds: [embed] });
+                    return await message.reply({ embeds: [embed] });
                 } else {
                     await member.roles.add(role);
                     const embed = new EmbedBuilder()
                         .setColor(0x2ecc71)
                         .setDescription(`➕ **Role Added:** Successfully assigned **${role.name}** to ${member}.`)
                         .setTimestamp();
-                    return message.reply({ embeds: [embed] });
+                    return await message.reply({ embeds: [embed] });
                 }
             }
 
         } catch (error) {
             console.error("Command Execution Error:", error);
-            return message.reply("<:error_g:1561271715164721245> An error occurred while attempting to process that command.").catch(() => {});
+            return await message.reply("<:error_g:1561271715164721245> An error occurred while attempting to process that command.").catch(() => {});
         }
     });
 
@@ -349,7 +349,7 @@ module.exports = function(client) {
                     const expirationTime = cooldowns.get(userId);
                     if (now < expirationTime) {
                         const timeLeftMinutes = Math.ceil((expirationTime - now) / 1000 / 60);
-                        return interaction.reply({ 
+                        return await interaction.reply({ 
                             content: `<:error_g:1561271715164721245> Security Cooldown Active: You have exceeded maximum failed attempts. Please try again in approximately **${timeLeftMinutes} minute(s)**.`, 
                             ephemeral: true 
                         });
@@ -359,7 +359,7 @@ module.exports = function(client) {
                 }
 
                 if (pendingCaptchas.has(userId)) {
-                    return interaction.reply({ 
+                    return await interaction.reply({ 
                         content: `<:warning_g:1561271566233501797> You already have an active verification session pending. Please complete the open modal prompt or wait for it to time out.`, 
                         ephemeral: true 
                     });

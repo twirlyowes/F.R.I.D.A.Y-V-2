@@ -22,8 +22,8 @@ const { clearSetting } = require("./lib/setupClear");
 const { parseCommand, getPrefix, DEFAULT_PREFIX, MAX_PREFIX_LENGTH } = require("./lib/prefix");
 const { SETTINGS } = guildConfig;
 
-function reply(message, color, content) {
-  return message.reply({
+async function reply(message, color, content) {
+  return await message.reply({
     components: [
       createCard({
         color,
@@ -268,14 +268,14 @@ async function handlePanelInteraction(interaction) {
   const userId = parts[parts.length - 1];
 
   if (interaction.user.id !== userId) {
-    return interaction.reply({
+    return await interaction.reply({
       content: "This setup panel belongs to someone else. Run the config command yourself to open your own.",
       flags: MessageFlags.Ephemeral
     });
   }
 
   if (!interaction.guild || !interaction.member || !canManage(interaction.member)) {
-    return interaction.reply({
+    return await interaction.reply({
       content: "You need the **Manage Server** permission to change the configuration.",
       flags: MessageFlags.Ephemeral
     });
@@ -491,7 +491,7 @@ module.exports = client => {
       const sub = (args.shift() || "panel").toLowerCase();
 
       if (sub === "panel" || sub === "open" || sub === "menu") {
-        return message.reply(await buildPanel(message.guild, message.author.id));
+        return await message.reply(await buildPanel(message.guild, message.author.id));
       }
 
       if (sub === "view" || sub === "list" || sub === "show") {

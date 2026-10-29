@@ -17,8 +17,8 @@ const { parseCommand } = require("./lib/prefix");
 const owners = require("./lib/owners");
 const noPrefix = require("./lib/noprefix");
 
-function reply(message, color, content) {
-  return message.reply({
+async function reply(message, color, content) {
+  return await message.reply({
     components: [
       createCard({
         color,

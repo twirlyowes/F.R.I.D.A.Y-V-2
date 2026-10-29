@@ -1,0 +1,48 @@
+name: AssetForge Security Checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - feat/assetforge-command
+
+permissions:
+  contents: read
+
+jobs:
+  assetforge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Check syntax
+        run: |
+          node --check assetforge.js
+          node --check index.js
+          node --check help.js
+          node --check utilities.js
+          node --check misc.js
+          node --check mod.js
+          node --check quote.js
+          node --check owner.js
+          node --check noprefix.js
+          node --check antibot.js
+          node --check antinuke.js
+          node --check settings.js
+          node --check setup.js
+          node --check automod.js
+          node --check badwords.js
+          node --check activetime.js
+          node --check voicesystem.js
+          node --check verify.js
+          node --check botavatar.js
+      - name: Run automated tests
+        run: npm test

@@ -1538,14 +1538,14 @@ async function handlePanel(interaction) {
   const userId = parts[parts.length - 1];
 
   if (interaction.user.id !== userId) {
-    return interaction.reply({
+    return await interaction.reply({
       content: "This Anti-Nuke panel belongs to someone else.",
       flags: MessageFlags.Ephemeral
     });
   }
 
   if (!interaction.guild || !(await canManage(interaction.guild, interaction.user.id))) {
-    return interaction.reply({
+    return await interaction.reply({
       content: "Only the server owner, main bot owner, or an owner delegated in this server can change Anti-Nuke.",
       flags: MessageFlags.Ephemeral
     });
@@ -1678,7 +1678,7 @@ module.exports = client => {
       const guild = message.guild;
 
       if (!(await canManage(guild, message.author.id))) {
-        return message.reply({
+        return await message.reply({
           content: "Only the server owner, bot owner, or an extra owner can manage Anti-Nuke.",
           allowedMentions: { parse: [] }
         });
@@ -1688,7 +1688,7 @@ module.exports = client => {
 
       if (["simulate", "simulation", "test"].includes(subcommand)) {
         const report = await runSecurityCheck(guild, { probeAudit: true, simulation: true });
-        return message.reply({
+        return await message.reply({
           components: [createCard({
             color: report.issues.length ? COLORS.RED : COLORS.GREEN,
             content: formatSecurityCheck(guild, report, true),
@@ -1702,7 +1702,7 @@ module.exports = client => {
 
       if (["watchdog", "check", "status"].includes(subcommand)) {
         const report = await runSecurityCheck(guild, { probeAudit: true });
-        return message.reply({
+        return await message.reply({
           components: [createCard({
             color: report.issues.length ? COLORS.RED : COLORS.GREEN,
             content: formatSecurityCheck(guild, report, false),
@@ -1720,7 +1720,7 @@ module.exports = client => {
           || message.guild.members.cache.get((parsed.args[0] || "").replace(/\D/g, ""))?.user;
 
         if (!target || !/^\d{17,20}$/.test(target.id)) {
-          return message.reply({
+          return await message.reply({
             components: [
               createCard({
                 color: COLORS.RED,
@@ -1736,7 +1736,7 @@ module.exports = client => {
 
         const current = await protection.getAntinuke(guild.id);
         if (current.trusted.includes(target.id)) {
-          return message.reply(await buildPanel(
+          return await message.reply(await buildPanel(
             guild,
             message.author.id,
             `<:success_g:1561271843346714777> **${target.tag || target.username}** is already on the Anti-Nuke whitelist.`
@@ -1744,7 +1744,7 @@ module.exports = client => {
         }
 
         if (current.trusted.length >= 50) {
-          return message.reply({
+          return await message.reply({
             components: [
               createCard({
                 color: COLORS.RED,
@@ -1762,7 +1762,7 @@ module.exports = client => {
           c.trusted = [...new Set([...c.trusted, target.id])].slice(0, 50);
         });
 
-        return message.reply(await buildPanel(
+        return await message.reply(await buildPanel(
           guild,
           message.author.id,
           `<:success_g:1561271843346714777> **${target.tag || target.username}** has been added to this server\'s Anti-Nuke whitelist. They will be skipped by Anti-Nuke punishment checks in this server only.`
@@ -1773,7 +1773,7 @@ module.exports = client => {
         const id = (parsed.args[1] || message.mentions.users.first()?.id || "").replace(/\D/g, "");
 
         if (!/^\d{17,20}$/.test(id)) {
-          return message.reply({
+          return await message.reply({
             content: `Tell me who: \`${parsed.prefix}antinuke trust <@user | id>\``,
             allowedMentions: { parse: [] }
           });
@@ -1786,13 +1786,13 @@ module.exports = client => {
           c.trusted = wasTrusted ? c.trusted.filter(t => t !== id) : [...c.trusted, id].slice(0, 50);
         });
 
-        return message.reply({
+        return await message.reply({
           content: wasTrusted ? `<@${id}> is no longer trusted.` : `<@${id}> is now trusted by Anti-Nuke.`,
           allowedMentions: { parse: [] }
         });
       }
 
-      return message.reply(await buildPanel(guild, message.author.id));
+      return await message.reply(await buildPanel(guild, message.author.id));
     } catch (error) {
       console.error("[AntiNuke] Command error:", error);
     }

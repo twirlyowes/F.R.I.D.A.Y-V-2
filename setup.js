@@ -395,7 +395,7 @@ module.exports = client => {
     if (!parsed || parsed.command !== "setup") return;
 
     if (!canManage(message.member)) {
-      return message.reply({
+      return await message.reply({
         components: [card(message.guild, COLORS.RED, "You need **Manage Server** or **Administrator** to use the setup wizard.")],
         flags: MessageFlags.IsComponentsV2,
         allowedMentions: { parse: [] }
@@ -429,15 +429,15 @@ module.exports = client => {
           String(error.message || "Could not undo Setup All resources.").slice(0, 900)
         );
         if (progressMessage) return progressMessage.edit(payload).catch(() => null);
-        return message.reply(payload);
+        return await message.reply(payload);
       }
     }
 
     try {
-      return message.reply(await buildMainPanel(message.guild, message.author.id));
+      return await message.reply(await buildMainPanel(message.guild, message.author.id));
     } catch (error) {
       console.error("[Setup] Could not open setup wizard:", error);
-      return message.reply({
+      return await message.reply({
         components: [card(message.guild, COLORS.RED, "Could not open the setup wizard. Check the bot logs and try again.")],
         flags: MessageFlags.IsComponentsV2,
         allowedMentions: { parse: [] }
@@ -454,13 +454,13 @@ module.exports = client => {
       const userId = parts[parts.length - 1];
 
       if (interaction.user.id !== userId) {
-        return interaction.reply({
+        return await interaction.reply({
           content: "This setup wizard belongs to someone else. Run \x60.setup\x60 yourself to open your own.",
           flags: MessageFlags.Ephemeral
         });
       }
       if (!interaction.guild || !canManage(interaction.member)) {
-        return interaction.reply({
+        return await interaction.reply({
           content: "You need **Manage Server** or **Administrator** to change the setup.",
           flags: MessageFlags.Ephemeral
         });

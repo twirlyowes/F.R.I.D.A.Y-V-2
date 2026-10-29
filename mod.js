@@ -99,20 +99,20 @@ module.exports = (client) => {
           if (!authorized) authorized = await serverOwners.isOwner(message.guild.id, message.author.id);
         } catch (error) {
           console.error("[Quarantine Commands] Could not verify delegated-owner access:", error.message);
-          return message.reply(cardReply(COLORS.RED, "I couldn't verify your server-owner permissions right now. Please try again shortly.", message.author));
+          return await message.reply(cardReply(COLORS.RED, "I couldn't verify your server-owner permissions right now. Please try again shortly.", message.author));
         }
 
         if (!authorized) {
-          return message.reply(cardReply(COLORS.RED, "Only the server owner and delegated server owners can use this command.", message.author));
+          return await message.reply(cardReply(COLORS.RED, "Only the server owner and delegated server owners can use this command.", message.author));
         }
 
         const target = getExplicitMentionedMember(message, args);
         if (!target) {
-          return message.reply(cardReply(WARNING_YELLOW, `**Usage:** \`${PREFIX}${command} @user [reason]\``, message.author));
+          return await message.reply(cardReply(WARNING_YELLOW, `**Usage:** \`${PREFIX}${command} @user [reason]\``, message.author));
         }
 
         if (target.id === message.guild.ownerId) {
-          return message.reply(cardReply(COLORS.RED, "The server owner is protected from quarantine actions.", message.author));
+          return await message.reply(cardReply(COLORS.RED, "The server owner is protected from quarantine actions.", message.author));
         }
 
         let targetIsDelegatedOwner;
@@ -120,10 +120,10 @@ module.exports = (client) => {
           targetIsDelegatedOwner = await serverOwners.isOwner(message.guild.id, target.id);
         } catch (error) {
           console.error("[Quarantine Commands] Could not verify target owner status:", error.message);
-          return message.reply(cardReply(COLORS.RED, "I couldn't verify the target's server-owner status right now. No action was taken.", message.author));
+          return await message.reply(cardReply(COLORS.RED, "I couldn't verify the target's server-owner status right now. No action was taken.", message.author));
         }
         if (targetIsDelegatedOwner) {
-          return message.reply(cardReply(COLORS.RED, "Delegated server owners are protected from quarantine actions.", message.author));
+          return await message.reply(cardReply(COLORS.RED, "Delegated server owners are protected from quarantine actions.", message.author));
         }
 
         const reason = args.slice(1).join(" ").trim() || "No reason provided";
@@ -134,20 +134,20 @@ module.exports = (client) => {
           : null;
 
         if (!quarantineRole) {
-          return message.reply(cardReply(COLORS.RED, "No valid Quarantine role is configured for this server.", message.author));
+          return await message.reply(cardReply(COLORS.RED, "No valid Quarantine role is configured for this server.", message.author));
         }
 
         const me = message.guild.members.me || await message.guild.members.fetchMe().catch(() => null);
         if (!me?.permissions.has(PermissionsBitField.Flags.ManageRoles) || !quarantineRole.editable) {
-          return message.reply(cardReply(COLORS.RED, "I need **Manage Roles**, and my highest role must be above the Quarantine role.", message.author));
+          return await message.reply(cardReply(COLORS.RED, "I need **Manage Roles**, and my highest role must be above the Quarantine role.", message.author));
         }
 
         if (command === "q") {
           if (target.roles.cache.has(quarantineRole.id)) {
-            return message.reply(cardReply(WARNING_YELLOW, "That member is already quarantined.", message.author));
+            return await message.reply(cardReply(WARNING_YELLOW, "That member is already quarantined.", message.author));
           }
           if (quarantineRole.id === message.guild.id || quarantineRole.managed) {
-            return message.reply(cardReply(COLORS.RED, "The configured Quarantine role is invalid.", message.author));
+            return await message.reply(cardReply(COLORS.RED, "The configured Quarantine role is invalid.", message.author));
           }
           const originalRoles = target.roles.cache
             .filter(role => role.id !== message.guild.id && role.id !== quarantineRole.id && !role.managed)
@@ -158,7 +158,7 @@ module.exports = (client) => {
             await quarantineSnapshots.save(message.guild.id, target.id, originalRoles);
           } catch (error) {
             console.error("[Quarantine Commands] Could not save role snapshot:", error.message);
-            return message.reply(cardReply(COLORS.RED, "I couldn't safely save this member's role snapshot, so no quarantine action was taken. Please try again shortly.", message.author));
+            return await message.reply(cardReply(COLORS.RED, "I couldn't safely save this member's role snapshot, so no quarantine action was taken. Please try again shortly.", message.author));
           }
 
           const result = await quarantine.quarantineMember(message.guild, target.id, quarantineRole.id);
@@ -178,10 +178,10 @@ module.exports = (client) => {
         }
 
         if (!target.roles.cache.has(quarantineRole.id)) {
-          return message.reply(cardReply(WARNING_YELLOW, "That member does not currently have the Quarantine role.", message.author));
+          return await message.reply(cardReply(WARNING_YELLOW, "That member does not currently have the Quarantine role.", message.author));
         }
         if (!target.manageable) {
-          return message.reply(cardReply(COLORS.RED, "I cannot manage this member because their highest role is at or above mine.", message.author));
+          return await message.reply(cardReply(COLORS.RED, "I cannot manage this member because their highest role is at or above mine.", message.author));
         }
 
         let savedRoleIds = null;
@@ -189,7 +189,7 @@ module.exports = (client) => {
           savedRoleIds = await quarantineSnapshots.load(message.guild.id, target.id);
         } catch (error) {
           console.error("[Quarantine Commands] Could not load role snapshot:", error.message);
-          return message.reply(cardReply(COLORS.RED, "I couldn't retrieve the saved role snapshot, so I left the member quarantined. Please try again shortly.", message.author));
+          return await message.reply(cardReply(COLORS.RED, "I couldn't retrieve the saved role snapshot, so I left the member quarantined. Please try again shortly.", message.author));
         }
 
         quarantineActions.expectUnquarantine(
@@ -231,7 +231,7 @@ module.exports = (client) => {
 
       if (command === "kick") {
         if (!(await guildConfig.isStaff(message.member))) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> You don't have permission to use this command.",
@@ -244,7 +244,7 @@ module.exports = (client) => {
         const reason = args.slice(1).join(" ") || "No reason provided";
 
         if (!user) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               WARNING_YELLOW,
               `<a:Warning:1532986372716236932> **Usage:** \`${PREFIX}kick @user [reason]\`\n\nReplying to a message does **not** count — you must type the @mention.`,
@@ -254,7 +254,7 @@ module.exports = (client) => {
         }
 
         if (!user.kickable) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> I cannot kick this user. They may have a higher role than me or have Administrator permissions.",
@@ -264,7 +264,7 @@ module.exports = (client) => {
         }
 
         if (!hierarchyCheck(message, user)) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> You cannot kick this user because they have an equal or higher role than you.",
@@ -295,7 +295,7 @@ module.exports = (client) => {
 
       if (command === "ban") {
         if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> You don't have permission to use this command.",
@@ -308,7 +308,7 @@ module.exports = (client) => {
         const reason = args.slice(1).join(" ") || "No reason provided";
 
         if (!user) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               WARNING_YELLOW,
               `<a:Warning:1532986372716236932> **Usage:** \`${PREFIX}ban @user [reason]\`\n\nReplying to a message does **not** count — you must type the @mention.`,
@@ -318,7 +318,7 @@ module.exports = (client) => {
         }
 
         if (!user.bannable) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> I cannot ban this user. They may have a higher role than me or have Administrator permissions.",
@@ -328,7 +328,7 @@ module.exports = (client) => {
         }
 
         if (!hierarchyCheck(message, user)) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> You cannot ban this user because they have an equal or higher role than you.",
@@ -361,7 +361,7 @@ module.exports = (client) => {
 
       if (command === "nick") {
         if (!(await guildConfig.isStaff(message.member))) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> You don't have permission to use this command.",
@@ -374,7 +374,7 @@ module.exports = (client) => {
         const nickname = args.slice(1).join(" ");
 
         if (!user) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               WARNING_YELLOW,
               `<a:Warning:1532986372716236932> **Usage:** \`${PREFIX}nick @user [new nickname / leave blank to reset]\`\n\nReplying to a message does **not** count — you must type the @mention.`,
@@ -384,7 +384,7 @@ module.exports = (client) => {
         }
 
         if (!user.manageable) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> I cannot change this user's nickname. They may have a higher role than me.",
@@ -394,7 +394,7 @@ module.exports = (client) => {
         }
 
         if (!hierarchyCheck(message, user)) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> You cannot change this user's nickname due to role hierarchy.",
@@ -480,7 +480,7 @@ module.exports = (client) => {
 
       if (command === "lock") {
         if (!(await guildConfig.isStaff(message.member))) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> You don't have permission to use this command.",
@@ -519,7 +519,7 @@ module.exports = (client) => {
 
       if (command === "unlock") {
         if (!(await guildConfig.isStaff(message.member))) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> You don't have permission to use this command.",
@@ -558,7 +558,7 @@ module.exports = (client) => {
 
       if (command === "unban") {
         if (!(await guildConfig.isStaff(message.member))) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> You don't have permission to use this command.",
@@ -571,7 +571,7 @@ module.exports = (client) => {
         const reason = args.slice(1).join(" ") || "No reason provided";
 
         if (!userId) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               WARNING_YELLOW,
               `<a:Warning:1532986372716236932> **Usage:** \`${PREFIX}unban [User ID] [reason]\``,
@@ -584,7 +584,7 @@ module.exports = (client) => {
           await message.guild.bans.fetch(userId).catch(() => null);
 
         if (!banInfo) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> This user is not banned or the provided ID is invalid.",
