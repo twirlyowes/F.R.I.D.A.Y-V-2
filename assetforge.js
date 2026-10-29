@@ -166,6 +166,24 @@ function animated(buffer, format) {
     (format === "webp" && (buffer.includes(Buffer.from("ANIM")) || buffer.includes(Buffer.from("ANMF"))));
 }
 
+function validatePassThroughAnimation(buffer, info) {
+  // Animation formats are passed through only with a valid terminal structure
+  // and no appended payload after the image/container terminator.
+  if (info.format === "gif" && buffer[buffer.length - 1] !== 0x3b) {
+    userError("This GIF is truncated or has trailing data, so AssetForge won't pass it through.");
+  }
+  if (info.format === "png") {
+    const iend = Buffer.from([0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]);
+    if (buffer.length < iend.length || !buffer.subarray(buffer.length - iend.length).equals(iend)) {
+      userError("This APNG is truncated or has trailing data, so AssetForge won't pass it through.");
+    }
+  }
+  if (info.format === "webp" &&
+      (buffer.length < 12 || buffer.readUInt32LE(4) + 8 !== buffer.length)) {
+    userError("This animated WebP is truncated or has trailing data, so AssetForge won't pass it through.");
+  }
+}
+
 function parseLimit(raw) {
   const match = String(raw || "").trim().toLowerCase().match(/^(\d+(?:\.\d+)?)\s*(b|kb|kib|mb|mib)?$/);
   if (!match) return null;
@@ -217,7 +235,7 @@ function emojiSource(message) {
 }
 
 function linkedCdnUrl(content) {
-  const match = String(content || "").match(/https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net|images-ext-1\.discordapp\.net)\/[^\s<>]+/i);
+  const match = String(content || "").match(/https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/[^\s<>]+/i);
   return match ? match[0].replace(/[),.!]+$/g, "") : null;
 }
 
@@ -316,6 +334,7 @@ async function makeSticker(source) {
   }
   if (info.animated) {
     if (info.format === "png" && info.width === 320 && info.height === 320 && source.buffer.length <= MAX_STICKER) {
+      validatePassThroughAnimation(source.buffer, info);
       return { buffer: source.buffer, extension: "png" };
     }
     userError("To preserve animation, this APNG must already be 320×320 and under 512 KiB.");
@@ -342,6 +361,7 @@ async function compressImage(source, limit) {
   const info = inspectImage(source.buffer, ["png", "jpg", "webp", "gif"]);
 
   if (info.animated || info.format === "gif") {
+    validatePassThroughAnimation(source.buffer, info);
     if (source.buffer.length <= limit) {
       return { buffer: source.buffer, name: outputNameForFormat(info.format), unchanged: true };
     }
@@ -399,14 +419,9 @@ module.exports = function (client) {
 
       const now = Date.now();
       const cooldownUntil = userCooldowns.get(message.author.id) || 0;
-      if (cooldownUntil > now) {
-        return await replyCard(message, COLORS.RED,
-          "AssetForge is on cooldown for you. Try again <t:" + Math.ceil(cooldownUntil / 1000) + ":R>.");
-      }
-      if (activeJobs >= MAX_ACTIVE_JOBS) {
-        return await replyCard(message, COLORS.RED,
-          "AssetForge is processing another file. Please try again in a moment.");
-      }
+      // Ignore repeated/colliding requests rather than flooding a channel with cooldown replies.
+      if (cooldownUntil > now) return;
+      if (activeJobs >= MAX_ACTIVE_JOBS) return;
       if (userCooldowns.size > 1000) {
         for (const [userId, expires] of userCooldowns) {
           if (expires <= now) userCooldowns.delete(userId);
@@ -444,11 +459,16 @@ module.exports = function (client) {
         if (info.animated && info.format !== "gif") {
           userError("Animated PNG/WebP files cannot be imported as animated Discord emoji here. Provide a GIF to preserve animation or a static image.");
         }
-        if (info.format === "webp") {
+        if (info.format === "gif") {
+          validatePassThroughAnimation(source.buffer, info);
+        } else {
+          // Re-encode static images to strip metadata and any appended payload.
           const image = await decodeImage(source.buffer);
           const canvas = createCanvas(info.width, info.height);
           canvas.getContext("2d").drawImage(image, 0, 0);
-          source.buffer = await canvas.encode("png");
+          source.buffer = info.format === "jpg"
+            ? await canvas.encode("jpeg", { quality: 92 })
+            : await canvas.encode("png");
         }
         if (source.buffer.length > MAX_EMOJI) {
           userError("This file is " + Math.ceil(source.buffer.length / 1024) +
