@@ -6,6 +6,7 @@ const protection = require("./lib/protection");
 const { parseCommand } = require("./lib/prefix");
 const db = require("./firebase");
 const { detectAdvancedAbuse } = require("./lib/advancedAntiwords");
+const { createCard, messageOptions } = require("./lib/pixelVillaUI");
 
 const advancedOffences = new Map();
 const advancedLogCooldown = new Map();
@@ -101,8 +102,16 @@ async function handleAdvancedViolation(message, detection, client) {
         noticeText += " Further violations may result in a timeout.";
     }
 
+    const noticeCard = createCard({
+        color: 0xED7117,
+        content:
+            "# <:warning_g:1561271566233501797> ADVANCED ANTIWORDS\n\n" +
+            noticeText +
+            "\n\n-# F.R.I.D.A.Y • AutoMod"
+    });
+
     const notice = await message.channel.send({
-        content: "<:warning_g:1561271566233501797> " + noticeText,
+        ...messageOptions(noticeCard),
         allowedMentions: { parse: [] }
     }).catch(() => null);
 
