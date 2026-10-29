@@ -201,14 +201,14 @@ module.exports = (client) => {
         const ownerId = process.env.OWNER_ID?.trim();
         if (!ownerId) {
             console.error("[Bot Avatar] OWNER_ID is not configured; profile customization is disabled.");
-            return message.reply(cardReply(
+            return await message.reply(cardReply(
                 COLORS.RED,
                 `${EMOJIS.error} **Owner Only**\nThis command is disabled because the \`OWNER_ID\` environment variable is not configured.`
             ));
         }
 
         if (message.author.id !== ownerId) {
-            return message.reply(cardReply(
+            return await message.reply(cardReply(
                 COLORS.RED,
                 `${EMOJIS.error} **Owner Only**\nOnly FRIDAY's configured owner can change the bot's server-specific avatar or banner.`
             ));
@@ -218,7 +218,7 @@ module.exports = (client) => {
         const attachment = message.attachments.find(looksLikeImage);
 
         if (!isReset && !attachment && !args[0]) {
-            return message.reply(cardReply(
+            return await message.reply(cardReply(
                 COLORS.ORANGE,
                 `${EMOJIS.info} **FRIDAY Server Profile**\n\n` +
                 `**Set avatar:** \`${prefix}setavatar <image URL or Discord message link>\`\n` +

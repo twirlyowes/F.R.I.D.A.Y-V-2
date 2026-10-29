@@ -93,7 +93,7 @@ module.exports = (client) => {
           try {
             targetUser = await client.users.fetch(cleanedId);
           } catch (err) {
-            return message.reply(
+            return await message.reply(
               cardReply(
                 COLORS.RED,
                 "Could not find a user with that ID or mention.",
@@ -185,7 +185,7 @@ module.exports = (client) => {
           );
         }
 
-        return message.reply({
+        return await message.reply({
           components: [container, row],
           flags: MessageFlags.IsComponentsV2,
           allowedMentions: {
@@ -212,7 +212,7 @@ module.exports = (client) => {
               .fetch(targetUser.id)
               .catch(() => null);
           } catch {
-            return message.reply(
+            return await message.reply(
               cardReply(
                 COLORS.RED,
                 "<a:error:1532986765105696778> Could not find a user with that ID or mention.",
@@ -414,7 +414,7 @@ module.exports = (client) => {
             )
           );
 
-        return message.reply({
+        return await message.reply({
           components: [container],
           flags: MessageFlags.IsComponentsV2,
           allowedMentions: {
@@ -548,7 +548,7 @@ module.exports = (client) => {
             )
           );
 
-        return message.reply({
+        return await message.reply({
           components: [container],
           flags: MessageFlags.IsComponentsV2,
           allowedMentions: {
@@ -563,7 +563,7 @@ module.exports = (client) => {
             PermissionsBitField.Flags.ManageMessages
           )
         ) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "You need Manage Messages permission.",
@@ -579,7 +579,7 @@ module.exports = (client) => {
         const stickyText = words.join(" ");
 
         if (!stickyText) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               `Usage:\n${PREFIX}sticky [message]\n${PREFIX}sticky off`,
@@ -595,7 +595,7 @@ module.exports = (client) => {
         if (stickyText.toLowerCase() === "off") {
           stickyCache.delete(message.channel.id);
 
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.GREEN,
               "Sticky message removed.",
@@ -635,7 +635,7 @@ module.exports = (client) => {
             PermissionsBitField.Flags.Administrator
           )
         ) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<:error_g:1561271715164721245> You need Administrator permissions to use this command.",
@@ -655,7 +655,7 @@ module.exports = (client) => {
         const dmMessage = words.slice(1).join(" ");
 
         if (!targetUser || !dmMessage) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               WARNING_YELLOW,
               `<:warning_g:1561271566233501797> Usage: \`${PREFIX}dm @user [message]\``,
@@ -724,7 +724,7 @@ module.exports = (client) => {
           (uptimeSec % 3600) / 60
         );
 
-        return message.reply(
+        return await message.reply(
           cardReply(
             BLURPLE,
             `# 🤖 Bot Information\n\n` +
@@ -747,7 +747,7 @@ module.exports = (client) => {
         const query = words.join(" ");
 
         if (!query) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               WARNING_YELLOW,
               "<:warning_g:1561271566233501797> Please provide a search term for Wikipedia. Example: `wiki Albert Einstein`",
@@ -782,7 +782,7 @@ module.exports = (client) => {
             !searchResults ||
             searchResults.length === 0
           ) {
-            return message.reply(
+            return await message.reply(
               cardReply(
                 COLORS.RED,
                 "<:error_g:1561271715164721245> Could not find a Wikipedia page matching that query.",
@@ -847,7 +847,7 @@ module.exports = (client) => {
               )
             );
 
-          return message.reply({
+          return await message.reply({
             components: [container],
             flags: MessageFlags.IsComponentsV2,
             allowedMentions: {
@@ -855,7 +855,7 @@ module.exports = (client) => {
             }
           });
         } catch (err) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<:error_g:1561271715164721245> An error occurred while searching Wikipedia.",
@@ -874,7 +874,7 @@ if (command === "hide") {
             PermissionsBitField.Flags.ManageChannels
           )
         ) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> You need the **Manage Channels** permission to use this command.",
@@ -929,7 +929,7 @@ if (command === "hide") {
             PermissionsBitField.Flags.ManageChannels
           )
         ) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> You need the **Manage Channels** permission to use this command.",
@@ -984,7 +984,7 @@ if (command === "hide") {
             PermissionsBitField.Flags.ManageMessages
           )
         ) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> You need the **Manage Messages** permission to use this command.",
@@ -1000,7 +1000,7 @@ if (command === "hide") {
         const text = words.join(" ");
 
         if (!text) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               WARNING_YELLOW,
               "<a:Warning:1532986372716236932> Please provide a message for me to send.",
@@ -1024,7 +1024,7 @@ if (command === "hide") {
         const expr = words.join("");
 
         if (!expr) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               WARNING_YELLOW,
               "<a:Warning:1532986372716236932> Please provide a mathematical expression.\nExample: `calculate 5+5*2`",
@@ -1038,7 +1038,7 @@ if (command === "hide") {
         }
 
         if (!/^[0-9+\-*/().\s]+$/.test(expr)) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> Invalid characters detected.\nOnly `+ - * / ( )` and numbers are allowed.",
@@ -1057,7 +1057,7 @@ if (command === "hide") {
           )();
 
           if (!Number.isFinite(result)) {
-            return message.reply(
+            return await message.reply(
               cardReply(
                 COLORS.RED,
                 "<a:error:1532986765105696778> The result is not a valid finite number.",
@@ -1070,7 +1070,7 @@ if (command === "hide") {
             );
           }
 
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.GREEN,
               `<:Stats:1532990723408793661> **Calculator**\n\n` +
@@ -1084,7 +1084,7 @@ if (command === "hide") {
             )
           );
         } catch {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "<a:error:1532986765105696778> Failed to evaluate the mathematical expression.",

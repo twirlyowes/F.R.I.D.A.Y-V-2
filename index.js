@@ -443,7 +443,7 @@ client.on(
                 )
             );
 
-        return message.reply({
+        return await message.reply({
           components: [container],
           flags:
             MessageFlags.IsComponentsV2
@@ -465,7 +465,7 @@ client.on(
           !time ||
           !ms(time)
         ) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               `**Usage:** ${PREFIX}mute @user [time: 10m/1h] [reason]`
@@ -478,7 +478,7 @@ client.on(
             message.member
           )
         ) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "You need the **Moderate Members** permission."
@@ -492,7 +492,7 @@ client.on(
             user
           )
         ) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "You cannot mute this user due to role hierarchy."
@@ -536,7 +536,7 @@ client.on(
           message.mentions.members.first();
 
         if (!user) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               `**Usage:** \`${PREFIX}unmute @user\``
@@ -549,7 +549,7 @@ client.on(
             message.member
           )
         ) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "You need the **Moderate Members** permission."
@@ -560,7 +560,7 @@ client.on(
         if (
           !user.isCommunicationDisabled()
         ) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "That user is not currently muted."
@@ -569,7 +569,7 @@ client.on(
         }
 
         if (!user.moderatable) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "I can't unmute that user — their role is higher than mine."
@@ -591,7 +591,7 @@ client.on(
             err
           );
 
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "Failed to unmute that user — check my role position and permissions."
@@ -625,27 +625,27 @@ client.on(
       }
 
       if (["purge", "c"].includes(command)) {
-        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) return message.reply(cardReply(COLORS.RED, "You need the **Manage Messages** permission."));
-        if (!message.guild.members.me?.permissionsIn(message.channel).has(PermissionsBitField.Flags.ManageMessages)) return message.reply(cardReply(COLORS.RED, "I need the **Manage Messages** permission in this channel."));
+        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) return await message.reply(cardReply(COLORS.RED, "You need the **Manage Messages** permission."));
+        if (!message.guild.members.me?.permissionsIn(message.channel).has(PermissionsBitField.Flags.ManageMessages)) return await message.reply(cardReply(COLORS.RED, "I need the **Manage Messages** permission in this channel."));
         const validTypes = new Set(["bots", "humans", "links", "attachments", "mentions", "emojis", "stickers", "user", "contains", "number"]);
         const firstArg = String(args[0] || "").toLowerCase();
         const amountOnly = /^\d+$/.test(firstArg);
         const type = amountOnly ? "number" : firstArg;
-        if (!validTypes.has(type)) return message.reply(cardReply(COLORS.RED, "**Usage:** " + PREFIX + command + " [type] [amount] [content]\n\n**Types:** bots, humans, links, attachments, mentions, emojis, stickers, user, contains, number\n**Default amount:** 20 (maximum 100)\n**Examples:** " + PREFIX + "c 100, " + PREFIX + "c bots, " + PREFIX + "c links 30, " + PREFIX + "c user 10 @user, " + PREFIX + "c contains 15 spam, " + PREFIX + "c number 50"));
+        if (!validTypes.has(type)) return await message.reply(cardReply(COLORS.RED, "**Usage:** " + PREFIX + command + " [type] [amount] [content]\n\n**Types:** bots, humans, links, attachments, mentions, emojis, stickers, user, contains, number\n**Default amount:** 20 (maximum 100)\n**Examples:** " + PREFIX + "c 100, " + PREFIX + "c bots, " + PREFIX + "c links 30, " + PREFIX + "c user 10 @user, " + PREFIX + "c contains 15 spam, " + PREFIX + "c number 50"));
         let rest = args.slice(1);
         let amount = amountOnly ? Number(firstArg) : 20;
         if (!amountOnly && rest.length && /^\d+$/.test(rest[0])) amount = Number(rest.shift());
-        if (!Number.isInteger(amount) || amount < 1 || amount > 100) return message.reply(cardReply(COLORS.RED, "Amount must be a whole number between 1 and 100."));
+        if (!Number.isInteger(amount) || amount < 1 || amount > 100) return await message.reply(cardReply(COLORS.RED, "Amount must be a whole number between 1 and 100."));
         let targetId = null;
         let textFilter = "";
         if (type === "user") {
           const mention = (rest[0] || "").match(/^<@!?(\d+)>$/);
           targetId = mention ? mention[1] : (rest[0] && /^\d{17,20}$/.test(rest[0]) ? rest[0] : null);
-          if (!targetId) return message.reply(cardReply(COLORS.RED, "**Usage:** " + PREFIX + command + " user [amount] @user (or user ID)"));
+          if (!targetId) return await message.reply(cardReply(COLORS.RED, "**Usage:** " + PREFIX + command + " user [amount] @user (or user ID)"));
         }
         if (type === "contains") {
           textFilter = rest.join(" ").trim();
-          if (!textFilter) return message.reply(cardReply(COLORS.RED, "**Usage:** " + PREFIX + command + " contains [amount] <text>"));
+          if (!textFilter) return await message.reply(cardReply(COLORS.RED, "**Usage:** " + PREFIX + command + " contains [amount] <text>"));
         }
         const linkRegex = /(?:https?:\/\/|www\.)\S+|\b[\w.-]+\.(?:com|net|org|gg|io|co|me|dev|app|xyz|info|biz|tv|ly)(?:\/\S*)?/i;
         const emojiRegex = /<a?:[A-Za-z0-9_]+:\d{17,20}>|[\p{Extended_Pictographic}\p{Regional_Indicator}]/u;
@@ -719,7 +719,7 @@ client.on(
           );
 
         if (!user) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "Please mention a valid user or provide part of their username/display name. (e.g., `vcp @user`, `vcp Celestial`, or `vcp cele`)"
@@ -732,7 +732,7 @@ client.on(
             PermissionsBitField.Flags.MoveMembers
           )
         ) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "You need the **Move Members** permission."
@@ -744,7 +744,7 @@ client.on(
           message.member.voice.channel;
 
         if (!voiceChannel) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "You must be sitting inside a voice channel to pull someone."
@@ -753,7 +753,7 @@ client.on(
         }
 
         if (!user.voice.channel) {
-          return message.reply(
+          return await message.reply(
             cardReply(
               COLORS.RED,
               "That user isn't connected to any voice channel right now."

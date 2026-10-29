@@ -60,7 +60,7 @@ module.exports = (client) => {
         }
 
         if (!role) {
-          return message.reply(cardReply(
+          return await message.reply(cardReply(
             WARNING_YELLOW,
             "Please mention a role, provide its ID, or use its exact name. Example: " +
               prefix + "ri @Role.",
@@ -105,14 +105,14 @@ module.exports = (client) => {
                     .setDescription(role.name + " role icon")
                 )
             );
-          return message.reply({
+          return await message.reply({
             components: [container],
             flags: MessageFlags.IsComponentsV2,
             allowedMentions: { parse: [] }
           });
         }
 
-        return message.reply(cardReply(
+        return await message.reply(cardReply(
           BLURPLE,
           details,
           message.author.displayAvatarURL({ extension: "png", size: 128 }),
@@ -136,7 +136,7 @@ module.exports = (client) => {
         }
 
         if (!role) {
-          return message.reply(cardReply(
+          return await message.reply(cardReply(
             WARNING_YELLOW,
             "Please mention a role, provide its ID, or use its exact name. Example: " +
               prefix + "ri @Role.",
@@ -147,7 +147,7 @@ module.exports = (client) => {
 
         const roleIconURL = role.iconURL({ size: 4096 });
         if (!roleIconURL) {
-          return message.reply(cardReply(
+          return await message.reply(cardReply(
             WARNING_YELLOW,
             "**" + role.name + "** has no role icon set.\n\nA server administrator can add one in role settings if the server supports role icons.",
             message.author.displayAvatarURL({ extension: "png", size: 128 }),
@@ -191,7 +191,7 @@ module.exports = (client) => {
             .setURL(pngURL)
         );
 
-        return message.reply({
+        return await message.reply({
           components: [container, row],
           flags: MessageFlags.IsComponentsV2,
           allowedMentions: { parse: [] }
@@ -205,7 +205,7 @@ module.exports = (client) => {
 
         if (rawArg) {
           if (!/^\d{17,20}$/.test(rawArg)) {
-            return message.reply(cardReply(
+            return await message.reply(cardReply(
               WARNING_YELLOW,
               "Please mention a channel or provide its ID. Example: " + prefix + "ci #general.",
               message.author.displayAvatarURL({ extension: "png", size: 128 }),
@@ -215,7 +215,7 @@ module.exports = (client) => {
 
           channel = await message.guild.channels.fetch(rawArg).catch(() => null);
           if (!channel) {
-            return message.reply(cardReply(
+            return await message.reply(cardReply(
               COLORS.RED,
               "Could not find that channel in this server.",
               message.author.displayAvatarURL({ extension: "png", size: 128 }),
@@ -263,7 +263,7 @@ module.exports = (client) => {
           details.push("**User Limit:** " + channel.userLimit);
         }
 
-        return message.reply(cardReply(
+        return await message.reply(cardReply(
           COLORS.SKY_BLUE,
           "# Channel Information\n\n" + details.join("\n") +
             "\n\n-# Requested by " + message.author.tag,
@@ -280,7 +280,7 @@ module.exports = (client) => {
         const serverIcon = guild.iconURL({ extension: "png", size: 128 }) ||
           client.user.displayAvatarURL({ extension: "png", size: 128 });
 
-        return message.reply(cardReply(
+        return await message.reply(cardReply(
           COLORS.SKY_BLUE,
           "# " + guild.name + " — Member Count\n\n" +
             "**Total Members**\n" + (guild.memberCount ?? cachedMembers.size) +
@@ -301,7 +301,7 @@ module.exports = (client) => {
           const cleanedId = (mentionedUser?.id || arg).replace(/<@!?(\d+)>/, "$1");
 
           if (!/^\d{17,20}$/.test(cleanedId)) {
-            return message.reply(cardReply(
+            return await message.reply(cardReply(
               WARNING_YELLOW,
               "Please mention a user or provide a valid Discord user ID. Example: " +
                 prefix + "banner @user.",
@@ -313,7 +313,7 @@ module.exports = (client) => {
           try {
             targetUser = await client.users.fetch(cleanedId, { force: true });
           } catch {
-            return message.reply(cardReply(
+            return await message.reply(cardReply(
               COLORS.RED,
               "Could not find that Discord user.",
               message.author.displayAvatarURL({ extension: "png", size: 128 }),
@@ -324,7 +324,7 @@ module.exports = (client) => {
 
         const bannerURL = targetUser.bannerURL({ size: 4096 });
         if (!bannerURL) {
-          return message.reply(cardReply(
+          return await message.reply(cardReply(
             WARNING_YELLOW,
             "**" + targetUser.username + " has no profile banner.**\n\nTry another user with " +
               prefix + "banner @user.",
@@ -365,7 +365,7 @@ module.exports = (client) => {
             .setURL(bannerURL)
         );
 
-        return message.reply({
+        return await message.reply({
           components: [container, row],
           flags: MessageFlags.IsComponentsV2,
           allowedMentions: { parse: [] }
@@ -373,7 +373,7 @@ module.exports = (client) => {
       }
     } catch (error) {
       console.error("[Utility Commands] Failed to run " + command + ":", error);
-      return message.reply(cardReply(
+      return await message.reply(cardReply(
         COLORS.RED,
         "Something went wrong while running this utility command. Please try again.",
         message.author.displayAvatarURL({ extension: "png", size: 128 }),

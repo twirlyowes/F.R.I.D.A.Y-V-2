@@ -814,7 +814,7 @@ module.exports = (client) => {
         if (
           !message.reference?.messageId
         ) {
-          return message.reply({
+          return await message.reply({
             content:
               `Reply to a message with \`${parsed.prefix}quote\` to quote it.`,
             allowedMentions: {
@@ -863,7 +863,7 @@ module.exports = (client) => {
             .trim();
 
         if (!text) {
-          return message.reply({
+          return await message.reply({
             content:
               'That message has no text to quote.',
             allowedMentions: {
@@ -999,7 +999,7 @@ module.exports = (client) => {
         if (!state) {
           const hintPrefix = await getPrefix(interaction.guildId);
 
-          return interaction.reply({
+          return await interaction.reply({
             content:
               `This quote has expired, so make a new one with \`${hintPrefix}quote\`.`,
             ephemeral: true,
@@ -1014,7 +1014,7 @@ module.exports = (client) => {
           );
 
         if (!canEdit) {
-          return interaction.reply({
+          return await interaction.reply({
             content:
               'Only the person who made this quote can edit it.',
             ephemeral: true,

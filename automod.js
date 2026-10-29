@@ -473,14 +473,14 @@ async function handlePanel(interaction) {
   const userId = parts[parts.length - 1];
 
   if (interaction.user.id !== userId) {
-    return interaction.reply({
+    return await interaction.reply({
       content: "This AutoMod panel belongs to someone else. Run the automod command yourself to open your own.",
       flags: MessageFlags.Ephemeral
     });
   }
 
   if (!interaction.guild || !interaction.member || !await canManage(interaction.member, interaction.user.id, interaction.guildId)) {
-    return interaction.reply({
+    return await interaction.reply({
       content: "You need the **Manage Server** permission to change AutoMod.",
       flags: MessageFlags.Ephemeral
     });
@@ -593,13 +593,13 @@ module.exports = client => {
 
       if (parsed && parsed.command === "automod") {
         if (!await canManage(message.member, message.author.id, message.guild.id)) {
-          return message.reply({
+          return await message.reply({
             content: "You need the **Manage Server** permission to change AutoMod.",
             allowedMentions: { parse: [] }
           });
         }
 
-        return message.reply(await buildPanel(message.guild, message.author.id));
+        return await message.reply(await buildPanel(message.guild, message.author.id));
       }
 
       const cfg = await protection.getAutomod(message.guild.id);

@@ -1109,7 +1109,7 @@ module.exports = (client) => {
                                 "<:error_g:1561271715164721245> **Permission Denied**\nYou do not have permission to use this command."
                         });
 
-                    return message.reply(
+                    return await message.reply(
                         noPingOptions({
                             components: [
                                 card
@@ -1171,7 +1171,7 @@ module.exports = (client) => {
                                 "<:error_g:1561271715164721245> **Permission Denied**\nYou do not have permission to use this command."
                         });
 
-                    return message.reply(
+                    return await message.reply(
                         noPingOptions({
                             components: [
                                 card
@@ -1280,7 +1280,7 @@ module.exports = (client) => {
                                 "<:error_g:1561271715164721245> **Permission Denied**\nYou do not have permission to use this command."
                         });
 
-                    return message.reply(
+                    return await message.reply(
                         noPingOptions({
                             components: [
                                 card
@@ -1312,7 +1312,7 @@ module.exports = (client) => {
                                 "<:error_g:1561271715164721245> **Invalid User ID**\nUsage: `" + parsed.prefix + "removeuser <userID>` — provide a valid Discord user ID or mention."
                         });
 
-                    return message.reply(
+                    return await message.reply(
                         noPingOptions({
                             components: [
                                 card
@@ -1338,7 +1338,7 @@ module.exports = (client) => {
                                 `<:success_g:1561271843346714777> **Activity Record Removed**\nRemoved activetime record for \`${targetId}\`.`
                         });
 
-                    return message.reply(
+                    return await message.reply(
                         noPingOptions({
                             components: [
                                 card
@@ -1356,7 +1356,7 @@ module.exports = (client) => {
                                 `<:error_g:1561271715164721245> **Removal Failed**\nFailed to remove the record for \`${targetId}\`. Check the logs.`
                         });
 
-                    return message.reply(
+                    return await message.reply(
                         noPingOptions({
                             components: [
                                 card
@@ -1421,7 +1421,7 @@ module.exports = (client) => {
                                 "<:error_g:1561271715164721245> **Not a Staff Member**\nThat user is not a staff member or does not have the specified staff role."
                         });
 
-                    return message.reply(
+                    return await message.reply(
                         noPingOptions({
                             components: [
                                 card
@@ -1541,14 +1541,14 @@ module.exports = (client) => {
                     avatarDescription: `${targetMember.user.username}'s avatar`
                 });
 
-                return message.reply(
+                return await message.reply(
                     noPingOptions({
                         components: [card],
                         flags: MessageFlags.IsComponentsV2
                     })
                 );
 
-                return message.reply(
+                return await message.reply(
                     noPingOptions({
                         components: [
                             card

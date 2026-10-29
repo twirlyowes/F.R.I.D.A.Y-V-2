@@ -182,32 +182,32 @@ module.exports = (client) => {
             if (isStaff) {
                 // Add Word
                 if (command === "addbadword") {
-                    if (!args[1]) return message.reply("Provide a word.");
+                    if (!args[1]) return await message.reply("Provide a word.");
 
                     const word = args[1].toLowerCase();
-                    if (badWordsCache.has(word)) return message.reply("Word already exists.");
+                    if (badWordsCache.has(word)) return await message.reply("Word already exists.");
 
                     badWordsCache.add(word);
                     await saveGuildWords(message.guild.id);
-                    return message.reply("Bad word added.");
+                    return await message.reply("Bad word added.");
                 }
 
                 // Remove Word
                 if (command === "removebadword") {
-                    if (!args[1]) return message.reply("Provide a word.");
+                    if (!args[1]) return await message.reply("Provide a word.");
 
                     const word = args[1].toLowerCase();
-                    if (!badWordsCache.has(word)) return message.reply("Word not found in database.");
+                    if (!badWordsCache.has(word)) return await message.reply("Word not found in database.");
 
                     badWordsCache.delete(word);
                     await saveGuildWords(message.guild.id);
-                    return message.reply("Bad word removed.");
+                    return await message.reply("Bad word removed.");
                 }
 
                 // List All Words
                 if (command === "badwordslist") {
                     const list = Array.from(badWordsCache);
-                    if (list.length === 0) return message.reply("The bad words list is empty.");
+                    if (list.length === 0) return await message.reply("The bad words list is empty.");
 
                     const embed = new EmbedBuilder()
                         .setTitle("Prohibited Words List")
@@ -215,7 +215,7 @@ module.exports = (client) => {
                         .setDescription(`\`\`\`${list.join(", ")}\`\`\``)
                         .setTimestamp();
 
-                    return message.reply({ embeds: [embed] });
+                    return await message.reply({ embeds: [embed] });
                 }
             }
 

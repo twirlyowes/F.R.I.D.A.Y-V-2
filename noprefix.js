@@ -18,7 +18,7 @@ const owners = require("./lib/owners");
 const noPrefix = require("./lib/noprefix");
 
 function reply(message, color, content) {
-  return message.reply({
+  return await message.reply({
     components: [
       createCard({
         color,

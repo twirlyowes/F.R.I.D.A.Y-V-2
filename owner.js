@@ -5,7 +5,7 @@ const serverOwners = require("./lib/serverOwners");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
 
 function reply(message, color, content) {
-  return message.reply({
+  return await message.reply({
     components: [createCard({
       color,
       content,
