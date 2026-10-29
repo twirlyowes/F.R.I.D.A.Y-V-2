@@ -165,7 +165,7 @@ async function buildPanel(guild, userId, selectedKey = null, note = null) {
 
   const lines = Object.entries(SETTINGS).map(([key, def]) => {
     const value = cfg[key] ? display(def.type, cfg[key]) : "*not set*";
-    return `${cfg[key] ? "<:success_g:1561271843346714777>" : "⚪"} **${def.label}** — ${value}`;
+    return `${cfg[key] ? "<:success_g:1562810067642884177>" : "⚪"} **${def.label}** — ${value}`;
   });
 
   const intro = selectedKey
@@ -300,21 +300,21 @@ async function handlePanelInteraction(interaction) {
     const result = resolveTarget(guild, def.type, interaction.values[0]);
 
     if (result.error) {
-      return interaction.update(await buildPanel(guild, userId, key, `<:error_g:1561271715164721245> ${result.error}`));
+      return interaction.update(await buildPanel(guild, userId, key, `<:error_g:1562810019454386196> ${result.error}`));
     }
 
     if (key === "quarantineRole") {
       try {
         await quarantine.configureRole(guild, result.value);
       } catch (error) {
-        return interaction.update(await buildPanel(guild, userId, key, "<:error_g:1561271715164721245> " + error.message));
+        return interaction.update(await buildPanel(guild, userId, key, "<:error_g:1562810019454386196> " + error.message));
       }
     }
 
     await guildConfig.set(guild.id, key, result.value);
 
     return interaction.update(
-      await buildPanel(guild, userId, key, `<:success_g:1561271843346714777> **${def.label}** is now ${mention(def.type, result.value)}.`)
+      await buildPanel(guild, userId, key, `<:success_g:1562810067642884177> **${def.label}** is now ${mention(def.type, result.value)}.`)
     );
   }
 
@@ -363,7 +363,7 @@ async function handlePanelInteraction(interaction) {
       guild,
       userId,
       key,
-      problem ? `<:error_g:1561271715164721245> ${problem}` : `<:success_g:1561271843346714777> **${def.label}** is now ${display("string", value)}.`
+      problem ? `<:error_g:1562810019454386196> ${problem}` : `<:success_g:1562810067642884177> **${def.label}** is now ${display("string", value)}.`
     );
 
     return interaction.isFromMessage()
@@ -382,7 +382,7 @@ async function handlePanelInteraction(interaction) {
       return interaction.update(await buildPanel(guild, userId, key, result.message));
     } catch (error) {
       return interaction.update(await buildPanel(guild, userId, key,
-        "<:error_g:1561271715164721245> Could not clear this setting: " +
+        "<:error_g:1562810019454386196> Could not clear this setting: " +
         String(error.message || "unknown error")));
     }
   }

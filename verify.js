@@ -173,7 +173,7 @@ module.exports = function(client) {
 
             if (command === "snipe") {
                 if (!message.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
-                    return await message.reply({ content: "<:error_g:1561271715164721245> You do not have permission to use this command (Requires **Manage Messages**).", allowedMentions: { repliedUser: false } }).catch(() => {});
+                    return await message.reply({ content: "<:error_g:1562810019454386196> You do not have permission to use this command (Requires **Manage Messages**).", allowedMentions: { repliedUser: false } }).catch(() => {});
                 }
 
                 const channelSnipes = deletedMessages.get(message.channel.id);
@@ -230,14 +230,14 @@ module.exports = function(client) {
             // Roles/channels come from the config command (verifyChannel, verifiedRole, unverifiedRole).
             if (command === 'setupverify') {
                 if (!message.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-                    return await message.reply('<:error_g:1561271715164721245> You need the **Manage Server** permission to deploy the verification panel.');
+                    return await message.reply('<:error_g:1562810019454386196> You need the **Manage Server** permission to deploy the verification panel.');
                 }
 
                 const result = await sendVerificationPanel(message.guild, message.client);
                 return await message.reply(
                     result.ok
-                        ? '<:success_g:1561271843346714777> Verification panel deployed successfully.'
-                        : `<:error_g:1561271715164721245> ${result.error}`
+                        ? '<:success_g:1562810067642884177> Verification panel deployed successfully.'
+                        : `<:error_g:1562810019454386196> ${result.error}`
                 );
             }
 
@@ -246,14 +246,14 @@ module.exports = function(client) {
                 if (!message.member.permissions.has(PermissionFlagsBits.ManageRoles)) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
-                        .setDescription("<:error_g:1561271715164721245> You lack the **Manage Roles** permission required to execute this command.");
+                        .setDescription("<:error_g:1562810019454386196> You lack the **Manage Roles** permission required to execute this command.");
                     return await message.reply({ embeds: [embed] });
                 }
 
                 if (!message.guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
-                        .setDescription("<:error_g:1561271715164721245> I lack the **Manage Roles** permission required to modify roles in this server.");
+                        .setDescription("<:error_g:1562810019454386196> I lack the **Manage Roles** permission required to modify roles in this server.");
                     return await message.reply({ embeds: [embed] });
                 }
 
@@ -261,7 +261,7 @@ module.exports = function(client) {
                 if (!member) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
-                        .setDescription("<:error_g:1561271715164721245> Please mention a valid server member. Example: `role @username Members`");
+                        .setDescription("<:error_g:1562810019454386196> Please mention a valid server member. Example: `role @username Members`");
                     return await message.reply({ embeds: [embed] });
                 }
 
@@ -273,7 +273,7 @@ module.exports = function(client) {
                 if (!roleQuery) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
-                        .setDescription("<:error_g:1561271715164721245> Please specify a target role name, ID, or mention. Example: `role @username Members`");
+                        .setDescription("<:error_g:1562810019454386196> Please specify a target role name, ID, or mention. Example: `role @username Members`");
                     return await message.reply({ embeds: [embed] });
                 }
 
@@ -288,28 +288,28 @@ module.exports = function(client) {
                 if (!role) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
-                        .setDescription(`<:error_g:1561271715164721245> Could not locate any matching role for \`${roleQuery}\`.`);
+                        .setDescription(`<:error_g:1562810019454386196> Could not locate any matching role for \`${roleQuery}\`.`);
                     return await message.reply({ embeds: [embed] });
                 }
 
                 if (member.permissions.has(PermissionFlagsBits.Administrator) && message.guild.ownerId !== message.author.id) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
-                        .setDescription("<:error_g:1561271715164721245> You cannot modify roles for server administrators unless you are the server owner.");
+                        .setDescription("<:error_g:1562810019454386196> You cannot modify roles for server administrators unless you are the server owner.");
                     return await message.reply({ embeds: [embed] });
                 }
 
                 if (role.position >= message.guild.members.me.roles.highest.position) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
-                        .setDescription("<:error_g:1561271715164721245> I cannot manage this role because it is positioned higher than or equal to my highest role.");
+                        .setDescription("<:error_g:1562810019454386196> I cannot manage this role because it is positioned higher than or equal to my highest role.");
                     return await message.reply({ embeds: [embed] });
                 }
 
                 if (role.position >= message.member.roles.highest.position && message.guild.ownerId !== message.author.id) {
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
-                        .setDescription("<:error_g:1561271715164721245> You cannot manage this role because it is positioned higher than or equal to your own highest role.");
+                        .setDescription("<:error_g:1562810019454386196> You cannot manage this role because it is positioned higher than or equal to your own highest role.");
                     return await message.reply({ embeds: [embed] });
                 }
 
@@ -332,7 +332,7 @@ module.exports = function(client) {
 
         } catch (error) {
             console.error("Command Execution Error:", error);
-            return await message.reply("<:error_g:1561271715164721245> An error occurred while attempting to process that command.").catch(() => {});
+            return await message.reply("<:error_g:1562810019454386196> An error occurred while attempting to process that command.").catch(() => {});
         }
     });
 
@@ -350,7 +350,7 @@ module.exports = function(client) {
                     if (now < expirationTime) {
                         const timeLeftMinutes = Math.ceil((expirationTime - now) / 1000 / 60);
                         return await interaction.reply({ 
-                            content: `<:error_g:1561271715164721245> Security Cooldown Active: You have exceeded maximum failed attempts. Please try again in approximately **${timeLeftMinutes} minute(s)**.`, 
+                            content: `<:error_g:1562810019454386196> Security Cooldown Active: You have exceeded maximum failed attempts. Please try again in approximately **${timeLeftMinutes} minute(s)**.`, 
                             ephemeral: true 
                         });
                     } else {
@@ -360,7 +360,7 @@ module.exports = function(client) {
 
                 if (pendingCaptchas.has(userId)) {
                     return await interaction.reply({ 
-                        content: `<:warning_g:1561271566233501797> You already have an active verification session pending. Please complete the open modal prompt or wait for it to time out.`, 
+                        content: `<:warning_g:1562810073733136506> You already have an active verification session pending. Please complete the open modal prompt or wait for it to time out.`, 
                         ephemeral: true 
                     });
                 }
@@ -421,7 +421,7 @@ module.exports = function(client) {
                 const userCaptcha = pendingCaptchas.get(userId);
 
                 if (!userCaptcha) {
-                    return interaction.editReply({ content: '<:error_g:1561271715164721245> Verification session expired or not found. Please click the verify button again.' });
+                    return interaction.editReply({ content: '<:error_g:1562810019454386196> Verification session expired or not found. Please click the verify button again.' });
                 }
 
                 const rawInput = interaction.fields.getTextInputValue('math_answer_input').trim();
@@ -438,11 +438,11 @@ module.exports = function(client) {
                             attempts: userCaptcha.attempts,
                             reason: "Three invalid CAPTCHA input attempts"
                         }).catch(err => console.error("[Verification Review] Could not record failed attempt:", err.message));
-                        return interaction.editReply({ content: '<:error_g:1561271715164721245> Invalid input format. You have exhausted your 3 attempts and are temporarily locked out for **5 minutes**.' });
+                        return interaction.editReply({ content: '<:error_g:1562810019454386196> Invalid input format. You have exhausted your 3 attempts and are temporarily locked out for **5 minutes**.' });
                     }
 
                     const attemptsLeft = 3 - userCaptcha.attempts;
-                    return interaction.editReply({ content: `<:error_g:1561271715164721245> Invalid numeric value provided. You have **${attemptsLeft} attempt(s)** remaining.` });
+                    return interaction.editReply({ content: `<:error_g:1562810019454386196> Invalid numeric value provided. You have **${attemptsLeft} attempt(s)** remaining.` });
                 }
 
                 if (numericValue === userCaptcha.answer) {
@@ -464,11 +464,11 @@ module.exports = function(client) {
                         : null;
 
                     if (!verifiedRole) {
-                        return interaction.editReply({ content: `<:error_g:1561271715164721245> Verification is not set up yet: an admin needs to run \`${await getPrefix(guild.id)}config set verifiedRole @role\`.` });
+                        return interaction.editReply({ content: `<:error_g:1562810019454386196> Verification is not set up yet: an admin needs to run \`${await getPrefix(guild.id)}config set verifiedRole @role\`.` });
                     }
 
                     if (member.roles.cache.has(verifiedRole.id)) {
-                        return interaction.editReply({ content: '<:info_g:1561269600564281374> You are already verified in this server!' });
+                        return interaction.editReply({ content: '<:info_g:1562810038471630928> You are already verified in this server!' });
                     }
 
                     try {
@@ -478,7 +478,7 @@ module.exports = function(client) {
                         }
                     } catch (roleError) {
                         console.error("Failed applying verification roles:", roleError);
-                        return interaction.editReply({ content: '<:error_g:1561271715164721245> CAPTCHA was correct, but FRIDAY could not apply the verification roles. Please contact a server administrator.' });
+                        return interaction.editReply({ content: '<:error_g:1562810019454386196> CAPTCHA was correct, but FRIDAY could not apply the verification roles. Please contact a server administrator.' });
                     }
 
                     dashboardEvents.recordEvent(guild.id, {
@@ -494,7 +494,7 @@ module.exports = function(client) {
                         reason: "CAPTCHA verification completed successfully", userId: member.id
                     }, { merge: true }).catch(err => console.error("[Verification Review] Could not resolve review record:", err.message));
 
-                    await interaction.editReply({ content: '<:success_g:1561271843346714777> Correct! Verification successful. Server access granted.' });
+                    await interaction.editReply({ content: '<:success_g:1562810067642884177> Correct! Verification successful. Server access granted.' });
 
                     {
                         const logChannel = await guildConfig.getLogChannel(guild);
@@ -532,17 +532,17 @@ module.exports = function(client) {
                             }
                         }
 
-                        return interaction.editReply({ content: '<:error_g:1561271715164721245> Incorrect answer. You have failed 3 times and are temporarily locked out for **5 minutes**.' });
+                        return interaction.editReply({ content: '<:error_g:1562810019454386196> Incorrect answer. You have failed 3 times and are temporarily locked out for **5 minutes**.' });
                     }
 
                     const attemptsLeft = 3 - userCaptcha.attempts;
-                    return interaction.editReply({ content: `<:error_g:1561271715164721245> Incorrect answer! You have **${attemptsLeft} attempt(s)** remaining. Click the verify button again to try a new question.` });
+                    return interaction.editReply({ content: `<:error_g:1562810019454386196> Incorrect answer! You have **${attemptsLeft} attempt(s)** remaining. Click the verify button again to try a new question.` });
                 }
             }
         } catch (error) {
             console.error("Interaction execution error:", error);
             if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
-                await interaction.reply({ content: '<:error_g:1561271715164721245> An unexpected error occurred while processing your request.', ephemeral: true }).catch(() => {});
+                await interaction.reply({ content: '<:error_g:1562810019454386196> An unexpected error occurred while processing your request.', ephemeral: true }).catch(() => {});
             }
         }
     });
@@ -578,7 +578,7 @@ async function sendVerificationPanel(guild, client) {
                     .setCustomId('start_verify_btn')
                     .setLabel('Verify')
                     .setStyle(ButtonStyle.Success)
-                    .setEmoji('<:success_g:1561271843346714777>')
+                    .setEmoji('<:success_g:1562810067642884177>')
             );
 
         const messages = await channel.messages.fetch({ limit: 10 }).catch(() => null);

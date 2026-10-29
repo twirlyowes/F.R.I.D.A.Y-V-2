@@ -366,13 +366,13 @@ async function guardQuarantineRole(oldMember, newMember) {
     ? "**Actor:** " + who(actor)
     : "**Actor:** Unknown — audit-log attribution was unavailable or did not match the changed role IDs.";
   const targetText = targetResult.ok
-    ? "<:success_g:1561271843346714777> Target containment verified."
-    : "<:warning_g:1561271566233501797> Target quarantine incomplete: " + targetResult.text;
+    ? "<:success_g:1562810067642884177> Target containment verified."
+    : "<:warning_g:1562810073733136506> Target quarantine incomplete: " + targetResult.text;
   const actorText = actor
     ? (actorResult.ok
-      ? "<:success_g:1561271843346714777> The unauthorized actor was quarantined."
-      : "<:warning_g:1561271566233501797> Actor quarantine failed: " + actorResult.text)
-    : "<:warning_g:1561271566233501797> No one was punished because FRIDAY could not safely identify the actor.";
+      ? "<:success_g:1562810067642884177> The unauthorized actor was quarantined."
+      : "<:warning_g:1562810073733136506> Actor quarantine failed: " + actorResult.text)
+    : "<:warning_g:1562810073733136506> No one was punished because FRIDAY could not safely identify the actor.";
 
   await sendLog(
     guild,
@@ -453,8 +453,8 @@ async function guardDangerousRoleAssignment(oldMember, newMember) {
   const refreshedTarget = await guild.members.fetch({ user: newMember.id, force: true }).catch(() => newMember);
   const remaining = dangerousRoles.filter(role => refreshedTarget.roles.cache.has(role.id));
   const removedText = remaining.length
-    ? "<:warning_g:1561271566233501797> " + remaining.length + " dangerous role assignment(s) could not be removed."
-    : "<:success_g:1561271843346714777> The dangerous role assignment was removed.";
+    ? "<:warning_g:1562810073733136506> " + remaining.length + " dangerous role assignment(s) could not be removed."
+    : "<:success_g:1562810067642884177> The dangerous role assignment was removed.";
 
   let actorResult = {
     ok: false,
@@ -479,9 +479,9 @@ async function guardDangerousRoleAssignment(oldMember, newMember) {
       removedText + "\n" +
       (actor
         ? (actorResult.ok
-          ? "<:success_g:1561271843346714777> Actor containment: " + actorResult.text
-          : "<:warning_g:1561271566233501797> Actor containment incomplete: " + actorResult.text)
-        : "<:warning_g:1561271566233501797> No actor was punished because attribution was unavailable.") +
+          ? "<:success_g:1562810067642884177> Actor containment: " + actorResult.text
+          : "<:warning_g:1562810073733136506> Actor containment incomplete: " + actorResult.text)
+        : "<:warning_g:1562810073733136506> No actor was punished because attribution was unavailable.") +
       (removalError ? "\n**API detail:** " + removalError.message : "") +
       "\n\n-# F.R.I.D.A.Y • Permission Escalation Guard"
   );
@@ -541,8 +541,8 @@ async function guardDangerousRoleCreation(role) {
   }
 
   const roleResult = permissionEscalationRemains
-    ? "<:warning_g:1561271566233501797> Dangerous permissions remain on the new role."
-    : "<:success_g:1561271843346714777> Dangerous permissions were removed from the new role.";
+    ? "<:warning_g:1562810073733136506> Dangerous permissions remain on the new role."
+    : "<:success_g:1562810067642884177> Dangerous permissions were removed from the new role.";
 
   await sendLog(
     guild,
@@ -650,8 +650,8 @@ async function guardQuarantineRoleUpdate(oldRole, newRole) {
     }
 
     const resultText = failures.length
-      ? "<:warning_g:1561271566233501797> Repair incomplete: " + failures.join(" ")
-      : "<:success_g:1561271843346714777> Quarantine role security settings were restored and verified.";
+      ? "<:warning_g:1562810073733136506> Repair incomplete: " + failures.join(" ")
+      : "<:success_g:1562810067642884177> Quarantine role security settings were restored and verified.";
 
     await sendLog(
       guild,
@@ -789,8 +789,8 @@ async function guardQuarantineChannel(channel) {
       "# Anti-Nuke: Quarantine channel guard\n\n" +
         "**Channel:** <#" + channel.id + ">\n" +
         (ok
-          ? "<:success_g:1561271843346714777> Quarantine access-deny overwrites were restored."
-          : "<:warning_g:1561271566233501797> Could not restore all quarantine denies (" +
+          ? "<:success_g:1562810067642884177> Quarantine access-deny overwrites were restored."
+          : "<:warning_g:1562810073733136506> Could not restore all quarantine denies (" +
             stillMissing.length + " permission overwrite(s) remain missing)." +
             (repairError ? "\n**Error:** " + repairError.message : "")) +
         "\n\n-# F.R.I.D.A.Y • Security Configuration Guard"
@@ -976,13 +976,13 @@ async function runSecurityCheck(guild, options = {}) {
 
 function formatSecurityCheck(guild, report, simulation = false) {
   const lines = report.rows.map(row =>
-    (row.ok ? "<:success_g:1561271843346714777>" : "<:warning_g:1561271566233501797>") +
+    (row.ok ? "<:success_g:1562810067642884177>" : "<:warning_g:1562810073733136506>") +
     " **" + row.label + ":** " + row.detail
   );
 
   const issueSummary = report.issues.length
     ? "\n\n**Issues needing attention:**\n" + report.issues.slice(0, 8).map(item => "• " + item).join("\n")
-    : "\n\n<:success_g:1561271843346714777> No blocking configuration issues were found in the checks performed.";
+    : "\n\n<:success_g:1562810067642884177> No blocking configuration issues were found in the checks performed.";
 
   const header = simulation ? "# Anti-Nuke Attack Simulation (Dry Run)" : "# Anti-Nuke Watchdog Report";
   const safetyNote = simulation
@@ -1395,14 +1395,14 @@ async function trigger(guild, user, kind, total, cfg) {
   const summary =
     `**Who:** ${who(user)}\n` +
     `**What:** ${total}× ${FEATURES[kind].label.toLowerCase()} within ${cfg.windowSeconds}s\n` +
-    `**Response:** ${punishment.ok ? "<:success_g:1561271843346714777>" : "<:warning_g:1561271566233501797>"} ${punishment.text}\n` +
+    `**Response:** ${punishment.ok ? "<:success_g:1562810067642884177>" : "<:warning_g:1562810073733136506>"} ${punishment.text}\n` +
     `**Recovery:** ${recoveryText}`;
 
   await sendLog(
     guild,
     COLORS.RED,
     `# 🚨 Anti-Nuke triggered\n\n${summary}\n\n` +
-      `${punishment.ok ? "" : "<:warning_g:1561271566233501797> The punishment did not fully work. Move my role to the top of the role list and check the audit log.\n\n"}` +
+      `${punishment.ok ? "" : "<:warning_g:1562810073733136506> The punishment did not fully work. Move my role to the top of the role list and check the audit log.\n\n"}` +
       `-# F.R.I.D.A.Y • Anti-Nuke`
   );
 
@@ -1410,14 +1410,14 @@ async function trigger(guild, user, kind, total, cfg) {
     guild,
     `🚨 Anti-Nuke triggered in **${guild.name}**\n` +
       `${user.tag || user.username || user.id} (${user.id}) did ${total}× ${FEATURES[kind].label.toLowerCase()} within ${cfg.windowSeconds}s.\n` +
-      `${punishment.ok ? "<:success_g:1561271843346714777>" : "<:warning_g:1561271566233501797>"} ${punishment.text}\n${recoveryText}`
+      `${punishment.ok ? "<:success_g:1562810067642884177>" : "<:warning_g:1562810073733136506>"} ${punishment.text}\n${recoveryText}`
   );
 }
 
 // ---------------------------------------------------------------------------
 // Control panel (buttons), owner only
 // ---------------------------------------------------------------------------
-const flag = on => (on ? "<:success_g:1561271843346714777>" : "⬜");
+const flag = on => (on ? "<:success_g:1562810067642884177>" : "⬜");
 
 function toggleButton(id, label, on) {
   return new ButtonBuilder()
@@ -1434,7 +1434,7 @@ async function buildPanel(guild, userId, note = null) {
   const me = guild.members.me;
 
   const permissionLine = BOT_PERMISSIONS.map(
-    ([key, label]) => `${me?.permissions.has(PermissionFlagsBits[key]) ? "<:success_g:1561271843346714777>" : "<:error_g:1561271715164721245>"} ${label}`
+    ([key, label]) => `${me?.permissions.has(PermissionFlagsBits[key]) ? "<:success_g:1562810067642884177>" : "<:error_g:1562810019454386196>"} ${label}`
   ).join(" • ");
 
   const auditMissing = !me?.permissions.has(PermissionFlagsBits.ViewAuditLog);
@@ -1460,7 +1460,7 @@ async function buildPanel(guild, userId, note = null) {
       `**Trusted (exempt):** ${trusted}\n` +
       `-# Server owner, bot owner and owners delegated in this server are trusted automatically; use wl to exempt others here.\n\n` +
       `**My permissions:** ${permissionLine}\n` +
-      `${auditMissing ? "<:error_g:1561271715164721245> Missing **View Audit Log** — Anti-Nuke cannot identify offenders.\n" : ""}\n` +
+      `${auditMissing ? "<:error_g:1562810019454386196> Missing **View Audit Log** — Anti-Nuke cannot identify offenders.\n" : ""}\n` +
       `-# F.R.I.D.A.Y • Anti-Nuke`,
     avatarURL: avatarOf(guild.client),
     avatarDescription: "F.R.I.D.A.Y"
@@ -1584,7 +1584,7 @@ async function handlePanel(interaction) {
 
     return refresh(
       `Anti-Nuke is now **${cfg.enabled ? "ON" : "OFF"}**.` +
-        (cfg.enabled && auditMissing ? "\n<:error_g:1561271715164721245> It can't work until I have **View Audit Log**." : "")
+        (cfg.enabled && auditMissing ? "\n<:error_g:1562810019454386196> It can't work until I have **View Audit Log**." : "")
     );
   }
 
@@ -1739,7 +1739,7 @@ module.exports = client => {
           return await message.reply(await buildPanel(
             guild,
             message.author.id,
-            `<:success_g:1561271843346714777> **${target.tag || target.username}** is already on the Anti-Nuke whitelist.`
+            `<:success_g:1562810067642884177> **${target.tag || target.username}** is already on the Anti-Nuke whitelist.`
           ));
         }
 
@@ -1765,7 +1765,7 @@ module.exports = client => {
         return await message.reply(await buildPanel(
           guild,
           message.author.id,
-          `<:success_g:1561271843346714777> **${target.tag || target.username}** has been added to this server\'s Anti-Nuke whitelist. They will be skipped by Anti-Nuke punishment checks in this server only.`
+          `<:success_g:1562810067642884177> **${target.tag || target.username}** has been added to this server\'s Anti-Nuke whitelist. They will be skipped by Anti-Nuke punishment checks in this server only.`
         ));
       }
 
@@ -1963,7 +1963,7 @@ module.exports = client => {
         `# 🛡️ Anti-Nuke: role permissions\n\n` +
           `**Who:** ${actor ? who(actor) : "Unknown — audit-log attribution unavailable"}\n` +
           `**Role:** ${newRole.name}\n` +
-          `**Result:** ${reverted ? "<:success_g:1561271843346714777> Dangerous permissions were removed again" : "<:warning_g:1561271566233501797> Could not revert (my role is too low)"}\n\n` +
+          `**Result:** ${reverted ? "<:success_g:1562810067642884177> Dangerous permissions were removed again" : "<:warning_g:1562810073733136506> Could not revert (my role is too low)"}\n\n` +
           `-# F.R.I.D.A.Y • Anti-Nuke`
       );
 
@@ -2070,7 +2070,7 @@ module.exports = client => {
         `# 🛡️ Anti-Nuke: bot added\n\n` +
           `**Bot:** ${who(member.user)}\n` +
           `**Added by:** ${who(entry.executor)}\n` +
-          `**Result:** ${removed ? "<:success_g:1561271843346714777> The bot was removed" : "<:warning_g:1561271566233501797> Could not remove it (my role is too low)"}\n\n` +
+          `**Result:** ${removed ? "<:success_g:1562810067642884177> The bot was removed" : "<:warning_g:1562810073733136506> Could not remove it (my role is too low)"}\n\n` +
           `Bots must be added by the server owner or a trusted user (or be on the trusted list themselves).\n\n` +
           `-# F.R.I.D.A.Y • Anti-Nuke`
       );

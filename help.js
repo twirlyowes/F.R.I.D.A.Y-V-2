@@ -284,7 +284,7 @@ function setupHelpCommand(client) {
                 overview: {
                     label: "Overview",
                     description: "Prefix, usage, and available modules",
-                    emoji: "<a:sparkles:1532986077651140620>",
+                    emoji: "<a:sparkles:1562810135972417617>",
                     content: `<:FRIDAY:1564865373583581266> **F.R.I.D.A.Y — COMMAND CENTER**
 
 > Choose a module from the dropdown to see its commands.
@@ -298,8 +298,8 @@ function setupHelpCommand(client) {
                 moderation: {
                     label: "Moderation",
                     description: "Warnings, strikes, and member actions",
-                    emoji: "<a:ban:1532989769766801511>",
-                    content: `<a:ban:1532989769766801511> **MODERATION**
+                    emoji: "<a:ban:1562809995307778188>",
+                    content: `<a:ban:1562809995307778188> **MODERATION**
 
 > Keep your community safe with moderation tools.
 
@@ -312,8 +312,8 @@ ${prefix}purge · ${prefix}snipe`
                 automod: {
                     label: "AutoMod",
                     description: "Automatic moderation and bad-word filters",
-                    emoji: "<:Shield_2:1532989398642327594>",
-                    content: `<:Shield_2:1532989398642327594> **AUTOMOD**
+                    emoji: "<:Shield_2:1562810059946328185>",
+                    content: `<:Shield_2:1562810059946328185> **AUTOMOD**
 
 > Configure automatic moderation and bad-word filtering.
 
@@ -361,8 +361,8 @@ ${prefix}setupverify`
                 activetime: {
                     label: "Active Time",
                     description: "Staff activity and reports",
-                    emoji: "<:info_g:1561269600564281374>",
-                    content: `<:info_g:1561269600564281374> **ACTIVE TIME**
+                    emoji: "<:info_g:1562810038471630928>",
+                    content: `<:info_g:1562810038471630928> **ACTIVE TIME**
 
 > Track staff activity and manage reports.
 
@@ -382,8 +382,8 @@ ${prefix}vcp · ${prefix}vcowner`
                 utilities: {
                     label: "Utilities",
                     description: "General tools and information",
-                    emoji: "<:info_g:1561269600564281374>",
-                    content: `<:info_g:1561269600564281374> **UTILITIES & INFORMATION**
+                    emoji: "<:info_g:1562810038471630928>",
+                    content: `<:info_g:1562810038471630928> **UTILITIES & INFORMATION**
 
 > Everyday tools and quick information.
 
@@ -439,7 +439,7 @@ ${prefix}af (AssetForge)`
                         const module = modules[key];
                         if (!module) {
                             await interaction.reply({
-                                content: "<:error_g:1561271715164721245> Unknown help category.",
+                                content: "<:error_g:1562810019454386196> Unknown help category.",
                                 ephemeral: true
                             });
                             return;
@@ -463,7 +463,7 @@ ${prefix}af (AssetForge)`
                         console.error("Help menu interaction error:", error);
                         if (!interaction.replied && !interaction.deferred) {
                             await interaction.reply({
-                                content: "<:error_g:1561271715164721245> Couldn't load that help category.",
+                                content: "<:error_g:1562810019454386196> Couldn't load that help category.",
                                 ephemeral: true
                             }).catch(() => {});
                         }
@@ -577,7 +577,7 @@ Open your ModMail ticket below. All enquiries go to one support team.`,
                     await pendingRef.delete().catch(() => {});
 
                     await message.reply(
-                        "<:error_g:1561271715164721245> I can't open a support ticket for you: none of the servers we share have support tickets set up."
+                        "<:error_g:1562810019454386196> I can't open a support ticket for you: none of the servers we share have support tickets set up."
                     ).catch(() => {});
 
                     return;
@@ -667,7 +667,7 @@ ${message.content || "*[No Text Content]*"}
                     message.attachments
                 ).catch(async () => {
                     await message.reply(
-                        "<:warning_g:1561271566233501797> Could not send DM to the user. They might have DMs disabled."
+                        "<:warning_g:1562810073733136506> Could not send DM to the user. They might have DMs disabled."
                     ).catch(() => {});
                 });
             }
@@ -693,7 +693,7 @@ ${message.content || "*[No Text Content]*"}
 
                 if (!eligibleGuilds.some(g => g.id === chosenGuildId)) {
                     await interaction.reply({
-                        content: "<:error_g:1561271715164721245> That server isn't available for tickets right now.",
+                        content: "<:error_g:1562810019454386196> That server isn't available for tickets right now.",
                         ephemeral: true
                     }).catch(() => {});
 
@@ -737,7 +737,7 @@ Open your ModMail ticket below. All enquiries go to one support team.`,
                 // Ignore stale buttons from the retired Minecraft / Discord / Others flow.
                 if (categoryKey !== "support") {
                     await interaction.user.send(
-                        "<:warning_g:1561271566233501797> The support options have changed. Send me a new DM to open a ModMail ticket."
+                        "<:warning_g:1562810073733136506> The support options have changed. Send me a new DM to open a ModMail ticket."
                     ).catch(() => {});
                     return;
                 }
@@ -756,7 +756,7 @@ Open your ModMail ticket below. All enquiries go to one support team.`,
 
                 if (!targetGuildId) {
                     await interaction.user.send(
-                        "<:warning_g:1561271566233501797> Please send me a new message to start your support ticket."
+                        "<:warning_g:1562810073733136506> Please send me a new message to start your support ticket."
                     ).catch(() => {});
 
                     return;
@@ -773,7 +773,7 @@ Open your ModMail ticket below. All enquiries go to one support team.`,
 
                 if (!existingTicketSnapshot.empty) {
                     await interaction.user.send(
-                        "<:warning_g:1561271566233501797> You already have an active support ticket."
+                        "<:warning_g:1562810073733136506> You already have an active support ticket."
                     ).catch(() => {});
 
                     return;
@@ -786,7 +786,7 @@ Open your ModMail ticket below. All enquiries go to one support team.`,
 
                 if (!guild) {
                     await interaction.user.send(
-                        "<:error_g:1561271715164721245> I could not access the support server. Please try again later."
+                        "<:error_g:1562810019454386196> I could not access the support server. Please try again later."
                     ).catch(() => {});
 
                     return;
@@ -796,7 +796,7 @@ Open your ModMail ticket below. All enquiries go to one support team.`,
 
                 if (!cfg.ticketCategory) {
                     await interaction.user.send(
-                        "<:error_g:1561271715164721245> Support tickets aren't set up in that server yet."
+                        "<:error_g:1562810019454386196> Support tickets aren't set up in that server yet."
                     ).catch(() => {});
 
                     return;
@@ -814,7 +814,7 @@ Open your ModMail ticket below. All enquiries go to one support team.`,
                     );
 
                     await interaction.user.send(
-                        "<:error_g:1561271715164721245> Something went wrong while creating your ticket. Please try again later."
+                        "<:error_g:1562810019454386196> Something went wrong while creating your ticket. Please try again later."
                     ).catch(() => {});
 
                     return;
@@ -904,7 +904,7 @@ Open your ModMail ticket below. All enquiries go to one support team.`,
                     );
 
                     await interaction.user.send(
-                        "<:error_g:1561271715164721245> Failed to create your support ticket. Please try again later."
+                        "<:error_g:1562810019454386196> Failed to create your support ticket. Please try again later."
                     ).catch(() => {});
 
                     return;
@@ -1043,7 +1043,7 @@ ${categoryName}
                     createCard({
                         color: COLORS.GREEN,
                         content:
-`# <:success_g:1561271843346714777> Ticket Created
+`# <:success_g:1562810067642884177> Ticket Created
 
 **Ticket:** #${formattedId}
 **Category:** ${categoryName}
@@ -1137,7 +1137,7 @@ Our support team will get back to you soon.`,
                 if (!isAdmin && !hasSupportRole) {
                     await interaction.followUp({
                         content:
-                            "<:error_g:1561271715164721245> You do not have the required support role to claim this ticket.",
+                            "<:error_g:1562810019454386196> You do not have the required support role to claim this ticket.",
                         ephemeral: true
                     }).catch(() => {});
 
@@ -1147,7 +1147,7 @@ Our support team will get back to you soon.`,
                 if (ticketData.claimedBy) {
                     await interaction.followUp({
                         content:
-                            "<:warning_g:1561271566233501797> This ticket has already been claimed.",
+                            "<:warning_g:1562810073733136506> This ticket has already been claimed.",
                         ephemeral: true
                     }).catch(() => {});
 
@@ -1249,7 +1249,7 @@ This ticket has been claimed by ${interaction.user}.`,
                 if (!isAdmin && !hasSupportRole) {
                     await interaction.reply({
                         content:
-                            "<:error_g:1561271715164721245> You do not have the required support role to change this setting.",
+                            "<:error_g:1562810019454386196> You do not have the required support role to change this setting.",
                         ephemeral: true
                     }).catch(() => {});
 
@@ -1314,7 +1314,7 @@ Staff names will now be shown to the user.`,
 
                 if (!isAdmin && !hasSupportRole) {
                     await interaction.reply({
-                        content: "<:error_g:1561271715164721245> You do not have the required support role to close this ticket.",
+                        content: "<:error_g:1562810019454386196> You do not have the required support role to close this ticket.",
                         ephemeral: true
                     }).catch(() => {});
                     return;
@@ -1430,7 +1430,7 @@ Staff names will now be shown to the user.`,
 
                 if (!isAdmin && !hasSupportRole) {
                     await interaction.followUp({
-                        content: "<:error_g:1561271715164721245> You do not have the required support role to close this ticket.",
+                        content: "<:error_g:1562810019454386196> You do not have the required support role to close this ticket.",
                         ephemeral: true
                     }).catch(() => {});
                     return;
@@ -1566,7 +1566,7 @@ Staff names will now be shown to the user.`,
                     }).catch(async error => {
                         console.error("ModMail transcript log send failed:", error);
                         await logsChannel.send({
-                            content: "<:warning_g:1561271566233501797> Transcript upload failed for ticket #" + formattedId + ".",
+                            content: "<:warning_g:1562810073733136506> Transcript upload failed for ticket #" + formattedId + ".",
                             files: [transcriptFile]
                         }).catch(() => {});
                     });

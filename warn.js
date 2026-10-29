@@ -64,7 +64,7 @@ module.exports = client => {
             return message.channel.send(
                 cardReply(
                     ERROR_RED,
-                    "<a:error:1532986765105696778> Permission Denied",
+                    "<a:error:1562810082469740594> Permission Denied",
                     "You do not have permission to use this command."
                 )
             );
@@ -98,7 +98,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Invalid Usage",
+                            "<a:error:1562810082469740594> Invalid Usage",
                             `**Usage:** \`${PREFIX}warn @user [reason]\`\n\nReplies do not count; mention the user directly.`
                         )
                     );
@@ -157,7 +157,7 @@ module.exports = client => {
                     await user.send(
                         cardReply(
                             WARN_YELLOW,
-                            `<a:Warning:1532986372716236932> Warning Received | ${message.guild.name}`,
+                            `<a:Warning:1562810154930413569> Warning Received | ${message.guild.name}`,
                             `**Reason:** ${reason}`
                         )
                     );
@@ -185,7 +185,7 @@ module.exports = client => {
 
                 const options = cardReply(
                     WARNED_GREEN,
-                    `<:success_g:1561271843346714777> ${user.user.username} has been warned.`,
+                    `<:success_g:1562810067642884177> ${user.user.username} has been warned.`,
                     `**Reason**\n${reason}\n\n` +
                     `**Warned by**\n${message.author.username} (${message.author.id})\n\n` +
                     `**Timestamp**\n${formattedDate}\n\n` +
@@ -241,7 +241,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Invalid Usage",
+                            "<a:error:1562810082469740594> Invalid Usage",
                             `**Usage:** \`${PREFIX}wlist @user\`\n\nReplies do not count; mention the user directly.`
                         )
                     );
@@ -260,9 +260,9 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             COLORS.GREEN,
-                            "<a:success:1532986625343099050> Clean Record",
-                            `<:Shield_2:1532989398642327594> **User**\n${user}\n\n` +
-                            `<a:Warning:1532986372716236932> **Warnings**\n` +
+                            "<a:success:1562810143425691790> Clean Record",
+                            `<:Shield_2:1562810059946328185> **User**\n${user}\n\n` +
+                            `<a:Warning:1562810154930413569> **Warnings**\n` +
                             `No warnings found.`
                         )
                     );
@@ -274,9 +274,9 @@ module.exports = client => {
                     .map(
                         (warn, index) =>
                             `**Warning #${userWarns.length - index} • ID: ${warn.id || "N/A"}**\n\n` +
-                            `<:Shield_2:1532989398642327594> **Moderator**\n${warn.moderator}\n\n` +
-                            `<a:LP_Message:1532991009066324049> **Reason**\n${warn.reason}\n\n` +
-                            `<a:Clock:1532990759371018372> **Date**\n<t:${Math.floor(
+                            `<:Shield_2:1562810059946328185> **Moderator**\n${warn.moderator}\n\n` +
+                            `<a:LP_Message:1562810046088486952> **Reason**\n${warn.reason}\n\n` +
+                            `<a:Clock:1562810011527286905> **Date**\n<t:${Math.floor(
                                 new Date(warn.timestamp).getTime() / 1000
                             )}:R>`
                     )
@@ -285,9 +285,9 @@ module.exports = client => {
                 await message.channel.send(
                     cardReply(
                         WARN_YELLOW,
-                        "<a:Warning:1532986372716236932> Infraction History",
-                        `<:Shield_2:1532989398642327594> **User**\n${user}\n\n` +
-                        `<:Stats:1532990723408793661> **Total Warnings**\n${userWarns.length}/5\n\n` +
+                        "<a:Warning:1562810154930413569> Infraction History",
+                        `<:Shield_2:1562810059946328185> **User**\n${user}\n\n` +
+                        `<:Stats:1562810062685216788> **Total Warnings**\n${userWarns.length}/5\n\n` +
                         historyBlocks,
                         getAvatarURL(user)
                     )
@@ -306,7 +306,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Invalid Usage",
+                            "<a:error:1562810082469740594> Invalid Usage",
                             `**Usage:** \`${PREFIX}wremove @user <warning ID>\`\n\nReplies do not count; mention the user directly.`
                         )
                     );
@@ -318,7 +318,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Missing Warning ID",
+                            "<a:error:1562810082469740594> Missing Warning ID",
                             `Please provide a valid Warning ID.\n\n` +
                             `**Usage:** \`${PREFIX}wremove @user <warning ID>\``
                         )
@@ -338,7 +338,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> No Warnings Found",
+                            "<a:error:1562810082469740594> No Warnings Found",
                             `**${user.user.tag}** has no warnings to remove.`
                         )
                     );
@@ -352,7 +352,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Warning Not Found",
+                            "<a:error:1562810082469740594> Warning Not Found",
                             `No warning found with ID **${warnId}**.`
                         )
                     );
@@ -376,12 +376,12 @@ module.exports = client => {
 
                 const options = cardReply(
                     COLORS.GREEN,
-                    "<a:success:1532986625343099050> Warning Removed",
-                    `<:Shield_2:1532989398642327594> **User**\n${user}\n\n` +
-                    `<a:Warning:1532986372716236932> **Warning ID**\n\`${removed.id}\`\n\n` +
-                    `<a:LP_Message:1532991009066324049> **Reason**\n${removed.reason}\n\n` +
-                    `<:Shield_2:1532989398642327594> **Originally Warned By**\n${removed.moderator}\n\n` +
-                    `<a:settings:1532990547394957393> **Removed By**\n${message.author}`,
+                    "<a:success:1562810143425691790> Warning Removed",
+                    `<:Shield_2:1562810059946328185> **User**\n${user}\n\n` +
+                    `<a:Warning:1562810154930413569> **Warning ID**\n\`${removed.id}\`\n\n` +
+                    `<a:LP_Message:1562810046088486952> **Reason**\n${removed.reason}\n\n` +
+                    `<:Shield_2:1562810059946328185> **Originally Warned By**\n${removed.moderator}\n\n` +
+                    `<a:settings:1562810057454919740> **Removed By**\n${message.author}`,
                     getAvatarURL(user)
                 );
 
@@ -400,7 +400,7 @@ module.exports = client => {
                         }
                     } catch (err) {
                         console.error(
-                            "<:error_g:1561271715164721245> Warning removal log error:",
+                            "<:error_g:1562810019454386196> Warning removal log error:",
                             err
                         );
                     }
@@ -419,7 +419,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Invalid Usage",
+                            "<a:error:1562810082469740594> Invalid Usage",
                             `**Usage:** \`${PREFIX}wreset @user\`\n\nReplies do not count; mention the user directly.`
                         )
                     );
@@ -438,7 +438,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> No Warnings Found",
+                            "<a:error:1562810082469740594> No Warnings Found",
                             `**${user.user.tag}** does not have any warnings to reset.`
                         )
                     );
@@ -451,11 +451,11 @@ module.exports = client => {
 
                 const options = cardReply(
                     COLORS.GREEN,
-                    "<a:success:1532986625343099050> Warning History Reset",
-                    `<:Shield_2:1532989398642327594> **User**\n${user}\n\n` +
-                    `<a:Warning:1532986372716236932> **Action**\nAll warnings have been removed\n\n` +
-                    `<a:settings:1532990547394957393> **Reset By**\n${message.author}\n\n` +
-                    `<a:sparkles:1532986077651140620> Infraction history has been cleared successfully.`,
+                    "<a:success:1562810143425691790> Warning History Reset",
+                    `<:Shield_2:1562810059946328185> **User**\n${user}\n\n` +
+                    `<a:Warning:1562810154930413569> **Action**\nAll warnings have been removed\n\n` +
+                    `<a:settings:1562810057454919740> **Reset By**\n${message.author}\n\n` +
+                    `<a:sparkles:1562810135972417617> Infraction history has been cleared successfully.`,
                     getAvatarURL(user)
                 );
 
@@ -474,7 +474,7 @@ module.exports = client => {
                         }
                     } catch (err) {
                         console.error(
-                            "<:error_g:1561271715164721245> Warning reset log error:",
+                            "<:error_g:1562810019454386196> Warning reset log error:",
                             err
                         );
                     }
@@ -492,7 +492,7 @@ module.exports = client => {
                 .send(
                     cardReply(
                         ERROR_RED,
-                        "<a:error:1532986765105696778> Error",
+                        "<a:error:1562810082469740594> Error",
                         "An error occurred inside the warning system."
                     )
                 )

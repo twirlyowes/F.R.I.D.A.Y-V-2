@@ -189,7 +189,7 @@ module.exports = client => {
             return message.channel.send(
                 cardReply(
                     ERROR_RED,
-                    "<a:error:1532986765105696778> Permission Denied",
+                    "<a:error:1562810082469740594> Permission Denied",
                     "You do not have permission to use this command."
                 )
             );
@@ -217,7 +217,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Invalid Usage",
+                            "<a:error:1562810082469740594> Invalid Usage",
                             "You must **explicitly ping the user** you want to strike.\n\n" +
                             "**Usage:** `" + PREFIX + "strike @user <reason>`\n\n" +
                             "Replying to a message does **not** count — you must type the @mention."
@@ -234,7 +234,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Invalid Target",
+                            "<a:error:1562810082469740594> Invalid Target",
                             "Bots cannot receive strikes."
                         )
                     );
@@ -249,7 +249,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Invalid Target",
+                            "<a:error:1562810082469740594> Invalid Target",
                             "You cannot give yourself a strike."
                         )
                     );
@@ -269,7 +269,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Invalid Usage",
+                            "<a:error:1562810082469740594> Invalid Usage",
                             "A reason is required.\n\n" +
                             "**Usage:** `" + PREFIX + "strike @user <reason>`"
                         )
@@ -373,15 +373,15 @@ module.exports = client => {
                 const options = cardReply(
                     STRIKE_ORANGE,
 
-                    `<a:Warning:1532986372716236932> Strike ${strikeNumber}/3 — ${user.user.username}`,
+                    `<a:Warning:1562810154930413569> Strike ${strikeNumber}/3 — ${user.user.username}`,
 
-                    `<a:LP_Message:1532991009066324049> **Reason**\n` +
+                    `<a:LP_Message:1562810046088486952> **Reason**\n` +
                     `${reason}\n\n` +
 
-                    `<:Shield_2:1532989398642327594> **Strike ID**\n` +
+                    `<:Shield_2:1562810059946328185> **Strike ID**\n` +
                     `#${strikeNumber}\n\n` +
 
-                    `<a:settings:1532990547394957393> **Moderator**\n` +
+                    `<a:settings:1562810057454919740> **Moderator**\n` +
                     `${message.author}`,
 
                     getAvatarURL(user)
@@ -414,7 +414,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Invalid Usage",
+                            "<a:error:1562810082469740594> Invalid Usage",
                             "You must **explicitly ping the user** you want to check.\n\n" +
                             "**Usage:** `" + PREFIX + "strikes @user`\n\n" +
                             "Replying to a message does **not** count — you must type the @mention."
@@ -465,9 +465,9 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             COLORS.GREEN,
-                            "<a:success:1532986625343099050> Clean Record",
+                            "<a:success:1562810143425691790> Clean Record",
 
-                            `<:Shield_2:1532989398642327594> **User**\n` +
+                            `<:Shield_2:1562810059946328185> **User**\n` +
                             `${user}\n\n` +
 
                             `No active strikes found for ${user}.`,
@@ -515,13 +515,13 @@ module.exports = client => {
 
                             `**#${strike.strikeNumber}**\n\n` +
 
-                            `<a:LP_Message:1532991009066324049> **Reason**\n` +
+                            `<a:LP_Message:1562810046088486952> **Reason**\n` +
                             `${strike.reason || "No reason provided"}\n\n` +
 
-                            `<:Shield_2:1532989398642327594> **Moderator**\n` +
+                            `<:Shield_2:1562810059946328185> **Moderator**\n` +
                             `<@${strike.moderatorId}>\n\n` +
 
-                            `<a:Clock:1532990759371018372> **Date**\n` +
+                            `<a:Clock:1562810011527286905> **Date**\n` +
                             `${dateText}`
                         );
                     })
@@ -535,9 +535,9 @@ module.exports = client => {
                     cardReply(
                         STRIKE_ORANGE,
 
-                        `<a:Warning:1532986372716236932> Strikes for ${user.user.username}`,
+                        `<a:Warning:1562810154930413569> Strikes for ${user.user.username}`,
 
-                        `<:Stats:1532990723408793661> **Active Strikes**\n` +
+                        `<:Stats:1562810062685216788> **Active Strikes**\n` +
                         `${strikes.length}\n\n` +
 
                         historyBlocks,
@@ -567,7 +567,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Invalid Usage",
+                            "<a:error:1562810082469740594> Invalid Usage",
                             "**Usage:** `" + PREFIX + "unstrike @user <strike_id>`\n\n" +
                             "Replying to a message does **not** count — you must type the @mention."
                         )
@@ -599,7 +599,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Invalid Usage",
+                            "<a:error:1562810082469740594> Invalid Usage",
                             "A valid strike ID is required.\n\n" +
                             "**Usage:** `" + PREFIX + "unstrike @user <strike_id>`\n\n" +
                             "**Example:** `" + PREFIX + "unstrike @user 2`"
@@ -618,7 +618,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Invalid Strike ID",
+                            "<a:error:1562810082469740594> Invalid Strike ID",
                             "The strike ID must be a positive number."
                         )
                     );
@@ -673,7 +673,7 @@ module.exports = client => {
                     return message.channel.send(
                         cardReply(
                             ERROR_RED,
-                            "<a:error:1532986765105696778> Strike Not Found",
+                            "<a:error:1562810082469740594> Strike Not Found",
                             `Strike #${strikeNumber} was not found for ${user}.`
                         )
                     );
@@ -738,21 +738,21 @@ module.exports = client => {
                 const options = cardReply(
                     COLORS.GREEN,
 
-                    "<a:success:1532986625343099050> Strike Removed",
+                    "<a:success:1562810143425691790> Strike Removed",
 
-                    `<:Shield_2:1532989398642327594> **User**\n` +
+                    `<:Shield_2:1562810059946328185> **User**\n` +
                     `${user}\n\n` +
 
-                    `<a:Warning:1532986372716236932> **Removed Strike**\n` +
+                    `<a:Warning:1562810154930413569> **Removed Strike**\n` +
                     `#${removed.strikeNumber}\n\n` +
 
-                    `<a:LP_Message:1532991009066324049> **Reason**\n` +
+                    `<a:LP_Message:1562810046088486952> **Reason**\n` +
                     `${removed.reason || "No reason provided"}\n\n` +
 
-                    `<a:settings:1532990547394957393> **Removed By**\n` +
+                    `<a:settings:1562810057454919740> **Removed By**\n` +
                     `${message.author}\n\n` +
 
-                    `<a:sparkles:1532986077651140620> ` +
+                    `<a:sparkles:1562810135972417617> ` +
                     (
                         remaining.length === 0
                             ? "That was their last strike — numbering has reset, so their next strike will be #1."
@@ -780,7 +780,7 @@ module.exports = client => {
                 .send(
                     cardReply(
                         ERROR_RED,
-                        "<a:error:1532986765105696778> Error",
+                        "<a:error:1562810082469740594> Error",
                         "An error occurred inside the strike system. Please try again."
                     )
                 )

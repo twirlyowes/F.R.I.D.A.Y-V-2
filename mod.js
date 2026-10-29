@@ -234,7 +234,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> You don't have permission to use this command.",
+              "<a:error:1562810082469740594> You don't have permission to use this command.",
               message.author
             )
           );
@@ -247,7 +247,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               WARNING_YELLOW,
-              `<a:Warning:1532986372716236932> **Usage:** \`${PREFIX}kick @user [reason]\`\n\nReplying to a message does **not** count — you must type the @mention.`,
+              `<a:Warning:1562810154930413569> **Usage:** \`${PREFIX}kick @user [reason]\`\n\nReplying to a message does **not** count — you must type the @mention.`,
               message.author
             )
           );
@@ -257,7 +257,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> I cannot kick this user. They may have a higher role than me or have Administrator permissions.",
+              "<a:error:1562810082469740594> I cannot kick this user. They may have a higher role than me or have Administrator permissions.",
               message.author
             )
           );
@@ -267,7 +267,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> You cannot kick this user because they have an equal or higher role than you.",
+              "<a:error:1562810082469740594> You cannot kick this user because they have an equal or higher role than you.",
               message.author
             )
           );
@@ -281,7 +281,7 @@ module.exports = (client) => {
 
         const options = cardReply(
           ORANGE,
-          `<:kick:1532337429426471044> **Member Kicked**\n\n**User:** ${user.user.tag} (${user.id})\n**Reason:** ${reason}`,
+          `<:kick:1562810087964147722> **Member Kicked**\n\n**User:** ${user.user.tag} (${user.id})\n**Reason:** ${reason}`,
           message.author
         );
 
@@ -298,7 +298,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> You don't have permission to use this command.",
+              "<a:error:1562810082469740594> You don't have permission to use this command.",
               message.author
             )
           );
@@ -311,7 +311,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               WARNING_YELLOW,
-              `<a:Warning:1532986372716236932> **Usage:** \`${PREFIX}ban @user [reason]\`\n\nReplying to a message does **not** count — you must type the @mention.`,
+              `<a:Warning:1562810154930413569> **Usage:** \`${PREFIX}ban @user [reason]\`\n\nReplying to a message does **not** count — you must type the @mention.`,
               message.author
             )
           );
@@ -321,7 +321,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> I cannot ban this user. They may have a higher role than me or have Administrator permissions.",
+              "<a:error:1562810082469740594> I cannot ban this user. They may have a higher role than me or have Administrator permissions.",
               message.author
             )
           );
@@ -331,7 +331,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> You cannot ban this user because they have an equal or higher role than you.",
+              "<a:error:1562810082469740594> You cannot ban this user because they have an equal or higher role than you.",
               message.author
             )
           );
@@ -347,7 +347,7 @@ module.exports = (client) => {
 
         const options = cardReply(
           COLORS.RED,
-          `<a:ban:1532989769766801511> **Member Banned**\n\n**User:** ${user.user.tag} (${user.id})\n**Reason:** ${reason}`,
+          `<a:ban:1562809995307778188> **Member Banned**\n\n**User:** ${user.user.tag} (${user.id})\n**Reason:** ${reason}`,
           message.author
         );
 
@@ -364,7 +364,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> You don't have permission to use this command.",
+              "<a:error:1562810082469740594> You don't have permission to use this command.",
               message.author
             )
           );
@@ -377,7 +377,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               WARNING_YELLOW,
-              `<a:Warning:1532986372716236932> **Usage:** \`${PREFIX}nick @user [new nickname / leave blank to reset]\`\n\nReplying to a message does **not** count — you must type the @mention.`,
+              `<a:Warning:1562810154930413569> **Usage:** \`${PREFIX}nick @user [new nickname / leave blank to reset]\`\n\nReplying to a message does **not** count — you must type the @mention.`,
               message.author
             )
           );
@@ -387,7 +387,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> I cannot change this user's nickname. They may have a higher role than me.",
+              "<a:error:1562810082469740594> I cannot change this user's nickname. They may have a higher role than me.",
               message.author
             )
           );
@@ -397,7 +397,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> You cannot change this user's nickname due to role hierarchy.",
+              "<a:error:1562810082469740594> You cannot change this user's nickname due to role hierarchy.",
               message.author
             )
           );
@@ -431,7 +431,7 @@ module.exports = (client) => {
         const sent = await message.reply(
           cardReply(
             BLURPLE,
-            "<a:loading:1532985888118931517> Measuring latency...",
+            "<a:loading:1562810100647989350> Measuring latency...",
             message.author
           )
         );
@@ -444,7 +444,7 @@ module.exports = (client) => {
         await sent.edit(
           cardReply(
             COLORS.GREEN,
-            `<a:ONLINE:1532986890519711815> **Pong!**\n\n**Roundtrip Latency:** \`${latency}ms\`\n**API Latency:** \`${apiLatency}ms\``,
+            `<a:ONLINE:1562810127814500382> **Pong!**\n\n**Roundtrip Latency:** \`${latency}ms\`\n**API Latency:** \`${apiLatency}ms\``,
             message.author
           )
         );
@@ -483,7 +483,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> You don't have permission to use this command.",
+              "<a:error:1562810082469740594> You don't have permission to use this command.",
               message.author
             )
           );
@@ -505,7 +505,7 @@ module.exports = (client) => {
 
         const options = cardReply(
           COLORS.RED,
-          `<:lock:1532337641494937651> **Channel Locked**\n\n**Channel:** ${channel}\n**Reason:** ${reason}`,
+          `<:lock:1562810104393375876> **Channel Locked**\n\n**Channel:** ${channel}\n**Reason:** ${reason}`,
           message.author
         );
 
@@ -522,7 +522,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> You don't have permission to use this command.",
+              "<a:error:1562810082469740594> You don't have permission to use this command.",
               message.author
             )
           );
@@ -544,7 +544,7 @@ module.exports = (client) => {
 
         const options = cardReply(
           COLORS.GREEN,
-          `<:unlock:1532337553217294528> **Channel Unlocked**\n\n**Channel:** ${channel}\n**Reason:** ${reason}`,
+          `<:unlock:1562810151977754775> **Channel Unlocked**\n\n**Channel:** ${channel}\n**Reason:** ${reason}`,
           message.author
         );
 
@@ -561,7 +561,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> You don't have permission to use this command.",
+              "<a:error:1562810082469740594> You don't have permission to use this command.",
               message.author
             )
           );
@@ -574,7 +574,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               WARNING_YELLOW,
-              `<a:Warning:1532986372716236932> **Usage:** \`${PREFIX}unban [User ID] [reason]\``,
+              `<a:Warning:1562810154930413569> **Usage:** \`${PREFIX}unban [User ID] [reason]\``,
               message.author
             )
           );
@@ -587,7 +587,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> This user is not banned or the provided ID is invalid.",
+              "<a:error:1562810082469740594> This user is not banned or the provided ID is invalid.",
               message.author
             )
           );
@@ -600,7 +600,7 @@ module.exports = (client) => {
 
         const options = cardReply(
           COLORS.GREEN,
-          `<a:success:1532986625343099050> **Member Unbanned**\n\n**User:** ${banInfo.user.tag} (${banInfo.user.id})\n**Reason:** ${reason}`,
+          `<a:success:1562810143425691790> **Member Unbanned**\n\n**User:** ${banInfo.user.tag} (${banInfo.user.id})\n**Reason:** ${reason}`,
           message.author
         );
 
@@ -617,7 +617,7 @@ module.exports = (client) => {
       message.reply(
         cardReply(
           COLORS.RED,
-          "<a:error:1532986765105696778> An unexpected error occurred while executing this command.",
+          "<a:error:1562810082469740594> An unexpected error occurred while executing this command.",
           message.author
         )
       ).catch(() => {});

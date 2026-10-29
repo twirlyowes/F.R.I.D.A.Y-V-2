@@ -26,7 +26,7 @@ const { COLORS, createCard, getAvatarURL } = require("./lib/pixelVillaUI");
 const TOKEN = process.env.DISCORD_TOKEN;
 
 if (!TOKEN) {
-  console.error("<:error_g:1561271715164721245> DISCORD_TOKEN environment variable is not set.");
+  console.error("<:error_g:1562810019454386196> DISCORD_TOKEN environment variable is not set.");
   process.exit(1);
 }
 
@@ -104,9 +104,9 @@ async function registerSlashCommands() {
         .catch(() => {});
     }
 
-    console.log("<:success_g:1561271843346714777> Slash commands registered globally.");
+    console.log("<:success_g:1562810067642884177> Slash commands registered globally.");
   } catch (err) {
-    console.error("<:error_g:1561271715164721245> Failed to register slash commands:", err);
+    console.error("<:error_g:1562810019454386196> Failed to register slash commands:", err);
   }
 }
 
@@ -882,11 +882,11 @@ console.log(
 
 client.login(TOKEN)
   .then(() =>
-    console.log("<:success_g:1561271843346714777> Login successful")
+    console.log("<:success_g:1562810067642884177> Login successful")
   )
   .catch(err =>
     console.error(
-      "<:error_g:1561271715164721245> Login failed:",
+      "<:error_g:1562810019454386196> Login failed:",
       err
     )
   );

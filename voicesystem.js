@@ -403,13 +403,13 @@ module.exports = (client) => {
           description:
 `${member}, welcome to your private voice channel!
 
-<:Shield_2:1532989398642327594> **Channel Owner**
+<:Shield_2:1562810059946328185> **Channel Owner**
 > ${member}
 
-<a:settings:1532990547394957393> **Manage your room using these commands:**`,
+<a:settings:1562810057454919740> **Manage your room using these commands:**`,
           fields: [
             {
-              name: "<a:sparkles:1532986077651140620> Voice Commands",
+              name: "<a:sparkles:1562810135972417617> Voice Commands",
               value:
 "`" + prefix + "vclock` • Lock your room\n" +
 "`" + prefix + "vcunlock` • Unlock your room\n" +
@@ -476,45 +476,45 @@ module.exports = (client) => {
 
     const notOwnerCard = buildCard({
       color: CARD_COLORS.RED,
-      description: "<:error_g:1561271715164721245> Only the **owner** of this temporary voice channel can use these controls."
+      description: "<:error_g:1562810019454386196> Only the **owner** of this temporary voice channel can use these controls."
     });
 
     // LOCK COMMAND  
     if (command === "vclock") {  
       if (!isOwner) return await message.reply({ components: [notOwnerCard], flags: MessageFlags.IsComponentsV2 });  
       await memberChannel.permissionOverwrites.edit(message.guild.id, { Connect: false });  
-      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: "<:lock:1532337641494937651> Voice channel has been **locked**." })], flags: MessageFlags.IsComponentsV2 });  
+      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: "<:lock:1562810104393375876> Voice channel has been **locked**." })], flags: MessageFlags.IsComponentsV2 });  
     }  
 
     // UNLOCK COMMAND  
     if (command === "vcunlock") {  
       if (!isOwner) return await message.reply({ components: [notOwnerCard], flags: MessageFlags.IsComponentsV2 });  
       await memberChannel.permissionOverwrites.edit(message.guild.id, { Connect: true });  
-      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: "<:unlock:1532337553217294528> Voice channel has been **unlocked**." })], flags: MessageFlags.IsComponentsV2 });  
+      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: "<:unlock:1562810151977754775> Voice channel has been **unlocked**." })], flags: MessageFlags.IsComponentsV2 });  
     }  
 
     // HIDE COMMAND  
     if (command === "vchide") {  
       if (!isOwner) return await message.reply({ components: [notOwnerCard], flags: MessageFlags.IsComponentsV2 });  
       await memberChannel.permissionOverwrites.edit(message.guild.id, { ViewChannel: false });  
-      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: "<:hide:1532336151854190743> Voice channel is now **hidden**." })], flags: MessageFlags.IsComponentsV2 });  
+      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: "<:hide:1562810085049106593> Voice channel is now **hidden**." })], flags: MessageFlags.IsComponentsV2 });  
     }  
 
     // UNHIDE COMMAND  
     if (command === "vcunhide") {  
       if (!isOwner) return await message.reply({ components: [notOwnerCard], flags: MessageFlags.IsComponentsV2 });  
       await memberChannel.permissionOverwrites.edit(message.guild.id, { ViewChannel: true });  
-      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: "<:unhide:1532336276164841482> Voice channel is now **visible**." })], flags: MessageFlags.IsComponentsV2 });  
+      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: "<:unhide:1562810147812941976> Voice channel is now **visible**." })], flags: MessageFlags.IsComponentsV2 });  
     }  
 
     // RENAME COMMAND  
     if (command === "vcname") {  
       if (!isOwner) return await message.reply({ components: [notOwnerCard], flags: MessageFlags.IsComponentsV2 });  
       const newName = args.join(" ");  
-      if (!newName) return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1561271566233501797> Please provide a new name. (e.g., `vcname Chill Lounge`)" })], flags: MessageFlags.IsComponentsV2 });  
+      if (!newName) return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1562810073733136506> Please provide a new name. (e.g., `vcname Chill Lounge`)" })], flags: MessageFlags.IsComponentsV2 });  
         
       await memberChannel.setName(newName);  
-      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: `<:name:1532337141214871622> Channel renamed to **${newName}**.` })], flags: MessageFlags.IsComponentsV2 });  
+      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: `<:name:1562810107467927592> Channel renamed to **${newName}**.` })], flags: MessageFlags.IsComponentsV2 });  
     }  
 
     // USER LIMIT COMMAND  
@@ -522,11 +522,11 @@ module.exports = (client) => {
       if (!isOwner) return await message.reply({ components: [notOwnerCard], flags: MessageFlags.IsComponentsV2 });  
       const limit = parseInt(args[0], 10);  
       if (isNaN(limit) || limit < 0 || limit > 99) {  
-        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1561271566233501797> Please specify a valid limit between 0 and 99." })], flags: MessageFlags.IsComponentsV2 });  
+        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1562810073733136506> Please specify a valid limit between 0 and 99." })], flags: MessageFlags.IsComponentsV2 });  
       }  
 
       await memberChannel.setUserLimit(limit);  
-      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: `<:limit:1532340516249931826> User limit set to **${limit === 0 ? "Unlimited" : limit}**.` })], flags: MessageFlags.IsComponentsV2 });  
+      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: `<:limit:1562810096415932566> User limit set to **${limit === 0 ? "Unlimited" : limit}**.` })], flags: MessageFlags.IsComponentsV2 });  
     }  
 
     // ADD / PERMIT COMMAND  
@@ -535,14 +535,14 @@ module.exports = (client) => {
       const targetMember = await findTargetMember(message, args);  
         
       if (!targetMember) {  
-        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1561271566233501797> Please specify a valid user name or mention to add to your channel." })], flags: MessageFlags.IsComponentsV2 });  
+        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1562810073733136506> Please specify a valid user name or mention to add to your channel." })], flags: MessageFlags.IsComponentsV2 });  
       }  
 
       await memberChannel.permissionOverwrites.edit(targetMember.id, {   
         Connect: true,   
         ViewChannel: true   
       });  
-      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: `<:add:1532337807765278801> Added **${targetMember.user.tag}** to your channel permissions.` })], flags: MessageFlags.IsComponentsV2 });  
+      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: `<:add:1562810077046505603> Added **${targetMember.user.tag}** to your channel permissions.` })], flags: MessageFlags.IsComponentsV2 });  
     }  
 
     // REMOVE / REVOKE COMMAND  
@@ -551,15 +551,15 @@ module.exports = (client) => {
       const targetMember = await findTargetMember(message, args);  
 
       if (!targetMember) {  
-        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1561271566233501797> Please specify a valid user name or mention to remove from your channel permissions." })], flags: MessageFlags.IsComponentsV2 });  
+        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1562810073733136506> Please specify a valid user name or mention to remove from your channel permissions." })], flags: MessageFlags.IsComponentsV2 });  
       }  
 
       if (targetMember.id === ownerId) {  
-        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:error_g:1561271715164721245> You cannot remove permissions for yourself." })], flags: MessageFlags.IsComponentsV2 });  
+        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:error_g:1562810019454386196> You cannot remove permissions for yourself." })], flags: MessageFlags.IsComponentsV2 });  
       }  
 
       await memberChannel.permissionOverwrites.delete(targetMember.id).catch(() => {});  
-      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: `<:remove:1532337229907759124> Revoked channel permissions for **${targetMember.user.tag}**.` })], flags: MessageFlags.IsComponentsV2 });  
+      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: `<:remove:1562810132918706276> Revoked channel permissions for **${targetMember.user.tag}**.` })], flags: MessageFlags.IsComponentsV2 });  
     }  
 
     // KICK COMMAND  
@@ -568,11 +568,11 @@ module.exports = (client) => {
       const targetMember = await findTargetMember(message, args);  
 
       if (!targetMember || targetMember.voice.channelId !== memberChannel.id) {  
-        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1561271566233501797> Please specify a valid user who is currently inside your voice channel." })], flags: MessageFlags.IsComponentsV2 });  
+        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1562810073733136506> Please specify a valid user who is currently inside your voice channel." })], flags: MessageFlags.IsComponentsV2 });  
       }  
 
       await targetMember.voice.disconnect();  
-      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: `<:kick:1532337429426471044> Kicked **${targetMember.user.tag}** from your channel.` })], flags: MessageFlags.IsComponentsV2 });  
+      return await message.reply({ components: [buildCard({ color: CARD_COLORS.GREEN, description: `<:kick:1562810087964147722> Kicked **${targetMember.user.tag}** from your channel.` })], flags: MessageFlags.IsComponentsV2 });  
     }  
 
     // 1. TRANSFER OWNERSHIP COMMAND (`vcowner`)
@@ -581,11 +581,11 @@ module.exports = (client) => {
       const targetMember = await findTargetMember(message, args);  
 
       if (!targetMember || targetMember.voice.channelId !== memberChannel.id) {  
-        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1561271566233501797> Please specify a valid user who is currently inside your voice channel." })], flags: MessageFlags.IsComponentsV2 });  
+        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1562810073733136506> Please specify a valid user who is currently inside your voice channel." })], flags: MessageFlags.IsComponentsV2 });  
       }  
 
       if (targetMember.id === ownerId) {  
-        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1561271566233501797> You are already the owner of this channel." })], flags: MessageFlags.IsComponentsV2 });  
+        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:warning_g:1562810073733136506> You are already the owner of this channel." })], flags: MessageFlags.IsComponentsV2 });  
       }  
 
       try {  
@@ -615,13 +615,13 @@ module.exports = (client) => {
 
         const successCard = buildCard({
           color: CARD_COLORS.GREEN,
-          description: `<:owner:1532337324762075146> Ownership transferred to ${targetMember}.`
+          description: `<:owner:1562810130494398515> Ownership transferred to ${targetMember}.`
         });
 
         return await message.reply({ components: [successCard], flags: MessageFlags.IsComponentsV2 });  
       } catch (error) {  
         console.error("Error transferring ownership:", error);  
-        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:error_g:1561271715164721245> An error occurred while transferring ownership." })], flags: MessageFlags.IsComponentsV2 });  
+        return await message.reply({ components: [buildCard({ color: CARD_COLORS.RED, description: "<:error_g:1562810019454386196> An error occurred while transferring ownership." })], flags: MessageFlags.IsComponentsV2 });  
       }  
     }
   });

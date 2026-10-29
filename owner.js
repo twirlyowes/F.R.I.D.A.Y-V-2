@@ -76,7 +76,7 @@ module.exports = client => {
             : "<@" + userId + "> is already an owner in this server.");
         }
         return reply(message, COLORS.GREEN,
-          "<:success_g:1561271843346714777> Added <@" + userId + "> as a delegated owner in **" + message.guild.name + "**. Access applies to this server only: AutoMod + Anti-Nuke.");
+          "<:success_g:1562810067642884177> Added <@" + userId + "> as a delegated owner in **" + message.guild.name + "**. Access applies to this server only: AutoMod + Anti-Nuke.");
       }
 
       const removed = await serverOwners.remove(message.guild.id, userId);
