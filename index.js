@@ -825,6 +825,7 @@ require("./verify")(client);
 console.log("Loading misc...");
 require("./misc")(client);
 require("./utilities")(client);
+require("./assetforge")(client);
 
 console.log("Loading voicesystem...");
 require("./voicesystem")(client);
