@@ -499,3 +499,12 @@ module.exports = function (client) {
     }
   });
 };
+
+module.exports.__test = Object.freeze({
+  formatOf,
+  readDimensions,
+  inspectImage,
+  parseLimit,
+  validateLottie,
+  AssetForgeUserError
+});
