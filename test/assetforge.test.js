@@ -6,6 +6,8 @@ const {
   inspectImage,
   parseLimit,
   validateLottie,
+  validatePassThroughAnimation,
+  safeUrl,
   AssetForgeUserError
 } = require("../assetforge").__test;
 
@@ -101,4 +103,24 @@ test("Lottie validation requires a bounded 320x320 self-contained document", () 
 
 test("unknown formats are rejected by image inspection", () => {
   assert.throws(() => inspectImage(Buffer.from("not an image"), ["png", "jpg"]), AssetForgeUserError);
+});
+
+
+test("CDN URL guard rejects untrusted hosts, credentials, ports and HTTP", () => {
+  assert.equal(new URL(safeUrl("https://cdn.discordapp.com/emojis/123.png")).hostname, "cdn.discordapp.com");
+  assert.throws(() => safeUrl("http://cdn.discordapp.com/emojis/123.png"), AssetForgeUserError);
+  assert.throws(() => safeUrl("https://evil.invalid/image.png"), AssetForgeUserError);
+  assert.throws(() => safeUrl("https://user:pass@cdn.discordapp.com/image.png"), AssetForgeUserError);
+  assert.throws(() => safeUrl("https://cdn.discordapp.com:8443/image.png"), AssetForgeUserError);
+});
+
+test("animated files are only passed through when their container ends cleanly", () => {
+  const gif = Buffer.alloc(13);
+  gif.write("GIF89a", 0, "ascii");
+  gif.writeUInt16LE(32, 6);
+  gif.writeUInt16LE(32, 8);
+  gif[12] = 0x3b;
+  const info = inspectImage(gif, ["gif"]);
+  assert.doesNotThrow(() => validatePassThroughAnimation(gif, info));
+  assert.throws(() => validatePassThroughAnimation(Buffer.concat([gif, Buffer.from("MZ")]), info), AssetForgeUserError);
 });

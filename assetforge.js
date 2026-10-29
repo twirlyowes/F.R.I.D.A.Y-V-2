@@ -195,8 +195,9 @@ function parseLimit(raw) {
 function safeUrl(raw) {
   let url;
   try { url = new URL(raw); } catch { throw new AssetForgeUserError("That does not look like a valid URL."); }
-  if (url.protocol !== "https:" || !CDN_HOSTS.has(url.hostname.toLowerCase())) {
-    throw new AssetForgeUserError("For safety, AssetForge only downloads files hosted on Discord's CDN.");
+  if (url.protocol !== "https:" || !CDN_HOSTS.has(url.hostname.toLowerCase()) ||
+      url.username || url.password || (url.port && url.port !== "443")) {
+    throw new AssetForgeUserError("Use HTTPS on an approved Discord CDN host, without URL credentials or a custom port.");
   }
   return url.toString();
 }
@@ -526,5 +527,7 @@ module.exports.__test = Object.freeze({
   inspectImage,
   parseLimit,
   validateLottie,
+  validatePassThroughAnimation,
+  safeUrl,
   AssetForgeUserError
 });
