@@ -122,7 +122,7 @@ function inspectImage(buffer, allowedFormats = ["png", "jpg", "webp", "gif"]) {
     userError("This image is too large to process safely. The limit is " +
       MAX_PIXELS.toLocaleString("en-US") + " pixels and " + MAX_SIDE.toLocaleString("en-US") + " pixels per side.");
   }
-  return { format, ...dimensions, animated: isAnimated(buffer, format) };
+  return { format, ...dimensions, animated: animated(buffer, format) };
 }
 
 async function decodeImage(buffer) {
