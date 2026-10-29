@@ -369,6 +369,7 @@ async function buildPanel(guild, userId, note = null) {
     content:
       `# <:FRIDAY:1564865373583581266> AutoMod\n\n${note ? `${note}\n\n` : ""}` +
       `**Master switch:** ${cfg.enabled ? "🟢 ON" : "🔴 OFF"}\n` +
+      `**Advanced Antiwords:** ${cfg.advancedAntiwords ? "🟢 ON" : "⚫ OFF"} — Hindi/Hinglish sexual abuse, family-targeted obscenity, explicit insults and spelling evasion. This switch works independently of the AutoMod master switch.\n` +
       `**Action:** ${ACTION_TEXT[cfg.action]}${cfg.action === "timeout" ? ` (${cfg.timeoutMinutes} min)` : ""}\n` +
       `> ${ACTION_HELP[cfg.action]}\n${logWarning}\n` +
       `${ruleLines.join("\n")}\n\n` +
@@ -388,6 +389,10 @@ async function buildPanel(guild, userId, note = null) {
 
   const row2 = new ActionRowBuilder().addComponents(
     ...["links", "caps", "badwords"].map(toggle),
+    new ButtonBuilder()
+      .setCustomId("am:advanced:" + userId)
+      .setLabel("ADVANCED ANTIWORDS: " + (cfg.advancedAntiwords ? "ON" : "OFF"))
+      .setStyle(cfg.advancedAntiwords ? ButtonStyle.Success : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`am:reset:${userId}`)
       .setLabel("Reset")
@@ -493,6 +498,14 @@ async function handlePanel(interaction) {
     });
 
     return refresh(`${cfg.rules[rule] ? "<:success_g:1561271843346714777>" : "⬜"} **${RULES[rule].label}** is now ${cfg.rules[rule] ? "on" : "off"}.`);
+  }
+
+  if (action === "advanced" && interaction.isButton()) {
+    const cfg = await protection.updateAutomod(guild.id, c => {
+      c.advancedAntiwords = !c.advancedAntiwords;
+    });
+
+    return refresh("ADVANCED ANTIWORDS is now **" + (cfg.advancedAntiwords ? "ON" : "OFF") + "** for this server.");
   }
 
   if (action === "master" && interaction.isButton()) {

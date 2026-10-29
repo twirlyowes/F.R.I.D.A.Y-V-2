@@ -5,6 +5,11 @@ const guildConfig = require("./lib/guildConfig");
 const protection = require("./lib/protection");
 const { parseCommand } = require("./lib/prefix");
 const db = require("./firebase");
+const { detectAdvancedAbuse } = require("./lib/advancedAntiwords");
+
+const advancedOffences = new Map();
+const advancedLogCooldown = new Map();
+const ADVANCED_OFFENCE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const badWordsFile = path.join(__dirname, "badwords.json");
 
@@ -67,6 +72,80 @@ async function isFilterExempt(member) {
 
 const linkRegex = /(https?:\/\/|www\.)[^\s]+/i;
 
+async function handleAdvancedViolation(message, detection, client) {
+    const now = Date.now();
+    const key = message.guild.id + ":" + message.author.id;
+    const history = (advancedOffences.get(key) || []).filter(ts => now - ts < ADVANCED_OFFENCE_WINDOW_MS);
+    history.push(now);
+    advancedOffences.set(key, history);
+
+    await message.delete().catch(() => {});
+
+    const timeoutMinutes = history.length === 2 ? 5 : history.length >= 3 ? 60 : 0;
+    let timeoutApplied = false;
+    if (timeoutMinutes && message.member && message.member.moderatable) {
+        try {
+            await message.member.timeout(timeoutMinutes * 60 * 1000, "F.R.I.D.A.Y Advanced Antiwords: repeated abusive message");
+            timeoutApplied = true;
+        } catch (error) {
+            console.error("[Advanced Antiwords] Timeout failed:", error.message);
+        }
+    }
+
+    let noticeText = "<@" + message.author.id + ">, your message was removed by ADVANCED ANTIWORDS.";
+    if (timeoutApplied) {
+        noticeText += " You have been timed out for " + timeoutMinutes + " minutes due to repeated violations.";
+    } else if (timeoutMinutes) {
+        noticeText += " A timeout could not be applied; please contact a moderator.";
+    } else {
+        noticeText += " Further violations may result in a timeout.";
+    }
+
+    const notice = await message.channel.send({
+        content: "<:warning_g:1561271566233501797> " + noticeText,
+        allowedMentions: { parse: [] }
+    }).catch(() => null);
+
+    if (notice) {
+        setTimeout(() => notice.delete().catch(() => {}), 7000).unref?.();
+    }
+
+    const lastLogged = advancedLogCooldown.get(key) || 0;
+    if (timeoutApplied || now - lastLogged > 10000) {
+        advancedLogCooldown.set(key, now);
+        const logChannel = await guildConfig.getLogChannel(message.guild);
+        if (logChannel) {
+            const safeMessage = String(message.content || "")
+                .replace(new RegExp(String.fromCharCode(96).repeat(3), "g"), "'''")
+                .replace(/@/g, "@\u200b")
+                .slice(0, 900);
+            const resultText = timeoutApplied
+                ? "Message deleted; timed out for " + timeoutMinutes + " minutes"
+                : timeoutMinutes
+                    ? "Message deleted; timeout could not be applied"
+                    : "Message deleted; warning sent";
+
+            const embed = new EmbedBuilder()
+                .setColor("#ED7117")
+                .setTitle("ADVANCED ANTIWORDS • Message removed")
+                .setDescription(
+                    "**Member:** " + message.author.tag + " (" + message.author.id + ")\n" +
+                    "**Channel:** " + message.channelId + "\n" +
+                    "**Detection:** " + detection.category + "\n" +
+                    "**Offences in 24 hours:** " + history.length + "\n" +
+                    "**Action:** " + resultText + "\n\n" +
+                    "**Removed message:**\n" + safeMessage
+                )
+                .setFooter({ text: "F.R.I.D.A.Y • AutoMod" })
+                .setTimestamp();
+
+            await logChannel.send({ embeds: [embed], allowedMentions: { parse: [] } }).catch(error => {
+                console.error("[Advanced Antiwords] Could not send log:", error.message);
+            });
+        }
+    }
+}
+
 module.exports = (client) => {
 
     loadDefaultWords();
@@ -80,11 +159,12 @@ module.exports = (client) => {
 
             // The AutoMod panel can switch the word filter off, or skip chosen channels/roles.
             const automod = await protection.getAutomod(message.guild.id);
-            const filterActive =
-                automod.rules.badwords !== false &&
-                !automod.ignoredChannels.includes(message.channelId) &&
-                !(message.channel?.parentId && automod.ignoredChannels.includes(message.channel.parentId)) &&
-                !(message.member && message.member.roles.cache.some(role => automod.ignoredRoles.includes(role.id)));
+            const ignoredByAutoMod =
+                automod.ignoredChannels.includes(message.channelId) ||
+                Boolean(message.channel?.parentId && automod.ignoredChannels.includes(message.channel.parentId)) ||
+                Boolean(message.member && message.member.roles.cache.some(role => automod.ignoredRoles.includes(role.id)));
+            const filterActive = automod.rules.badwords !== false && !ignoredByAutoMod;
+            const advancedFilterActive = automod.advancedAntiwords === true && !ignoredByAutoMod;
             const parsed = await parseCommand(message);
             const command = parsed ? parsed.command : "";
             const args = parsed ? [parsed.command, ...parsed.args] : [];
@@ -127,6 +207,14 @@ module.exports = (client) => {
                         .setTimestamp();
 
                     return message.reply({ embeds: [embed] });
+                }
+            }
+
+            if (!exempt && advancedFilterActive && message.member) {
+                const advancedDetection = detectAdvancedAbuse(message.content);
+                if (advancedDetection) {
+                    await handleAdvancedViolation(message, advancedDetection, client);
+                    return;
                 }
             }
 
@@ -229,6 +317,19 @@ ${deletedMessage.slice(0, 1000)}
             if (!newMessage.guild || newMessage.author?.bot) return;
 
             if (await isFilterExempt(newMessage.member)) return;
+
+            const automod = await protection.getAutomod(newMessage.guild.id);
+            const ignoredByAutoMod =
+                automod.ignoredChannels.includes(newMessage.channelId) ||
+                Boolean(newMessage.channel?.parentId && automod.ignoredChannels.includes(newMessage.channel.parentId)) ||
+                Boolean(newMessage.member && newMessage.member.roles.cache.some(role => automod.ignoredRoles.includes(role.id)));
+            if (automod.advancedAntiwords === true && !ignoredByAutoMod && newMessage.member) {
+                const advancedDetection = detectAdvancedAbuse(newMessage.content || "");
+                if (advancedDetection) {
+                    await handleAdvancedViolation(newMessage, advancedDetection, client);
+                    return;
+                }
+            }
 
             const newContent = newMessage.content || "";
             if (!linkRegex.test(newContent)) return;
