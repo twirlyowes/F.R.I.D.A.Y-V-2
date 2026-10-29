@@ -22,7 +22,7 @@ const { clearSetting } = require("./lib/setupClear");
 const { parseCommand, getPrefix, DEFAULT_PREFIX, MAX_PREFIX_LENGTH } = require("./lib/prefix");
 const { SETTINGS } = guildConfig;
 
-function reply(message, color, content) {
+async function reply(message, color, content) {
   return await message.reply({
     components: [
       createCard({
