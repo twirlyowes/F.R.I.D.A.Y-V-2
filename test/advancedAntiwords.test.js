@@ -17,7 +17,13 @@ test("detects obfuscated and elongated insult spellings", () => {
   assert.ok(detectAdvancedAbuse("chuuutttado"));
 });
 
-test("detects the reported spaced Hindi/Hinglish sexual-abuse variants", () => {\n  assert.ok(detectAdvancedAbuse("Dekho bat esi he bate tumhari ma chuda ne vali he behen vo hmm cho dd denge"));\n  assert.ok(detectAdvancedAbuse("tumhari ma chuda ne wali hai"));\n  assert.ok(detectAdvancedAbuse("teri behen ko chod denge"));\n});\n\ntest("detects directly targeted English abuse", () => {
+test("detects the reported spaced Hindi/Hinglish sexual-abuse variants", () => {
+  assert.ok(detectAdvancedAbuse("Dekho bat esi he bate tumhari ma chuda ne vali he behen vo hmm cho dd denge"));
+  assert.ok(detectAdvancedAbuse("tumhari ma chuda ne wali hai"));
+  assert.ok(detectAdvancedAbuse("teri behen ko chod denge"));
+});
+
+test("detects directly targeted English abuse", () => {
   assert.ok(detectAdvancedAbuse("go fuck yourself"));
 });
 
