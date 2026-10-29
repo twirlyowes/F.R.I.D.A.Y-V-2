@@ -109,10 +109,10 @@ function card(guild, color, content) {
 
 function statusPage(guild, status, title, content, actionRow = null) {
   const styles = {
-    progress: { color: COLORS.SKY_BLUE, emoji: "<a:loading:1532985888118931517>", label: "IN PROGRESS" },
-    success: { color: COLORS.GREEN, emoji: "<:success_g:1561271843346714777>", label: "SUCCESS" },
-    completed: { color: COLORS.GREEN, emoji: "<a:success:1532986625343099050>", label: "COMPLETED" },
-    error: { color: COLORS.RED, emoji: "<:error_g:1561271715164721245>", label: "ERROR" }
+    progress: { color: COLORS.SKY_BLUE, emoji: "<a:loading:1562810100647989350>", label: "IN PROGRESS" },
+    success: { color: COLORS.GREEN, emoji: "<:success_g:1562810067642884177>", label: "SUCCESS" },
+    completed: { color: COLORS.GREEN, emoji: "<a:success:1562810143425691790>", label: "COMPLETED" },
+    error: { color: COLORS.RED, emoji: "<:error_g:1562810019454386196>", label: "ERROR" }
   };
   const style = styles[status] || styles.progress;
   return {
@@ -508,10 +508,10 @@ module.exports = client => {
               }
               const value = await createResource(guild, field, { scope: "setupAll" });
               cfg[field.key] = value.id;
-              successes.push("<:success_g:1561271843346714777> **" + field.name + "** — created");
+              successes.push("<:success_g:1562810067642884177> **" + field.name + "** — created");
               if (field.key === "unverifiedRole" || field.key === "verifyChannel") verificationRoleConfiguredThisRun = true;
             } catch (error) {
-              errors.push("<:error_g:1561271715164721245> **" + field.name + "** — " +
+              errors.push("<:error_g:1562810019454386196> **" + field.name + "** — " +
                 String(error.message || "failed").slice(0, 180));
             }
           }
@@ -521,16 +521,16 @@ module.exports = client => {
         if (finalCfg.unverifiedRole && finalCfg.verifyChannel && !verificationRoleConfiguredThisRun) {
           try {
             const secured = await verificationRoles.configureUnverifiedRole(guild, finalCfg.unverifiedRole, finalCfg.verifyChannel);
-            successes.push("<:success_g:1561271843346714777> **Unverified role permissions** — secured across " + secured.configuredChannels + " channels; verification remains accessible.");
+            successes.push("<:success_g:1562810067642884177> **Unverified role permissions** — secured across " + secured.configuredChannels + " channels; verification remains accessible.");
           } catch (error) {
-            errors.push("<:error_g:1561271715164721245> **Unverified role permissions** — " + String(error.message || "failed").slice(0, 180));
+            errors.push("<:error_g:1562810019454386196> **Unverified role permissions** — " + String(error.message || "failed").slice(0, 180));
           }
         }
 
         const sections = [];
-        if (successes.length) sections.push("## <:success_g:1561271843346714777> Success\n" + successes.join("\n"));
-        if (skipped.length) sections.push("## <a:settings:1532990547394957393> Skipped / Already Configured\n" + skipped.join("\n"));
-        if (errors.length) sections.push("## <:error_g:1561271715164721245> Errors\n" + errors.join("\n"));
+        if (successes.length) sections.push("## <:success_g:1562810067642884177> Success\n" + successes.join("\n"));
+        if (skipped.length) sections.push("## <a:settings:1562810057454919740> Skipped / Already Configured\n" + skipped.join("\n"));
+        if (errors.length) sections.push("## <:error_g:1562810019454386196> Errors\n" + errors.join("\n"));
         const title = errors.length ? "Setup All • Completed with Errors" : "Setup All • Completed";
         const content = sections.join("\n\n") +
           "\n\nOptional features can be configured from the feature menu. Use `.config` to change settings later.";
@@ -631,10 +631,10 @@ module.exports = client => {
           await saveField(guild, field, value);
           const mention = def.type === "role" ? "<@&" + value.id + ">" : "<#" + value.id + ">";
           return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index + 1,
-            "<:success_g:1561271843346714777> " + (replacing ? "Changed" : "Saved") + " **" + field.name + "** as " + mention + "."));
+            "<:success_g:1562810067642884177> " + (replacing ? "Changed" : "Saved") + " **" + field.name + "** as " + mention + "."));
         } catch (error) {
           return interaction.update(await buildFeaturePanel(guild, userId, featureKey, index,
-            "<:error_g:1561271715164721245> " + error.message));
+            "<:error_g:1562810019454386196> " + error.message));
         }
       }
 
@@ -649,7 +649,7 @@ module.exports = client => {
           const def = guildConfig.SETTINGS[field.key];
           const mention = def.type === "role" ? "<@&" + value.id + ">" : "<#" + value.id + ">";
           return interaction.editReply(statusPage(guild, "success", "Resource Created • Success",
-            "<:success_g:1561271843346714777> Created and saved **" + field.name + "**: " + mention + ".",
+            "<:success_g:1562810067642884177> Created and saved **" + field.name + "**: " + mention + ".",
             new ActionRowBuilder().addComponents(
               new ButtonBuilder().setCustomId("setup:continue:" + featureKey + ":" + (index + 1) + ":" + userId).setLabel("Continue Setup").setStyle(ButtonStyle.Success),
               new ButtonBuilder().setCustomId("setup:continue:" + featureKey + ":" + index + ":" + userId).setLabel("Back to Step").setStyle(ButtonStyle.Secondary)
@@ -657,7 +657,7 @@ module.exports = client => {
         } catch (error) {
           console.error("[Setup] Resource creation failed:", error);
           return interaction.editReply(statusPage(guild, "error", "Resource Creation • Error",
-            "<:error_g:1561271715164721245> Could not create **" + field.name + "**.\n\n" + String(error.message || "Unknown error").slice(0, 700),
+            "<:error_g:1562810019454386196> Could not create **" + field.name + "**.\n\n" + String(error.message || "Unknown error").slice(0, 700),
             new ActionRowBuilder().addComponents(
               new ButtonBuilder().setCustomId("setup:continue:" + featureKey + ":" + index + ":" + userId).setLabel("Back to Step").setStyle(ButtonStyle.Secondary),
               new ButtonBuilder().setCustomId("setup:back:" + userId).setLabel("Back to Features").setStyle(ButtonStyle.Secondary)
@@ -701,7 +701,7 @@ module.exports = client => {
 
         await guildConfig.set(guild.id, field.key, value);
         const panel = await buildFeaturePanel(guild, userId, featureKey, index + 1,
-          "<:success_g:1561271843346714777> Saved the YouTube channel URL.");
+          "<:success_g:1562810067642884177> Saved the YouTube channel URL.");
         return interaction.isFromMessage()
           ? interaction.update(panel)
           : interaction.reply({ ...panel, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });

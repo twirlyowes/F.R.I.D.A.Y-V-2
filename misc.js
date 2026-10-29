@@ -215,7 +215,7 @@ module.exports = (client) => {
             return await message.reply(
               cardReply(
                 COLORS.RED,
-                "<a:error:1532986765105696778> Could not find a user with that ID or mention.",
+                "<a:error:1562810082469740594> Could not find a user with that ID or mention.",
                 message.author.displayAvatarURL({
                   extension: "png",
                   size: 128
@@ -315,11 +315,11 @@ module.exports = (client) => {
               .toArray()
               .map((f) => badgeMap[f] || f)
               .join(", ")
-          : "<a:error:1532986765105696778> No User Badges";
+          : "<a:error:1562810082469740594> No User Badges";
 
         const botStatus = targetUser.bot
-          ? "<a:success:1532986625343099050> Yes"
-          : "<a:error:1532986765105696778> No";
+          ? "<a:success:1562810143425691790> Yes"
+          : "<a:error:1562810082469740594> No";
 
         const accentColor =
           targetMember?.displayHexColor &&
@@ -331,7 +331,7 @@ module.exports = (client) => {
             : COLORS.SKY_BLUE;
 
         const infoText =
-          `<:Stats:1532990723408793661> **User Information**\n` +
+          `<:Stats:1562810062685216788> **User Information**\n` +
           `**Username:** ${targetUser.username}\n` +
           `**User ID:** ${targetUser.id}\n` +
           `**Nickname:** ${nickname}\n` +
@@ -638,7 +638,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<:error_g:1561271715164721245> You need Administrator permissions to use this command.",
+              "<:error_g:1562810019454386196> You need Administrator permissions to use this command.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -658,7 +658,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               WARNING_YELLOW,
-              `<:warning_g:1561271566233501797> Usage: \`${PREFIX}dm @user [message]\``,
+              `<:warning_g:1562810073733136506> Usage: \`${PREFIX}dm @user [message]\``,
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -684,7 +684,7 @@ module.exports = (client) => {
           await message.reply(
             cardReply(
               COLORS.GREEN,
-              `<:success_g:1561271843346714777> Successfully sent a DM to **${targetUser.tag}**.`,
+              `<:success_g:1562810067642884177> Successfully sent a DM to **${targetUser.tag}**.`,
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -696,7 +696,7 @@ module.exports = (client) => {
           await message.reply(
             cardReply(
               COLORS.RED,
-              "<:error_g:1561271715164721245> Could not send a DM to that user. They might have DMs disabled.",
+              "<:error_g:1562810019454386196> Could not send a DM to that user. They might have DMs disabled.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -750,7 +750,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               WARNING_YELLOW,
-              "<:warning_g:1561271566233501797> Please provide a search term for Wikipedia. Example: `wiki Albert Einstein`",
+              "<:warning_g:1562810073733136506> Please provide a search term for Wikipedia. Example: `wiki Albert Einstein`",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -785,7 +785,7 @@ module.exports = (client) => {
             return await message.reply(
               cardReply(
                 COLORS.RED,
-                "<:error_g:1561271715164721245> Could not find a Wikipedia page matching that query.",
+                "<:error_g:1562810019454386196> Could not find a Wikipedia page matching that query.",
                 message.author.displayAvatarURL({
                   extension: "png",
                   size: 128
@@ -858,7 +858,7 @@ module.exports = (client) => {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<:error_g:1561271715164721245> An error occurred while searching Wikipedia.",
+              "<:error_g:1562810019454386196> An error occurred while searching Wikipedia.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -877,7 +877,7 @@ if (command === "hide") {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> You need the **Manage Channels** permission to use this command.",
+              "<a:error:1562810082469740594> You need the **Manage Channels** permission to use this command.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -898,7 +898,7 @@ if (command === "hide") {
           await message.reply(
             cardReply(
               COLORS.GREEN,
-              "<:hide:1532336151854190743> This channel is now hidden from **@everyone**.",
+              "<:hide:1562810085049106593> This channel is now hidden from **@everyone**.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -910,7 +910,7 @@ if (command === "hide") {
           await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> Failed to hide this channel.",
+              "<a:error:1562810082469740594> Failed to hide this channel.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -932,7 +932,7 @@ if (command === "hide") {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> You need the **Manage Channels** permission to use this command.",
+              "<a:error:1562810082469740594> You need the **Manage Channels** permission to use this command.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -953,7 +953,7 @@ if (command === "hide") {
           await message.reply(
             cardReply(
               COLORS.GREEN,
-              "<:unhide:1532336276164841482> This channel is now visible to **@everyone**.",
+              "<:unhide:1562810147812941976> This channel is now visible to **@everyone**.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -965,7 +965,7 @@ if (command === "hide") {
           await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> Failed to unhide this channel.",
+              "<a:error:1562810082469740594> Failed to unhide this channel.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -987,7 +987,7 @@ if (command === "hide") {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> You need the **Manage Messages** permission to use this command.",
+              "<a:error:1562810082469740594> You need the **Manage Messages** permission to use this command.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -1003,7 +1003,7 @@ if (command === "hide") {
           return await message.reply(
             cardReply(
               WARNING_YELLOW,
-              "<a:Warning:1532986372716236932> Please provide a message for me to send.",
+              "<a:Warning:1562810154930413569> Please provide a message for me to send.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -1027,7 +1027,7 @@ if (command === "hide") {
           return await message.reply(
             cardReply(
               WARNING_YELLOW,
-              "<a:Warning:1532986372716236932> Please provide a mathematical expression.\nExample: `calculate 5+5*2`",
+              "<a:Warning:1562810154930413569> Please provide a mathematical expression.\nExample: `calculate 5+5*2`",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -1041,7 +1041,7 @@ if (command === "hide") {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> Invalid characters detected.\nOnly `+ - * / ( )` and numbers are allowed.",
+              "<a:error:1562810082469740594> Invalid characters detected.\nOnly `+ - * / ( )` and numbers are allowed.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -1060,7 +1060,7 @@ if (command === "hide") {
             return await message.reply(
               cardReply(
                 COLORS.RED,
-                "<a:error:1532986765105696778> The result is not a valid finite number.",
+                "<a:error:1562810082469740594> The result is not a valid finite number.",
                 message.author.displayAvatarURL({
                   extension: "png",
                   size: 128
@@ -1073,7 +1073,7 @@ if (command === "hide") {
           return await message.reply(
             cardReply(
               COLORS.GREEN,
-              `<:Stats:1532990723408793661> **Calculator**\n\n` +
+              `<:Stats:1562810062685216788> **Calculator**\n\n` +
                 `**Expression:** \`${expr}\`\n` +
                 `**Result:** \`${result}\``,
               message.author.displayAvatarURL({
@@ -1087,7 +1087,7 @@ if (command === "hide") {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "<a:error:1532986765105696778> Failed to evaluate the mathematical expression.",
+              "<a:error:1562810082469740594> Failed to evaluate the mathematical expression.",
               message.author.displayAvatarURL({
                 extension: "png",
                 size: 128
@@ -1120,7 +1120,7 @@ if (command === "hide") {
         const newMsg = await message.channel.send(
           cardReply(
             BLURPLE,
-            `<a:LP_Message:1532991009066324049> **Sticky Message**\n\n${stickyData.text}\n\n-# Pinned Message`
+            `<a:LP_Message:1562810046088486952> **Sticky Message**\n\n${stickyData.text}\n\n-# Pinned Message`
           )
         );
 

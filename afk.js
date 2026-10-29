@@ -29,11 +29,11 @@ async function loadAFK() {
         });
 
         console.log(
-            `<:success_g:1561271843346714777> AFK loaded from Firebase (${afkData.size} users)`
+            `<:success_g:1562810067642884177> AFK loaded from Firebase (${afkData.size} users)`
         );
     } catch (error) {
         console.error(
-            "<:error_g:1561271715164721245> Failed loading AFK from Firebase:",
+            "<:error_g:1562810019454386196> Failed loading AFK from Firebase:",
             error
         );
     }
@@ -44,7 +44,7 @@ async function saveAFK(userId, data) {
         await db.collection("afk").doc(userId).set(data);
     } catch (error) {
         console.error(
-            "<:error_g:1561271715164721245> Failed saving AFK:",
+            "<:error_g:1562810019454386196> Failed saving AFK:",
             error
         );
     }
@@ -55,7 +55,7 @@ async function removeAFK(userId) {
         await db.collection("afk").doc(userId).delete();
     } catch (error) {
         console.error(
-            "<:error_g:1561271715164721245> Failed removing AFK:",
+            "<:error_g:1562810019454386196> Failed removing AFK:",
             error
         );
     }
@@ -118,7 +118,7 @@ async function applyAfkNickname(member) {
         return { changed: true, original };
     } catch (error) {
         console.error(
-            `<:error_g:1561271715164721245> Failed setting AFK nickname for ${member.id}:`,
+            `<:error_g:1562810019454386196> Failed setting AFK nickname for ${member.id}:`,
             error?.message || error
         );
 
@@ -147,7 +147,7 @@ async function restoreNickname(member, data) {
         await member.setNickname(data.originalNickname || null);
     } catch (error) {
         console.error(
-            `<:error_g:1561271715164721245> Failed restoring nickname for ${member.id}:`,
+            `<:error_g:1562810019454386196> Failed restoring nickname for ${member.id}:`,
             error?.message || error
         );
     }
@@ -240,10 +240,10 @@ module.exports = (client) => {
 
                 const card = createAFKCard(
                     SKY_BLUE,
-                    `<a:Moon:1532988257338527835> **AFK Enabled**\n\n` +
-                    `<a:LP_Message:1532991009066324049> **Reason**\n` +
+                    `<a:Moon:1562810049389137930> **AFK Enabled**\n\n` +
+                    `<a:LP_Message:1562810046088486952> **Reason**\n` +
                     `> ${reason}\n\n` +
-                    `<a:Clock:1532990759371018372> **Started**\n` +
+                    `<a:Clock:1562810011527286905> **Started**\n` +
                     `> ${formatTime(time)}`,
                     avatarURL,
                     `${message.author.username}'s avatar`
@@ -280,8 +280,8 @@ module.exports = (client) => {
 
                 const card = createAFKCard(
                     SUCCESS_GREEN,
-                    `<a:back:1532987608542744847> **Welcome Back!**\n\n` +
-                    `<a:Clock:1532990759371018372> **Time Away**\n` +
+                    `<a:back:1562809987120767016> **Welcome Back!**\n\n` +
+                    `<a:Clock:1562810011527286905> **Time Away**\n` +
                     `> ${duration}`,
                     avatarURL,
                     `${message.author.username}'s avatar`
@@ -319,10 +319,10 @@ module.exports = (client) => {
                         );
 
                         return (
-                            `<a:Moon:1532988257338527835> **${user.username} is currently AFK**\n\n` +
-                            `<a:LP_Message:1532991009066324049> **Reason**\n` +
+                            `<a:Moon:1562810049389137930> **${user.username} is currently AFK**\n\n` +
+                            `<a:LP_Message:1562810046088486952> **Reason**\n` +
                             `> ${data.reason}\n\n` +
-                            `<a:Clock:1532990759371018372> **Away Since**\n` +
+                            `<a:Clock:1562810011527286905> **Away Since**\n` +
                             `> ${formatTime(data.time)}`
                         );
                     });
@@ -338,7 +338,7 @@ module.exports = (client) => {
                     const card = createAFKCard(
                         SKY_BLUE,
                         `${mentions.join("\n\n")}\n` +
-                        `<a:sparkles:1532986077651140620> Hope they get back to you soon!`,
+                        `<a:sparkles:1562810135972417617> Hope they get back to you soon!`,
                         firstAFKUser.displayAvatarURL({
                             extension: "png",
                             size: 128

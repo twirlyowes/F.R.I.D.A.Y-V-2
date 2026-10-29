@@ -18,10 +18,10 @@ const IMAGE_EXTENSIONS = /\.(?:png|jpe?g|webp|gif)(?:$|\?)/i;
 const DISCORD_MESSAGE_URL = /^https?:\/\/(?:canary\.|ptb\.)?discord(?:app)?\.com\/channels\/(\d{17,20})\/(\d{17,20})\/(\d{17,20})\/?(?:\?.*)?$/i;
 
 const EMOJIS = {
-    success: "<:success_g:1561271843346714777>",
-    error: "<:error_g:1561271715164721245>",
-    warning: "<:warning_g:1561271566233501797>",
-    info: "<:info_g:1561269600564281374>"
+    success: "<:success_g:1562810067642884177>",
+    error: "<:error_g:1562810019454386196>",
+    warning: "<:warning_g:1562810073733136506>",
+    info: "<:info_g:1562810038471630928>"
 };
 
 function cardReply(color, content) {

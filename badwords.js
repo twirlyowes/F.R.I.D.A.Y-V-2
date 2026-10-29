@@ -105,7 +105,7 @@ async function handleAdvancedViolation(message, detection, client) {
     const noticeCard = createCard({
         color: 0xED7117,
         content:
-            "# <:warning_g:1561271566233501797> ADVANCED ANTIWORDS\n\n" +
+            "# <:warning_g:1562810073733136506> ADVANCED ANTIWORDS\n\n" +
             noticeText +
             "\n\n-# F.R.I.D.A.Y • AutoMod"
     });
@@ -262,7 +262,7 @@ module.exports = (client) => {
                             iconURL: client.user.displayAvatarURL()
                         })
                         .setDescription(
-`<a:Warning:1532986372716236932> ${message.author}
+`<a:Warning:1562810154930413569> ${message.author}
 
 Message removed for a prohibited word.`
                         )
@@ -286,24 +286,24 @@ Message removed for a prohibited word.`
                     })
                     .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
                     .setDescription(
-`<a:Warning:1532986372716236932> **Prohibited Word Detected**
+`<a:Warning:1562810154930413569> **Prohibited Word Detected**
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-<:Shield_2:1532989398642327594> **User**
+<:Shield_2:1562810059946328185> **User**
 > ${message.author} (\`${message.author.id}\`)
 
-<:HOME:1532991400503673055> **Channel**
+<:HOME:1562810031643295784> **Channel**
 > ${message.channel}
 
-<a:LP_Message:1532991009066324049> **Deleted Message**
+<a:LP_Message:1562810046088486952> **Deleted Message**
 \`\`\`
 ${deletedMessage.slice(0, 1000)}
 \`\`\`
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-<a:error:1532986765105696778> The message has been automatically removed by the filter.`
+<a:error:1562810082469740594> The message has been automatically removed by the filter.`
                     )
                     .setFooter({
                         text: "F.R.I.D.A.Y • Moderation Logs"
@@ -363,7 +363,7 @@ ${deletedMessage.slice(0, 1000)}
                             iconURL: client.user.displayAvatarURL()
                         })
                         .setDescription(
-`<a:Warning:1532986372716236932> ${newMessage.author}
+`<a:Warning:1562810154930413569> ${newMessage.author}
 
 Edited messages cannot add links.`
                         )
@@ -387,24 +387,24 @@ Edited messages cannot add links.`
                     })
                     .setThumbnail(newMessage.author.displayAvatarURL({ dynamic: true }))
                     .setDescription(
-`<a:Warning:1532986372716236932> **Edited-In Link Detected**
+`<a:Warning:1562810154930413569> **Edited-In Link Detected**
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-<:Shield_2:1532989398642327594> **User**
+<:Shield_2:1562810059946328185> **User**
 > ${newMessage.author} (\`${newMessage.author.id}\`)
 
-<:HOME:1532991400503673055> **Channel**
+<:HOME:1562810031643295784> **Channel**
 > ${newMessage.channel}
 
-<a:LP_Message:1532991009066324049> **Edited Message Content**
+<a:LP_Message:1562810046088486952> **Edited Message Content**
 \`\`\`
 ${deletedMessage.slice(0, 1000)}
 \`\`\`
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
-<a:error:1532986765105696778> The message was removed because a link was added via editing.`
+<a:error:1562810082469740594> The message was removed because a link was added via editing.`
                     )
                     .setFooter({
                         text: "F.R.I.D.A.Y • Moderation Logs"
