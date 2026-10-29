@@ -189,8 +189,16 @@ async function makeSticker(source) {
   return { buffer, extension: "png" };
 }
 
+function originalFileName(source, format) {
+  const raw = String(source.name || "asset");
+  if (/\.[A-Za-z0-9]{2,5}$/.test(raw)) return raw.slice(0, 100);
+  const extension = format === "jpg" ? "jpg" : ["png", "gif", "webp"].includes(format) ? format : "bin";
+  return raw.slice(0, 80) + "." + extension;
+}
+
 async function compressImage(source, limit) {
   const format = formatOf(source.buffer, source.contentType);
+  if (source.buffer.length <= limit) return { buffer: source.buffer, name: originalFileName(source, format), unchanged: true };
   if (animated(source.buffer, format)) {
     if (source.buffer.length <= limit) return { buffer: source.buffer, name: source.name || "asset", unchanged: true };
     throw new Error("This animation exceeds the target size. AssetForge won't flatten it or remove its animation; use a larger target or an animation-aware optimizer first.");
