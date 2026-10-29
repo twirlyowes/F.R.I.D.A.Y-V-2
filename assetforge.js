@@ -2,7 +2,6 @@ const axios = require("axios");
 const { AttachmentBuilder, FileBuilder, MessageFlags, PermissionsBitField } = require("discord.js");
 const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const { COLORS, createCard } = require("./lib/pixelVillaUI");
-const { parseCommand } = require("./lib/prefix");
 
 const TICK = String.fromCharCode(96);
 const MAX_INPUT = 10 * 1024 * 1024;
@@ -397,6 +396,7 @@ async function compressImage(source, limit) {
 }
 
 module.exports = function (client) {
+  const { parseCommand } = require("./lib/prefix");
   client.on("messageCreate", async message => {
     if (message.author.bot || !message.guild) return;
     const parsed = await parseCommand(message);
