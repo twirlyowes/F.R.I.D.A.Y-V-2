@@ -292,7 +292,7 @@ async function handleViolation(message, cfg, result) {
 
       message.channel
         .send({
-          content: `<:warning_g:1562810073733136506> <@${message.author.id}>, your message was removed by AutoMod (${label}).`,
+          content: `<:warning_g:1561271566233501797> <@${message.author.id}>, your message was removed by AutoMod (${label}).`,
           allowedMentions: { parse: [] }
         })
         .then(notice => setTimeout(() => notice.delete().catch(() => {}), 6000).unref?.())
@@ -338,7 +338,7 @@ async function handleViolation(message, cfg, result) {
 // Control panel (buttons), stateless: state lives in the customIds + Firestore
 // ---------------------------------------------------------------------------
 function flag(on) {
-  return on ? "<:success_g:1562810067642884177>" : "⬜";
+  return on ? "<:success_g:1561271843346714777>" : "⬜";
 }
 
 function toggleButton(id, label, on) {
@@ -362,7 +362,7 @@ async function buildPanel(guild, userId, note = null) {
 
   const logWarning = (await guildConfig.getLogChannel(guild))
     ? ""
-    : "\n<:warning_g:1562810073733136506> No log channel is set, so hits won't be reported. Set one with the config command (`logs`).\n";
+    : "\n<:warning_g:1561271566233501797> No log channel is set, so hits won't be reported. Set one with the config command (`logs`).\n";
 
   const card = createCard({
     color: cfg.enabled ? COLORS.GREEN : COLORS.SKY_BLUE,
@@ -463,6 +463,38 @@ async function buildPanel(guild, userId, note = null) {
   };
 }
 
+async function buildSmartPanel(guild, userId, note = null) {
+  const cfg = await protection.getSmartAutomod(guild.id);
+  const enabled = cfg.normalizedBadwords === true;
+  const card = createCard({
+    color: enabled ? COLORS.GREEN : COLORS.SKY_BLUE,
+    content:
+      `# <:FRIDAY:1564865373583581266> Smart AutoMod\n\n` +
+      `${note ? `${note}\n\n` : ""}` +
+      `<:info_g:1561269600564281374> Rule-based detection only — no external AI API.\n\n` +
+      `**Normalized Badwords:** ${enabled ? "<:success_g:1561271843346714777> ON" : "<:warning_g:1561271566233501797> OFF"}\n` +
+      `Checks your server's existing bad-word list against common leetspeak, Unicode normalization, and short punctuation/spacing gaps.\n\n` +
+      `This setting is independent of the existing AutoMod configuration and starts OFF.\n\n` +
+      `-# F.R.I.D.A.Y • Smart AutoMod`,
+    avatarURL: avatarOf(guild.client),
+    avatarDescription: "F.R.I.D.A.Y"
+  });
+
+  return {
+    components: [
+      card,
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`am:smart-toggle:${userId}`)
+          .setLabel(`Smart Badwords: ${enabled ? "ON" : "OFF"}`)
+          .setStyle(enabled ? ButtonStyle.Success : ButtonStyle.Secondary)
+      )
+    ],
+    flags: MessageFlags.IsComponentsV2,
+    allowedMentions: { parse: [] }
+  };
+}
+
 function next(list, current) {
   return list[(list.indexOf(current) + 1) % list.length];
 }
@@ -489,6 +521,17 @@ async function handlePanel(interaction) {
   const guild = interaction.guild;
   const refresh = async note => interaction.update(await buildPanel(guild, userId, note));
 
+  if (action === "smart-toggle" && interaction.isButton()) {
+    const cfg = await protection.updateSmartAutomod(guild.id, c => {
+      c.normalizedBadwords = !c.normalizedBadwords;
+    });
+    return interaction.update(await buildSmartPanel(
+      guild,
+      userId,
+      `<:success_g:1561271843346714777> Smart Badwords is now **${cfg.normalizedBadwords ? "ON" : "OFF"}**.`
+    ));
+  }
+
   if (action === "tog" && interaction.isButton()) {
     const rule = parts[2];
     if (!RULES[rule]) return interaction.deferUpdate();
@@ -497,7 +540,7 @@ async function handlePanel(interaction) {
       c.rules[rule] = !c.rules[rule];
     });
 
-    return refresh(`${cfg.rules[rule] ? "<:success_g:1562810067642884177>" : "⬜"} **${RULES[rule].label}** is now ${cfg.rules[rule] ? "on" : "off"}.`);
+    return refresh(`${cfg.rules[rule] ? "<:success_g:1561271843346714777>" : "⬜"} **${RULES[rule].label}** is now ${cfg.rules[rule] ? "on" : "off"}.`);
   }
 
   if (action === "advanced" && interaction.isButton()) {
@@ -599,7 +642,85 @@ module.exports = client => {
           });
         }
 
-        return await message.reply(await buildPanel(message.guild, message.author.id));
+        const sub = (parsed.args[0] || "panel").toLowerCase();
+        const option = (parsed.args[1] || "").toLowerCase();
+        const wantsOn = option === "on";
+        const wantsOff = option === "off";
+
+        if (["panel", "open", "status"].includes(sub)) {
+          return await message.reply(await buildPanel(message.guild, message.author.id));
+        }
+
+        if (sub === "smart") {
+          return await message.reply(await buildSmartPanel(message.guild, message.author.id));
+        }
+
+        if (["smartbadwords", "normalized", "normalization"].includes(sub)) {
+          if (!wantsOn && !wantsOff) {
+            return await message.reply({
+              content: `Usage: \`${parsed.prefix}automod smartbadwords <on|off>\` or \`${parsed.prefix}automod smart\` for the button panel.`,
+              allowedMentions: { parse: [] }
+            });
+          }
+          const cfg = await protection.updateSmartAutomod(message.guild.id, c => {
+            c.normalizedBadwords = wantsOn;
+          });
+          return await message.reply(await buildSmartPanel(
+            message.guild,
+            message.author.id,
+            `<:success_g:1561271843346714777> Smart Badwords is now **${cfg.normalizedBadwords ? "ON" : "OFF"}**.`
+          ));
+        }
+
+        const ruleCommands = {
+          spam: "spam",
+          repeat: "duplicates",
+          duplicates: "duplicates",
+          mentions: "mentions",
+          emojis: "emojis",
+          invites: "invites",
+          links: "links",
+          caps: "caps",
+          badwords: "badwords"
+        };
+
+        if (Object.hasOwn(ruleCommands, sub)) {
+          if (!wantsOn && !wantsOff) {
+            return await message.reply({
+              content: `Usage: \`${parsed.prefix}automod ${sub} <on|off>\``,
+              allowedMentions: { parse: [] }
+            });
+          }
+          const rule = ruleCommands[sub];
+          const cfg = await protection.updateAutomod(message.guild.id, c => {
+            c.rules[rule] = wantsOn;
+          });
+          return await message.reply({
+            content: `<:success_g:1561271843346714777> **${RULES[rule].label}** is now **${cfg.rules[rule] ? "ON" : "OFF"}**.`,
+            allowedMentions: { parse: [] }
+          });
+        }
+
+        if (sub === "master") {
+          if (!wantsOn && !wantsOff) {
+            return await message.reply({
+              content: `Usage: \`${parsed.prefix}automod master <on|off>\``,
+              allowedMentions: { parse: [] }
+            });
+          }
+          const cfg = await protection.updateAutomod(message.guild.id, c => {
+            c.enabled = wantsOn;
+          });
+          return await message.reply({
+            content: `<:success_g:1561271843346714777> AutoMod master switch is now **${cfg.enabled ? "ON" : "OFF"}**.`,
+            allowedMentions: { parse: [] }
+          });
+        }
+
+        return await message.reply({
+          content: `Unknown AutoMod option. Use \`${parsed.prefix}automod\`, \`${parsed.prefix}automod smart\`, or \`${parsed.prefix}automod <spam|repeat|mentions|emojis|invites|links|caps|badwords|master|smartbadwords> <on|off>\`.`,
+          allowedMentions: { parse: [] }
+        });
       }
 
       const cfg = await protection.getAutomod(message.guild.id);

@@ -6,6 +6,7 @@ const protection = require("./lib/protection");
 const { parseCommand } = require("./lib/prefix");
 const db = require("./firebase");
 const { detectAdvancedAbuse } = require("./lib/advancedAntiwords");
+const { findNormalizedBadword } = require("./lib/smartBadwords");
 const { createCard, messageOptions } = require("./lib/pixelVillaUI");
 
 const advancedOffences = new Map();
@@ -174,6 +175,8 @@ module.exports = (client) => {
                 Boolean(message.member && message.member.roles.cache.some(role => automod.ignoredRoles.includes(role.id)));
             const filterActive = automod.rules.badwords !== false && !ignoredByAutoMod;
             const advancedFilterActive = automod.advancedAntiwords === true && !ignoredByAutoMod;
+            const smartAutomod = await protection.getSmartAutomod(message.guild.id);
+            const smartBadwordsActive = smartAutomod.normalizedBadwords === true && !ignoredByAutoMod;
             const parsed = await parseCommand(message);
             const command = parsed ? parsed.command : "";
             const args = parsed ? [parsed.command, ...parsed.args] : [];
@@ -245,6 +248,13 @@ module.exports = (client) => {
                         break;
                     }
                 }
+            }
+
+            // Optional additive layer: normalize common leetspeak and short punctuation/spacing gaps.
+            // This has its own OFF-by-default setting and uses the existing per-server word list.
+            if (!found && !exempt && smartBadwordsActive) {
+                detectedWord = findNormalizedBadword(message.content, badWordsCache);
+                found = Boolean(detectedWord);
             }
 
             if (!found) return;
