@@ -12,9 +12,14 @@ test("detects sexual humiliation involving nudity and coerced performance", () =
   assert.ok(detectAdvancedAbuse("teri mummy ko bina kapdo ke mujra karwa ke beizzat karunga"));
 });
 
-test("detects obfuscated and elongated insult spellings", () => {
+test("detects obfuscated, spaced-out and elongated insult spellings", () => {
   assert.ok(detectAdvancedAbuse("c.h.u.t.i.y.a"));
   assert.ok(detectAdvancedAbuse("chuuutttado"));
+  assert.ok(detectAdvancedAbuse("h a r a m i"));
+  assert.ok(detectAdvancedAbuse("h   a   r   a   m   i"));
+  assert.ok(detectAdvancedAbuse("h.a.r.a.m.i"));
+  assert.ok(detectAdvancedAbuse("ha ra mi"));
+  assert.ok(detectAdvancedAbuse("<@927196011355586592> h a r a m i"));
 });
 
 test("detects the reported spaced Hindi/Hinglish sexual-abuse variants", () => {
