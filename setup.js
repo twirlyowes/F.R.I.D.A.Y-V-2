@@ -60,10 +60,10 @@ const FEATURES = {
   },
   activity: {
     label: "Staff Activity",
-    description: "Choose the staff, activity, and activity-log roles.",
+    description: "Choose separate roles for moderation access, Active Time tracking, and viewing activity logs.",
     fields: [
       { key: "staffRole", name: "Staff Role", createName: "Staff" },
-      { key: "activityRole", name: "Activity Tracking Role", createName: "Active Time" },
+      { key: "activityRole", name: "Active Time Role", createName: "Active Time" },
       { key: "atlogsRole", name: "Activity Logs Role", createName: "Activity Logs" }
     ]
   },
