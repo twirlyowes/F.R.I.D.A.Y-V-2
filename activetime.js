@@ -365,14 +365,36 @@ module.exports = (client) => {
         guildConfig.get(guild.id).catch(() => {});
     });
 
-    // Active Time tracks the "activityRole" if one is set, otherwise the staff role.
-    const isStaff = (member) =>
-        guildConfig.isStaffSync(
-            member,
-            member?.guild && guildConfig.peek(member.guild.id).activityRole
-                ? "activityRole"
-                : "staffRole"
+    // Active Time eligibility is independent from moderation staff permissions.
+    // An unset activityRole intentionally means nobody is eligible for tracking.
+    const isActiveTimeEligible = (member) =>
+        guildConfig.isStaffSync(member, "activityRole");
+
+    const finishSession = (sessions, metricMap, userId, now) => {
+        const startedAt = sessions.get(userId);
+        if (typeof startedAt !== "number") return;
+
+        sessions.delete(userId);
+
+        const duration = Math.max(0, now - startedAt);
+        if (!duration) return;
+
+        setTrackedMetric(
+            metricMap,
+            userId,
+            (metricMap.get(userId) || 0) + duration
         );
+    };
+
+    const stopTrackingMember = (member) => {
+        if (!member?.guild || !member.id) return;
+
+        const userId = trackKey(member.guild.id, member.id);
+        const now = Date.now();
+
+        finishSession(activeSessions, dailyActiveTimes, userId, now);
+        finishSession(voiceSessions, dailyVoiceTimes, userId, now);
+    };
 
     client.once("ready", async () => {
         console.log(
@@ -392,7 +414,7 @@ module.exports = (client) => {
             guild.members.cache.forEach(member => {
                 if (
                     !member.user.bot &&
-                    isStaff(member)
+                    isActiveTimeEligible(member)
                 ) {
                     const status =
                         member.presence
@@ -859,6 +881,34 @@ module.exports = (client) => {
         }
     }
 
+    // Start/stop sessions immediately when the separate Active Time Role
+    // is added or removed. Staff Role changes do not affect tracking.
+    client.on("guildMemberUpdate", (oldMember, newMember) => {
+        if (!newMember || newMember.user.bot) return;
+
+        const wasEligible = isActiveTimeEligible(oldMember);
+        const isEligible = isActiveTimeEligible(newMember);
+
+        if (!isEligible) {
+            stopTrackingMember(newMember);
+            return;
+        }
+
+        if (wasEligible) return;
+
+        const now = Date.now();
+        const userId = trackKey(newMember.guild.id, newMember.id);
+        const status = newMember.presence?.status || "offline";
+
+        if (status !== "offline" && !activeSessions.has(userId)) {
+            activeSessions.set(userId, now);
+        }
+
+        if (newMember.voice?.channelId && !voiceSessions.has(userId)) {
+            voiceSessions.set(userId, now);
+        }
+    });
+
     client.on(
         "presenceUpdate",
         async (
@@ -868,11 +918,10 @@ module.exports = (client) => {
             const member =
                 newPresence.member;
 
-            if (
-                !member ||
-                member.user.bot ||
-                !isStaff(member)
-            ) {
+            if (!member || member.user.bot) return;
+
+            if (!isActiveTimeEligible(member)) {
+                stopTrackingMember(member);
                 return;
             }
 
@@ -950,11 +999,10 @@ module.exports = (client) => {
                 newState.member ||
                 oldState.member;
 
-            if (
-                !member ||
-                member.user.bot ||
-                !isStaff(member)
-            ) {
+            if (!member || member.user.bot) return;
+
+            if (!isActiveTimeEligible(member)) {
+                stopTrackingMember(member);
                 return;
             }
 
@@ -1025,10 +1073,7 @@ module.exports = (client) => {
             const member =
                 message.member;
 
-            if (
-                member &&
-                isStaff(member)
-            ) {
+            if (member && isActiveTimeEligible(member)) {
                 const userId = trackKey(member.guild.id, member.id);
 
                 setTrackedMetric(dailyMessageCounts,
@@ -1039,6 +1084,8 @@ module.exports = (client) => {
                         ) || 0
                     ) + 1
                 );
+            } else if (member) {
+                stopTrackingMember(member);
             }
 
             const parsed =
@@ -1070,7 +1117,7 @@ module.exports = (client) => {
                     commandName
                 ) &&
                 member &&
-                isStaff(member)
+                isActiveTimeEligible(member)
             ) {
                 const userId = trackKey(member.guild.id, member.id);
 
@@ -1409,7 +1456,7 @@ module.exports = (client) => {
                 }
 
                 if (
-                    !isStaff(
+                    !isActiveTimeEligible(
                         targetMember
                     )
                 ) {
@@ -1418,7 +1465,7 @@ module.exports = (client) => {
                             color:
                                 COLORS.RED,
                             content:
-                                "<:error_g:1562810019454386196> **Not a Staff Member**\nThat user is not a staff member or does not have the specified staff role."
+                                "<:error_g:1562810019454386196> **Not Eligible for Active Time**\nThat user does not have the separately configured Active Time Role."
                         });
 
                     return await message.reply(
