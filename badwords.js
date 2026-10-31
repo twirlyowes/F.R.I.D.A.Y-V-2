@@ -288,6 +288,10 @@ Message removed for a prohibited word.`
             const logChannel = await guildConfig.getLogChannel(message.guild);
 
             if (logChannel) {
+                const safeDeletedMessage = String(deletedMessage || "")
+                    .replace(/`{3,}/g, "'''")
+                    .replace(/@/g, "@\\u200b")
+                    .slice(0, 1000);
                 const embed = new EmbedBuilder()
                     .setColor("#ED4245")
                     .setAuthor({
@@ -308,7 +312,7 @@ Message removed for a prohibited word.`
 
 <a:LP_Message:1562810046088486952> **Deleted Message**
 \`\`\`
-${deletedMessage.slice(0, 1000)}
+${safeDeletedMessage}
 \`\`\`
 
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -320,7 +324,7 @@ ${deletedMessage.slice(0, 1000)}
                     })
                     .setTimestamp();
 
-                logChannel.send({ embeds: [embed] }).catch(() => {});
+                logChannel.send({ embeds: [embed], allowedMentions: { parse: [] } }).catch(() => {});
             }
 
         } catch (error) {
