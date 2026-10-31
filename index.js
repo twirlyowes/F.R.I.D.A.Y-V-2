@@ -507,7 +507,7 @@ client.on(
         const options =
           cardReply(
             COLORS.RED,
-            `**${user.user.tag}** has been muted.\n\n**Duration:** ${time}\n**Reason:** ${reason}\n**Moderator:** ${message.author.tag}`,
+            `**${user.user.tag}** has been muted.\n\n**Duration:** ${durationLabel}\n**Reason:** ${reason}\n**Moderator:** ${message.author.tag}`,
             user
           );
 
