@@ -57,9 +57,10 @@ async function setEnabled(guildId, enabled) {
   return cfg;
 }
 
-function canManage(guild, userId) {
-  // Extra owners are deliberately limited to AutoMod and Anti-Nuke.
-  return userId === guild.ownerId || owners.isOwner(userId);
+async function canManage(guild, userId) {
+  // Server-delegated owners can manage AntiBot alongside the server and bot owners.
+  if (userId === guild.ownerId || owners.isOwner(userId)) return true;
+  return serverOwners.isOwner(guild.id, userId).catch(() => false);
 }
 
 function card(guild, color, content) {
@@ -116,9 +117,9 @@ module.exports = client => {
     const parsed = await parseCommand(message);
     if (!parsed || parsed.command !== "antibot") return;
 
-    if (!canManage(message.guild, message.author.id)) {
+    if (!(await canManage(message.guild, message.author.id))) {
       return await message.reply({
-        content: "Only the server owner or main bot owner can manage AntiBot.",
+        content: "Only the server owner, bot owner, or a server-delegated owner can manage AntiBot.",
         allowedMentions: { parse: [] }
       });
     }
@@ -137,7 +138,7 @@ module.exports = client => {
       if (!interaction.guild || interaction.user.id !== panelOwnerId) {
         return await interaction.reply({ content: "This AntiBot panel belongs to someone else.", flags: MessageFlags.Ephemeral });
       }
-      if (!canManage(interaction.guild, interaction.user.id)) {
+      if (!(await canManage(interaction.guild, interaction.user.id))) {
         return await interaction.reply({ content: "Only the server owner or main bot owner can manage AntiBot.", flags: MessageFlags.Ephemeral });
       }
       if (action !== "toggle" || !interaction.isButton()) return interaction.deferUpdate();
