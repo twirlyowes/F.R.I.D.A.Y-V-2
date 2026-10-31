@@ -292,7 +292,7 @@ async function handleViolation(message, cfg, result) {
 
       message.channel
         .send({
-          content: `<:warning_g:1561271566233501797> <@${message.author.id}>, your message was removed by AutoMod (${label}).`,
+          content: `<:warning_g:1562810073733136506> <@${message.author.id}>, your message was removed by AutoMod (${label}).`,
           allowedMentions: { parse: [] }
         })
         .then(notice => setTimeout(() => notice.delete().catch(() => {}), 6000).unref?.())
@@ -323,7 +323,7 @@ async function handleViolation(message, cfg, result) {
     await sendLog(
       guild,
       cfg.action === "log" ? COLORS.SKY_BLUE : COLORS.RED,
-      `# 🛡️ AutoMod\n\n` +
+      `# <:Shield_2:1562810059946328185> AutoMod\n\n` +
         `**Rule:** ${label}\n` +
         `**Member:** <@${message.author.id}> (\`${message.author.id}\`)\n` +
         `**Channel:** <#${message.channelId}>\n` +
@@ -338,7 +338,7 @@ async function handleViolation(message, cfg, result) {
 // Control panel (buttons), stateless: state lives in the customIds + Firestore
 // ---------------------------------------------------------------------------
 function flag(on) {
-  return on ? "<:success_g:1561271843346714777>" : "⬜";
+  return on ? "<:success_g:1562810067642884177>" : "<:error_g:1562810019454386196>";
 }
 
 function toggleButton(id, label, on) {
@@ -362,14 +362,14 @@ async function buildPanel(guild, userId, note = null) {
 
   const logWarning = (await guildConfig.getLogChannel(guild))
     ? ""
-    : "\n<:warning_g:1561271566233501797> No log channel is set, so hits won't be reported. Set one with the config command (`logs`).\n";
+    : "\n<:warning_g:1562810073733136506> No log channel is set, so hits won't be reported. Set one with the config command (`logs`).\n";
 
   const card = createCard({
     color: cfg.enabled ? COLORS.GREEN : COLORS.SKY_BLUE,
     content:
       `# <:FRIDAY:1564865373583581266> AutoMod\n\n${note ? `${note}\n\n` : ""}` +
-      `**Master switch:** ${cfg.enabled ? "🟢 ON" : "🔴 OFF"}\n` +
-      `**Advanced Antiwords:** ${cfg.advancedAntiwords ? "🟢 ON" : "⚫ OFF"} — Hindi/Hinglish sexual abuse, family-targeted obscenity, explicit insults and spelling evasion. This switch works independently of the AutoMod master switch.\n` +
+      `**Master switch:** ${cfg.enabled ? "<:success_g:1562810067642884177> ON" : "<:error_g:1562810019454386196> OFF"}\n` +
+      `**Advanced Antiwords:** ${cfg.advancedAntiwords ? "<:success_g:1562810067642884177> ON" : "<:error_g:1562810019454386196> OFF"} — Hindi/Hinglish sexual abuse, family-targeted obscenity, explicit insults and spelling evasion. This switch works independently of the AutoMod master switch.\n` +
       `**Action:** ${ACTION_TEXT[cfg.action]}${cfg.action === "timeout" ? ` (${cfg.timeoutMinutes} min)` : ""}\n` +
       `> ${ACTION_HELP[cfg.action]}\n${logWarning}\n` +
       `${ruleLines.join("\n")}\n\n` +
@@ -471,8 +471,8 @@ async function buildSmartPanel(guild, userId, note = null) {
     content:
       `# <:FRIDAY:1564865373583581266> Smart AutoMod\n\n` +
       `${note ? `${note}\n\n` : ""}` +
-      `<:info_g:1561269600564281374> Rule-based detection only — no external AI API.\n\n` +
-      `**Normalized Badwords:** ${enabled ? "<:success_g:1561271843346714777> ON" : "<:warning_g:1561271566233501797> OFF"}\n` +
+      `<:info_g:1562810038471630928> Rule-based detection only — no external AI API.\n\n` +
+      `**Normalized Badwords:** ${enabled ? "<:success_g:1562810067642884177> ON" : "<:warning_g:1562810073733136506> OFF"}\n` +
       `Checks your server's existing bad-word list against common leetspeak, Unicode normalization, and short punctuation/spacing gaps.\n\n` +
       `This setting is independent of the existing AutoMod configuration and starts OFF.\n\n` +
       `-# F.R.I.D.A.Y • Smart AutoMod`,
@@ -528,7 +528,7 @@ async function handlePanel(interaction) {
     return interaction.update(await buildSmartPanel(
       guild,
       userId,
-      `<:success_g:1561271843346714777> Smart Badwords is now **${cfg.normalizedBadwords ? "ON" : "OFF"}**.`
+      `<:success_g:1562810067642884177> Smart Badwords is now **${cfg.normalizedBadwords ? "ON" : "OFF"}**.`
     ));
   }
 
@@ -540,7 +540,7 @@ async function handlePanel(interaction) {
       c.rules[rule] = !c.rules[rule];
     });
 
-    return refresh(`${cfg.rules[rule] ? "<:success_g:1561271843346714777>" : "⬜"} **${RULES[rule].label}** is now ${cfg.rules[rule] ? "on" : "off"}.`);
+    return refresh(`${cfg.rules[rule] ? "<:success_g:1562810067642884177>" : "<:error_g:1562810019454386196>"} **${RULES[rule].label}** is now ${cfg.rules[rule] ? "on" : "off"}.`);
   }
 
   if (action === "advanced" && interaction.isButton()) {
@@ -585,7 +585,7 @@ async function handlePanel(interaction) {
 
   if (action === "reset" && interaction.isButton()) {
     await protection.updateAutomod(guild.id, () => protection.clone(protection.AUTOMOD_DEFAULTS));
-    return refresh("🧹 AutoMod was reset to its defaults (and switched off).");
+    return refresh("<:remove:1562810132918706276> AutoMod was reset to its defaults (and switched off).");
   }
 
   if (action === "chan" && interaction.isChannelSelectMenu()) {
@@ -668,7 +668,7 @@ module.exports = client => {
           return await message.reply(await buildSmartPanel(
             message.guild,
             message.author.id,
-            `<:success_g:1561271843346714777> Smart Badwords is now **${cfg.normalizedBadwords ? "ON" : "OFF"}**.`
+            `<:success_g:1562810067642884177> Smart Badwords is now **${cfg.normalizedBadwords ? "ON" : "OFF"}**.`
           ));
         }
 
@@ -696,7 +696,7 @@ module.exports = client => {
             c.rules[rule] = wantsOn;
           });
           return await message.reply({
-            content: `<:success_g:1561271843346714777> **${RULES[rule].label}** is now **${cfg.rules[rule] ? "ON" : "OFF"}**.`,
+            content: `<:success_g:1562810067642884177> **${RULES[rule].label}** is now **${cfg.rules[rule] ? "ON" : "OFF"}**.`,
             allowedMentions: { parse: [] }
           });
         }
@@ -712,7 +712,7 @@ module.exports = client => {
             c.enabled = wantsOn;
           });
           return await message.reply({
-            content: `<:success_g:1561271843346714777> AutoMod master switch is now **${cfg.enabled ? "ON" : "OFF"}**.`,
+            content: `<:success_g:1562810067642884177> AutoMod master switch is now **${cfg.enabled ? "ON" : "OFF"}**.`,
             allowedMentions: { parse: [] }
           });
         }

@@ -317,14 +317,14 @@ module.exports = function(client) {
                     await member.roles.remove(role);
                     const embed = new EmbedBuilder()
                         .setColor(0xe74c3c)
-                        .setDescription(`➖ **Role Removed:** Successfully revoked **${role.name}** from ${member}.`)
+                        .setDescription(`<:remove:1562810132918706276> **Role Removed:** Successfully revoked **${role.name}** from ${member}.`)
                         .setTimestamp();
                     return await message.reply({ embeds: [embed] });
                 } else {
                     await member.roles.add(role);
                     const embed = new EmbedBuilder()
                         .setColor(0x2ecc71)
-                        .setDescription(`➕ **Role Added:** Successfully assigned **${role.name}** to ${member}.`)
+                        .setDescription(`<:add:1562810077046505603> **Role Added:** Successfully assigned **${role.name}** to ${member}.`)
                         .setTimestamp();
                     return await message.reply({ embeds: [embed] });
                 }

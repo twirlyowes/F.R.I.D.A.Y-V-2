@@ -165,7 +165,7 @@ async function buildPanel(guild, userId, selectedKey = null, note = null) {
 
   const lines = Object.entries(SETTINGS).map(([key, def]) => {
     const value = cfg[key] ? display(def.type, cfg[key]) : "*not set*";
-    return `${cfg[key] ? "<:success_g:1562810067642884177>" : "⚪"} **${def.label}** — ${value}`;
+    return `${cfg[key] ? "<:success_g:1562810067642884177>" : "<:error_g:1562810019454386196>"} **${def.label}** — ${value}`;
   });
 
   const intro = selectedKey
@@ -188,8 +188,8 @@ async function buildPanel(guild, userId, selectedKey = null, note = null) {
       Object.entries(SETTINGS).map(([key, def]) => ({
         label: def.label.slice(0, 100),
         emoji: cfg[key]
-          ? { id: "1561271843346714777", name: "success_g" }
-          : { name: "⚪" },
+          ? { id: "1562810067642884177", name: "success_g" }
+          : { id: "1562810019454386196", name: "error_g" },
         description: def.description.slice(0, 100),
         value: key,
         default: key === selectedKey

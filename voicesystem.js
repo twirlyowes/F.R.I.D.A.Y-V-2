@@ -399,7 +399,7 @@ module.exports = (client) => {
 
         const controlCard = buildCard({
           color: CARD_COLORS.BLURPLE,
-          title: "🎙️ Temporary Voice Control Panel",
+          title: "<a:voice:1532987137199440003> Temporary Voice Control Panel",
           description:
 `${member}, welcome to your private voice channel!
 

@@ -298,7 +298,7 @@ module.exports = (client) => {
           ActiveDeveloper: "🧑‍💻 Active Developer",
           BugHunterLevel1: "🐛 Bug Hunter",
           BugHunterLevel2: "🐞 Bug Hunter Level 2",
-          CertifiedModerator: "🛡️ Moderator Programs",
+          CertifiedModerator: "<:Shield_2:1562810059946328185> Moderator Programs",
           HypeSquadOnlineHouse1: "🏠 HypeSquad Bravery",
           HypeSquadOnlineHouse2: "🏡 HypeSquad Brilliance",
           HypeSquadOnlineHouse3: "🏘️ HypeSquad Balance",

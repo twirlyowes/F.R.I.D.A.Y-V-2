@@ -640,8 +640,8 @@ Select which server this ticket is for.`,
                     ticketData.hideStaffName === true;
 
                 const staffName = hideStaff
-                    ? "🛡️ F.R.I.D.A.Y"
-                    : `🛡️ Staff (${message.author.tag})`;
+                    ? "<:Shield_2:1562810059946328185> F.R.I.D.A.Y"
+                    : `<:Shield_2:1562810059946328185> Staff (${message.author.tag})`;
 
                 const staffAvatar = hideStaff
                     ? client.user
@@ -990,7 +990,7 @@ ${categoryName}
 #${formattedId}
 
 **Status**
-🟢 Open
+<:success_g:1562810067642884177> Open
 
 -# Ticket created successfully`;
 
@@ -1011,7 +1011,7 @@ ${categoryName}
                                 .setCustomId("modmail_close")
                                 .setLabel("Close Ticket")
                                 .setStyle(ButtonStyle.Danger)
-                                .setEmoji("🔒"),
+                                .setEmoji("<:lock:1562810104393375876>"),
 
                             new ButtonBuilder()
                                 .setCustomId("modmail_claim")
@@ -1324,7 +1324,7 @@ Staff names will now be shown to the user.`,
                 const confirmationCard = createCard({
                     color: COLORS.RED,
                     content:
-                        "# 🔒 Close Support Ticket\n\n" +
+                        "# <:lock:1562810104393375876> Close Support Ticket\n\n" +
                         "Are you sure you want to close ticket **#" + formattedId + "**?\n\n" +
                         "A transcript of this ticket will be generated and sent to the ModMail log channel before the ticket is deleted.\n\n" +
                         "-# This action cannot be undone.",
@@ -1337,7 +1337,7 @@ Staff names will now be shown to the user.`,
                         .setCustomId("modmail_close_confirm")
                         .setLabel("Confirm Close")
                         .setStyle(ButtonStyle.Success)
-                        .setEmoji("🔒"),
+                        .setEmoji("<:lock:1562810104393375876>"),
                     new ButtonBuilder()
                         .setCustomId("modmail_close_cancel")
                         .setLabel("Cancel")
@@ -1375,7 +1375,7 @@ Staff names will now be shown to the user.`,
                         "**User ID**\n`" + ticketData.userId + "`\n\n" +
                         "**Category**\n" + categoryName + "\n\n" +
                         "**Ticket**\n#" + formattedId + "\n\n" +
-                        "**Status**\n🟢 Open\n\n" +
+                        "**Status**\n<:success_g:1562810067642884177> Open\n\n" +
                         "-# Ticket closure cancelled",
                     avatarURL: ticketUser ? getAvatarURL(ticketUser) : getAvatarURL(client.user),
                     avatarDescription: ticketUser ? ticketUser.username + "'s avatar" : "F.R.I.D.A.Y avatar"
@@ -1386,7 +1386,7 @@ Staff names will now be shown to the user.`,
                         .setCustomId("modmail_close")
                         .setLabel("Close Ticket")
                         .setStyle(ButtonStyle.Danger)
-                        .setEmoji("🔒"),
+                        .setEmoji("<:lock:1562810104393375876>"),
                     new ButtonBuilder()
                         .setCustomId("modmail_claim")
                         .setLabel("Claim Ticket")
@@ -1521,7 +1521,7 @@ Staff names will now be shown to the user.`,
                     const closeCard = createCard({
                         color: COLORS.RED,
                         content:
-                            "# 🔒 Support Ticket Closed\n\n" +
+                            "# <:lock:1562810104393375876> Support Ticket Closed\n\n" +
                             "Your F.R.I.D.A.Y ticket **#" + formattedId + "** has been closed.\n\n" +
                             "A transcript has been saved to the support team's ModMail logs.\n\n" +
                             "If you need further assistance, you can send the bot a new DM.",
@@ -1541,7 +1541,7 @@ Staff names will now be shown to the user.`,
                     const closeLogCard = createCard({
                         color: COLORS.RED,
                         content:
-                            "# 🔒 Ticket Closed\n\n" +
+                            "# <:lock:1562810104393375876> Ticket Closed\n\n" +
                             "**Ticket:** #" + formattedId + "\n" +
                             "**User:** <@" + ticketData.userId + ">\n" +
                             "**User ID:** `" + ticketData.userId + "`\n" +
@@ -1574,7 +1574,7 @@ Staff names will now be shown to the user.`,
 
                 const closingCard = createCard({
                     color: COLORS.RED,
-                    content: "# 🔒 Ticket Closed\n\nThis ticket will be deleted in **5 seconds**.",
+                    content: "# <:lock:1562810104393375876> Ticket Closed\n\nThis ticket will be deleted in **5 seconds**.",
                     avatarURL: getAvatarURL(interaction.user),
                     avatarDescription: interaction.user.username + "'s avatar"
                 });

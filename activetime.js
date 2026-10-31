@@ -773,7 +773,7 @@ module.exports = (client) => {
                         ) || 0;
 
                     reportLines.push(
-                        `<@${userId.split(":")[1]}> • 🟢 **${formatHM(activeTime)}** • 🎙️ **${formatHM(voiceTime)}** • 💬 **${messages}** • ⚙️ **${commands}**`
+                        `<@${userId.split(":")[1]}> • <a:ONLINE:1562810127814500382> **${formatHM(activeTime)}** • <a:voice:1532987137199440003> **${formatHM(voiceTime)}** • <a:LP_Message:1562810046088486952> **${messages}** • <a:settings:1562810057454919740> **${commands}**`
                     );
                 }
             }
@@ -1173,7 +1173,7 @@ module.exports = (client) => {
                             COLORS.SKY_BLUE,
 
                         content:
-                            "🔄 **Generating Staff Activity Report**\nPlease wait while the report is generated..."
+                            "<a:loading:1562810100647989350> **Generating Staff Activity Report**\nPlease wait while the report is generated..."
                     });
 
                 await message.reply(
@@ -1235,7 +1235,7 @@ module.exports = (client) => {
                             COLORS.SKY_BLUE,
 
                         content:
-                            "🔄 **Resetting Activity Tracking**\nSending the current activity snapshot before resetting..."
+                            "<a:loading:1562810100647989350> **Resetting Activity Tracking**\nSending the current activity snapshot before resetting..."
                     });
 
                 await message.reply(
