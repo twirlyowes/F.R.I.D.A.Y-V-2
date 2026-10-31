@@ -290,7 +290,7 @@ Message removed for a prohibited word.`
             if (logChannel) {
                 const safeDeletedMessage = String(deletedMessage || "")
                     .replace(/`{3,}/g, "'''")
-                    .replace(/@/g, "@\\u200b")
+                    .replace(/@/g, "@" + String.fromCharCode(8203))
                     .slice(0, 1000);
                 const embed = new EmbedBuilder()
                     .setColor("#ED4245")
