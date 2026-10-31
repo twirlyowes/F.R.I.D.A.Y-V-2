@@ -106,7 +106,7 @@ async function enforce(client, guild) {
 
   await notifyOwners(
     client,
-    `🚫 I was added to **${guild.name}** (\`${guild.id}\`) and left because it isn't approved.\n` +
+    `<:error_g:1562810019454386196> I was added to **${guild.name}** (\`${guild.id}\`) and left because it isn't approved.\n` +
       `To allow it, run \`addserver ${guild.id}\` in one of your approved servers (with the server prefix), then invite me again.`
   );
 

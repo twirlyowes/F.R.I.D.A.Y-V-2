@@ -283,32 +283,25 @@ function hierarchyCheck(
 }
 
 function ms(time) {
-  if (!time) return null;
+  if (typeof time !== "string") return null;
+  const match = time.trim().match(/^(\\d+)(s|m|h|d)$/i);
+  if (!match) return null;
 
-  const number = parseInt(
-    time,
-    10
-  );
+  const number = Number(match[1]);
+  if (!Number.isSafeInteger(number) || number < 1) return null;
 
-  if (isNaN(number)) return null;
+  const multiplier = {
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000
+  }[match[2].toLowerCase()];
 
-  if (time.endsWith("s")) {
-    return number * 1000;
-  }
-
-  if (time.endsWith("m")) {
-    return number * 60000;
-  }
-
-  if (time.endsWith("h")) {
-    return number * 3600000;
-  }
-
-  if (time.endsWith("d")) {
-    return number * 86400000;
-  }
-
-  return null;
+  const duration = number * multiplier;
+  // Discord timeouts are limited to 28 days.
+  return Number.isSafeInteger(duration) && duration <= 28 * 24 * 60 * 60 * 1000
+    ? duration
+    : null;
 }
 
 async function sendLog(
@@ -451,24 +444,19 @@ client.on(
       }
 
       if (command === "mute") {
-        const user =
-          message.mentions.members.first();
-
-        const time = args[1];
-
-        const reason =
-          args.slice(2).join(" ") ||
+        const user = message.mentions.members.first();
+        const requestedTime = args[1];
+        const parsedDuration = ms(requestedTime);
+        const duration = parsedDuration || 60 * 60 * 1000;
+        const durationLabel = parsedDuration ? requestedTime : "1h";
+        const reason = (parsedDuration ? args.slice(2) : args.slice(1)).join(" ") ||
           "No reason provided";
 
-        if (
-          !user ||
-          !time ||
-          !ms(time)
-        ) {
+        if (!user) {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              `**Usage:** ${PREFIX}mute @user [time: 10m/1h] [reason]`
+              `**Usage:** ${PREFIX}mute @user [time: 10m/1h/1d] [reason]\\nDefault duration: 1h`
             )
           );
         }
@@ -486,24 +474,26 @@ client.on(
           );
         }
 
-        if (
-          !hierarchyCheck(
-            message,
-            user
-          )
-        ) {
+        if (!hierarchyCheck(message, user) || !user.moderatable) {
           return await message.reply(
             cardReply(
               COLORS.RED,
-              "You cannot mute this user due to role hierarchy."
+              "You cannot mute this user due to role hierarchy or my role position."
             )
           );
         }
 
-        await user.timeout(
-          ms(time),
-          reason
-        );
+        try {
+          await user.timeout(duration, reason);
+        } catch (error) {
+          console.error("[Moderation] Mute failed:", error);
+          return await message.reply(
+            cardReply(
+              COLORS.RED,
+              "Failed to mute that user. Check my Moderate Members permission and role position."
+            )
+          );
+        }
 
         dashboardEvents.recordCase(message.guild.id, {
           action: "timeout",
@@ -517,7 +507,7 @@ client.on(
         const options =
           cardReply(
             COLORS.RED,
-            `**${user.user.tag}** has been muted.\n\n**Duration:** ${time}\n**Reason:** ${reason}\n**Moderator:** ${message.author.tag}`,
+            `**${user.user.tag}** has been muted.\n\n**Duration:** ${durationLabel}\n**Reason:** ${reason}\n**Moderator:** ${message.author.tag}`,
             user
           );
 

@@ -1401,14 +1401,14 @@ async function trigger(guild, user, kind, total, cfg) {
   await sendLog(
     guild,
     COLORS.RED,
-    `# 🚨 Anti-Nuke triggered\n\n${summary}\n\n` +
+    `# <:warning_g:1562810073733136506> Anti-Nuke triggered\n\n${summary}\n\n` +
       `${punishment.ok ? "" : "<:warning_g:1562810073733136506> The punishment did not fully work. Move my role to the top of the role list and check the audit log.\n\n"}` +
       `-# F.R.I.D.A.Y • Anti-Nuke`
   );
 
   await dmOwner(
     guild,
-    `🚨 Anti-Nuke triggered in **${guild.name}**\n` +
+    `<:warning_g:1562810073733136506> Anti-Nuke triggered in **${guild.name}**\n` +
       `${user.tag || user.username || user.id} (${user.id}) did ${total}× ${FEATURES[kind].label.toLowerCase()} within ${cfg.windowSeconds}s.\n` +
       `${punishment.ok ? "<:success_g:1562810067642884177>" : "<:warning_g:1562810073733136506>"} ${punishment.text}\n${recoveryText}`
   );
@@ -1417,7 +1417,7 @@ async function trigger(guild, user, kind, total, cfg) {
 // ---------------------------------------------------------------------------
 // Control panel (buttons), owner only
 // ---------------------------------------------------------------------------
-const flag = on => (on ? "<:success_g:1562810067642884177>" : "⬜");
+const flag = on => (on ? "<:success_g:1562810067642884177>" : "<:error_g:1562810019454386196>");
 
 function toggleButton(id, label, on) {
   return new ButtonBuilder()
@@ -1451,7 +1451,7 @@ async function buildPanel(guild, userId, note = null) {
     color: cfg.enabled ? COLORS.GREEN : COLORS.SKY_BLUE,
     content:
       `# <:FRIDAY:1564865373583581266> Anti-Nuke\n\n${note ? `${note}\n\n` : ""}` +
-      `**Status:** ${cfg.enabled ? "🟢 ON" : "🔴 OFF"}\n` +
+      `**Status:** ${cfg.enabled ? "<:success_g:1562810067642884177> ON" : "<:error_g:1562810019454386196> OFF"}\n` +
       `**Quarantine:** ${quarantineLine}\n` +
       `**Punishment:** ${PUNISHMENT_TEXT[cfg.punishment]}\n` +
       `**Trigger:** ${cfg.threshold} actions in ${cfg.windowSeconds}s\n` +
@@ -1625,7 +1625,7 @@ async function handlePanel(interaction) {
       c.trusted = [];
     });
 
-    return refresh("🧹 The trusted list was cleared.");
+    return refresh("<:remove:1562810132918706276> The trusted list was cleared.");
   }
 
   if (action === "done" && interaction.isButton()) {
@@ -1960,7 +1960,7 @@ module.exports = client => {
       await sendLog(
         guild,
         COLORS.RED,
-        `# 🛡️ Anti-Nuke: role permissions\n\n` +
+        `# <:Shield_2:1562810059946328185> Anti-Nuke: role permissions\n\n` +
           `**Who:** ${actor ? who(actor) : "Unknown — audit-log attribution unavailable"}\n` +
           `**Role:** ${newRole.name}\n` +
           `**Result:** ${reverted ? "<:success_g:1562810067642884177> Dangerous permissions were removed again" : "<:warning_g:1562810073733136506> Could not revert (my role is too low)"}\n\n` +
@@ -2067,7 +2067,7 @@ module.exports = client => {
       await sendLog(
         guild,
         COLORS.RED,
-        `# 🛡️ Anti-Nuke: bot added\n\n` +
+        `# <:Shield_2:1562810059946328185> Anti-Nuke: bot added\n\n` +
           `**Bot:** ${who(member.user)}\n` +
           `**Added by:** ${who(entry.executor)}\n` +
           `**Result:** ${removed ? "<:success_g:1562810067642884177> The bot was removed" : "<:warning_g:1562810073733136506> Could not remove it (my role is too low)"}\n\n` +

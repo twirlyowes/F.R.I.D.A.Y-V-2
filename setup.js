@@ -171,7 +171,7 @@ async function buildMainPanel(guild, userId, note = "") {
           .setCustomId("setup:clearall:" + userId)
           .setLabel("Clear All")
           .setStyle(ButtonStyle.Danger)
-          .setEmoji("🧹"),
+          .setEmoji("<:remove:1562810132918706276>"),
         new ButtonBuilder()
           .setCustomId("setup:close:" + userId)
           .setLabel("Close")
