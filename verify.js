@@ -583,10 +583,27 @@ async function sendVerificationPanel(guild, client) {
 
         const messages = await channel.messages.fetch({ limit: 10 }).catch(() => null);
         if (messages) {
-            const existingPanel = messages.find(m => m.author.id === client.user.id && m.components.length > 0);
+            // Only update the verification panel; never edit an unrelated bot panel
+            // that happens to contain components in the same channel.
+            const hasVerificationButton = (components = []) => components.some(component =>
+                component.customId === 'start_verify_btn' ||
+                hasVerificationButton(component.components || [])
+            );
+
+            const existingPanel = messages.find(message =>
+                message.author.id === client.user.id &&
+                hasVerificationButton(message.components || [])
+            );
+
             if (existingPanel) {
-                await existingPanel.edit({ embeds: [embed], components: [row] });
-                return { ok: true };
+                // Components V2 messages cannot be converted back to legacy embeds.
+                // Remove only the matching verification panel and post a fresh legacy panel.
+                if (existingPanel.flags.has(MessageFlags.IsComponentsV2)) {
+                    await existingPanel.delete();
+                } else {
+                    await existingPanel.edit({ embeds: [embed], components: [row] });
+                    return { ok: true };
+                }
             }
         }
 
