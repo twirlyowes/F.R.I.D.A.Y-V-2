@@ -139,7 +139,7 @@ module.exports = client => {
         return await interaction.reply({ content: "This AntiBot panel belongs to someone else.", flags: MessageFlags.Ephemeral });
       }
       if (!(await canManage(interaction.guild, interaction.user.id))) {
-        return await interaction.reply({ content: "Only the server owner or main bot owner can manage AntiBot.", flags: MessageFlags.Ephemeral });
+        return await interaction.reply({ content: "Only the server owner, bot owner, or a server-delegated owner can manage AntiBot.", flags: MessageFlags.Ephemeral });
       }
       if (action !== "toggle" || !interaction.isButton()) return interaction.deferUpdate();
       const current = await getConfig(interaction.guild.id);
