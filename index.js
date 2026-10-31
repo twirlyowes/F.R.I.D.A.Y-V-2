@@ -61,8 +61,24 @@ client.on("error", error => {
   console.error("[Discord Client Error] A Discord operation failed; keeping the bot process alive:", error);
 });
 
-client.on("shardError", error => {
-  console.error("[Discord Gateway Error] A shard connection error occurred:", error);
+client.on("shardError", (error, shardId) => {
+  console.error(`[Discord Gateway Error] Shard ${shardId} connection error:`, error);
+});
+
+client.on("shardDisconnect", (event, shardId) => {
+  console.error(
+    `[Discord Gateway Disconnect] Shard ${shardId} closed. Code: ${event.code}; reason: ${event.reason || "no reason supplied"}; clean: ${event.wasClean}`
+  );
+});
+
+client.on("shardReconnecting", shardId => {
+  console.warn(`[Discord Gateway] Shard ${shardId} is reconnecting.`);
+});
+
+client.on("shardReady", (shardId, unavailableGuilds) => {
+  console.log(
+    `[Discord Gateway] Shard ${shardId} ready. Unavailable guilds: ${unavailableGuilds?.size ?? 0}`
+  );
 });
 
 // Discord API requests can fail when a channel permission is missing or an
